@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+requests
+python-chess
+python-dotenv
+fpdf2
+matplotlib
+pydantic-settings
+supabase
+zstandard
+tqdm
