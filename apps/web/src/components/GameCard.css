@@ -1,0 +1,118 @@
+.game-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.game-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.platform-badge {
+  background: rgba(29, 193, 137, 0.1);
+  border: 1px solid rgba(29, 193, 137, 0.25);
+  color: #10b981;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.game-date {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.game-players {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+}
+
+.player {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.player.white {
+  justify-content: flex-start;
+}
+
+.player.black {
+  justify-content: flex-end;
+}
+
+.piece-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.player.white .piece-icon {
+  color: #475569;
+}
+
+.player.black .piece-icon {
+  color: #334155;
+  text-shadow: 0 0 1px rgba(255, 255, 255, 0.5);
+}
+
+.player-name {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.vs {
+  color: var(--text-secondary);
+  opacity: 0.5;
+  padding: 0 16px;
+}
+
+.game-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 12px;
+}
+
+.result {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.text-success {
+  color: var(--success);
+  font-weight: 600;
+}
+
+.text-danger {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.text-stalemate {
+  color: #3b82f6;
+  font-weight: 600;
+}
+
+.text-resigned {
+  color: #f59e0b;
+  font-weight: 600;
+}
+
+.btn-sm {
+  padding: 6px 14px;
+  font-size: 13px;
+}
