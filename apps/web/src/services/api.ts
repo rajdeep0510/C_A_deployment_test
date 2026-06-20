@@ -46,10 +46,19 @@ export async function getStats(username) {
   return res.json();
 }
 
-export async function analyzeGame(username, filename) {
-  const res = await apiFetch(`${BASE_URL}/api/analyze/${username}/${filename}`);
-  if (!res.ok) throw new Error("Failed to analyze game");
-  return res.json();
+export async function analyzeGame(username: string, filename: string): Promise<any> {
+  const { engineConfig } = await import("@/lib/engine-config");
+  if (!engineConfig.enabled) {
+    throw new Error("Client-side analysis is disabled. Set NEXT_PUBLIC_ANALYSIS_ENABLE_WASM=true");
+  }
+
+  const { isWasmSupported, getRecommendedWorkersNb } = await import("@/lib/engine/wasm-detect");
+  if (typeof window === "undefined" || !isWasmSupported()) {
+    throw new Error("WebAssembly is not supported in this browser. Please use a modern browser like Chrome, Firefox, or Edge.");
+  }
+
+  const { analyzeLocally } = await import("@/services/local-analysis");
+  return await analyzeLocally(username, filename);
 }
 
 export async function batchAnalyze(username, limit = 5) {
