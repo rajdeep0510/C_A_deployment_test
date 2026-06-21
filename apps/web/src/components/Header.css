@@ -77,6 +77,15 @@
   border-radius: 20px;
 }
 
+.user-name.clickable {
+  cursor: pointer;
+}
+
+.user-name.clickable:hover {
+  background: var(--surface-1);
+  border-color: var(--border-medium);
+}
+
 .btn-logout {
   display: flex;
   align-items: center;

@@ -7,6 +7,7 @@ import MistakeCard from "@/components/MistakeCard";
 import PatternGrid from "@/components/PatternGrid";
 import TimeAnalysisCard from "@/components/TimeAnalysisCard";
 import { usePlayer } from "@/contexts/PlayerContext";
+import { useSettings } from "@/contexts/SettingsContext";
 import { analyzeGame, fetchAnnotations, type Annotation } from "@/services/api";
 import AnnotationPanel from "@/components/AnnotationPanel";
 import { Chess } from "chess.js";
@@ -142,10 +143,7 @@ export default function GameAnalysisPage({
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [mistakeFilter, setMistakeFilter] = useState<MistakeFilter>("All");
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
-  const [boardTheme, setBoardTheme] = useState<string>(() => {
-    if (typeof window !== "undefined") return localStorage.getItem("boardTheme") || "classic";
-    return "classic";
-  });
+  const { boardTheme, setBoardTheme } = useSettings();
   const [themeFlash, setThemeFlash] = useState(false);
 
   const [fenHistory, setFenHistory] = useState<string[]>([]);
@@ -260,18 +258,6 @@ export default function GameAnalysisPage({
       body.style.overflow = "";
     };
   }, []);
-
-  useEffect(() => {
-    localStorage.setItem("boardTheme", boardTheme);
-  }, [boardTheme]);
-
-  const switchTheme = (name: string) => {
-    setThemeFlash(true);
-    setTimeout(() => {
-      setBoardTheme(name);
-      setThemeFlash(false);
-    }, 160);
-  };
 
   const [isPlaying, setIsPlaying] = useState(false);
 
@@ -768,29 +754,6 @@ export default function GameAnalysisPage({
                 >
                   <SkipForward size={18} />
                 </button>
-              </div>
-
-              {/* Board theme swatches */}
-              <div style={{ display: "flex", justifyContent: "center", gap: "8px", marginTop: "8px" }}>
-                {Object.entries(BOARD_THEMES).map(([key, theme]) => (
-                  <button
-                    key={key}
-                    title={theme.label}
-                    onClick={() => switchTheme(key)}
-                    style={{
-                      width: "22px",
-                      height: "22px",
-                      borderRadius: "50%",
-                      padding: 0,
-                      border: boardTheme === key ? "2px solid var(--accent-color)" : "2px solid transparent",
-                      background: `linear-gradient(135deg, ${theme.dark} 50%, ${theme.light} 50%)`,
-                      cursor: "pointer",
-                      boxShadow: boardTheme === key ? "0 0 0 1px var(--accent-color)" : "0 1px 4px rgba(0,0,0,0.4)",
-                      transition: "transform 0.15s, box-shadow 0.15s",
-                      transform: boardTheme === key ? "scale(1.15)" : "scale(1)",
-                    }}
-                  />
-                ))}
               </div>
 
             </div>
