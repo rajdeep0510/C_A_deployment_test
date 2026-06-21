@@ -1,14 +1,17 @@
 "use client";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, Target, Activity, LogOut, Puzzle } from "lucide-react";
 import { usePlayer } from "@/contexts/PlayerContext";
 import ThemeToggle from "./ThemeToggle";
+import SettingsPanel from "./SettingsPanel";
 import "./Header.css";
 
 export default function Header() {
   const pathname = usePathname();
   const { chessUsername, logout } = usePlayer();
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   if (!chessUsername) return null;
 
@@ -46,12 +49,20 @@ export default function Header() {
 
         <div className="header-user">
           <ThemeToggle />
-          <span className="user-name">{chessUsername}</span>
+          <span className="user-name clickable" onClick={() => setSettingsOpen(true)}>
+            {chessUsername}
+          </span>
           <button className="btn-logout" title="Log Out" onClick={logout}>
             <LogOut size={16} />
           </button>
         </div>
       </div>
+      <SettingsPanel
+        isOpen={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        userType="player"
+        username={chessUsername}
+      />
     </header>
   );
 }

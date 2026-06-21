@@ -1,10 +1,12 @@
 "use client";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Users, LogOut, Shield, GraduationCap, UserMinus } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import ThemeToggle from "./ThemeToggle";
+import SettingsPanel from "./SettingsPanel";
 import "./Header.css";
 
 const ROLE_META = {
@@ -16,6 +18,7 @@ const ROLE_META = {
 export default function CoachHeader() {
   const pathname = usePathname();
   const { coachProfile, signOut } = useAuth();
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   if (!coachProfile) return null;
 
@@ -90,7 +93,9 @@ export default function CoachHeader() {
 
         <div className="header-user">
           <ThemeToggle />
-          <span className="user-name">{coachProfile.full_name}</span>
+          <span className="user-name clickable" onClick={() => setSettingsOpen(true)}>
+            {coachProfile.full_name}
+          </span>
           <button className="btn-logout" title="Remove Account" onClick={handleRemoveAccount} style={{ color: "var(--danger)" }}>
             <UserMinus size={16} />
           </button>
@@ -99,6 +104,14 @@ export default function CoachHeader() {
           </button>
         </div>
       </div>
+      <SettingsPanel
+        isOpen={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        userType="coach"
+        username={coachProfile.full_name}
+        email={coachProfile.email}
+        role={coachProfile.role}
+      />
     </header>
   );
 }

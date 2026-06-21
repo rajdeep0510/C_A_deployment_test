@@ -2,6 +2,7 @@ import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { PlayerProvider } from "@/contexts/PlayerContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { SettingsProvider } from "@/contexts/SettingsContext";
 import Footer from "@/components/Footer";
 
 export const metadata = {
@@ -30,24 +31,26 @@ export default function RootLayout({ children }) {
         <AuthProvider>
           <PlayerProvider>
             <ThemeProvider>
-              <div className="bg-grid" />
-              <div
-                className="page-wrapper"
-                style={{
-                  position: "relative",
-                  zIndex: 1,
-                  display: "flex",
-                  flexDirection: "column",
-                  minHeight: "100vh",
-                }}
-              >
+              <SettingsProvider>
+                <div className="bg-grid" />
                 <div
-                  style={{ flex: 1, display: "flex", flexDirection: "column" }}
+                  className="page-wrapper"
+                  style={{
+                    position: "relative",
+                    zIndex: 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    minHeight: "100vh",
+                  }}
                 >
-                  {children}
+                  <div
+                    style={{ flex: 1, display: "flex", flexDirection: "column" }}
+                  >
+                    {children}
+                  </div>
+                  <Footer />
                 </div>
-                <Footer />
-              </div>
+              </SettingsProvider>
             </ThemeProvider>
           </PlayerProvider>
         </AuthProvider>
