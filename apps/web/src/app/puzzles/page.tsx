@@ -263,10 +263,10 @@ export default function PuzzlesPage() {
       <div className="container" style={{ paddingTop: "32px", paddingBottom: "48px" }}>
 
         {/* ── Page header ── */}
-        <div className="flex-between" style={{ marginBottom: "24px", flexWrap: "wrap", gap: "12px" }}>
+        <div className="flex-between animate-fade-in" style={{ marginBottom: "32px", flexWrap: "wrap", gap: "12px" }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: "26px", fontWeight: 800 }}>Puzzle Training</h1>
-            <p style={{ margin: "4px 0 0", color: "var(--text-secondary)", fontSize: "14px" }}>
+            <h1 style={{ margin: 0, fontSize: "32px", fontWeight: 800, letterSpacing: "-1px" }} className="text-gradient">Puzzle Training</h1>
+            <p style={{ margin: "6px 0 0", color: "var(--text-secondary)", fontSize: "15px" }}>
               Sharpen your tactics — from your own games and the Lichess library
             </p>
           </div>
@@ -301,13 +301,14 @@ export default function PuzzlesPage() {
 
         {/* ── Calibration banner ── */}
         {showCalibration && !isActiveMode && (
-          <div style={{
-            marginBottom: "12px", padding: "14px 18px", borderRadius: "10px",
-            background: "rgba(29,193,137,0.08)", border: "1px solid rgba(29,193,137,0.25)",
+          <div className="animate-fade-in delay-100" style={{
+            marginBottom: "16px", padding: "16px 20px", borderRadius: "16px",
+            background: "rgba(16, 185, 129, 0.08)", border: "1px solid rgba(16, 185, 129, 0.25)",
             display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px",
+            boxShadow: "0 8px 32px rgba(16, 185, 129, 0.05)"
           }}>
             <div>
-              <p style={{ margin: 0, fontWeight: 700, fontSize: "14px" }}>Set your puzzle rating</p>
+              <p style={{ margin: 0, fontWeight: 700, fontSize: "15px", color: "var(--success)" }}>Set your puzzle rating</p>
               <p style={{ margin: "2px 0 0", color: "var(--text-secondary)", fontSize: "13px" }}>
                 Solve 10 quick puzzles so we can serve the right difficulty for you.
               </p>
@@ -339,7 +340,7 @@ export default function PuzzlesPage() {
 
         {/* ── Source + phase filters (hidden during active mode) ── */}
         {!isActiveMode && (
-          <div style={{ marginBottom: "20px", display: "flex", flexDirection: "column", gap: "12px" }}>
+          <div className="animate-fade-in delay-200" style={{ marginBottom: "24px", display: "flex", flexDirection: "column", gap: "16px" }}>
             {/* Source toggle */}
             <div style={{ display: "flex", gap: "8px" }}>
               <button onClick={() => setSource("own")} style={sourceBtn(source === "own")}>
@@ -423,7 +424,7 @@ export default function PuzzlesPage() {
 
             {/* Loading */}
             {loading && !(mode === "survival" && gameOver) && (
-              <div className="glass-card" style={{ padding: "32px" }}>
+              <div className="glass-card animate-fade-in" style={{ padding: "48px 32px", display: "flex", justifyContent: "center" }}>
                 <Loader message="Loading puzzles…" />
               </div>
             )}
@@ -486,13 +487,13 @@ export default function PuzzlesPage() {
           </div>
 
           {/* Right — stats sidebar */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          <div className="animate-slide-right delay-300" style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
 
             {/* Skill radar */}
-            <div className="glass-card" style={{ padding: "20px" }}>
-              <p style={{ margin: "0 0 12px", fontWeight: 700, fontSize: "14px" }}>Skill Radar</p>
+            <div className="glass-card" style={{ padding: "24px" }}>
+              <p style={{ margin: "0 0 16px", fontWeight: 700, fontSize: "15px", letterSpacing: "-0.5px" }}>Skill Radar</p>
               <PuzzleRadar accuracyByTheme={stats?.accuracy_by_theme ?? {}} />
-              <div style={{ display: "flex", justifyContent: "space-between", marginTop: "12px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: "16px" }}>
                 <Stat label="Total" value={stats?.total_puzzles ?? 0} />
                 <Stat label="Solved" value={stats?.total_attempted ?? 0} />
                 <Stat label="This week" value={stats?.weekly_solved ?? 0} accent />
