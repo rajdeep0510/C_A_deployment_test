@@ -61,8 +61,20 @@ export default function Dashboard() {
     }
 
     const storedGames = localStorage.getItem("recentGames");
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (storedGames) setGames(JSON.parse(storedGames));
+    if (storedGames) {
+      let parsed = JSON.parse(storedGames);
+      // Migrate old cached data: if filename contains a full URL, extract just the game ID
+      parsed = parsed.map((g: any) => {
+        if (g.filename && (g.filename.includes('://') || g.filename.includes('/'))) {
+          const segments = g.filename.split('/');
+          g.filename = segments[segments.length - 1] || g.filename;
+        }
+        return g;
+      });
+      localStorage.setItem("recentGames", JSON.stringify(parsed));
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setGames(parsed);
+    }
 
     getStats(chessUsername)
       .then(setStats)

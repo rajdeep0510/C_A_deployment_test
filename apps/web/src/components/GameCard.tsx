@@ -50,12 +50,14 @@ export default function GameCard({ game }) {
             {game.result || "Unknown"}
           </span>
         </div>
-        <Link
-          href={`/analysis/${game.filename}`}
-          className="btn btn-primary btn-sm"
-        >
-          Analyze Game
-        </Link>
+        {game.filename && (
+          <Link
+            href={`/analysis/${encodeURIComponent(game.filename)}`}
+            className="btn btn-primary btn-sm"
+          >
+            Analyze Game
+          </Link>
+        )}
       </div>
     </div>
   );

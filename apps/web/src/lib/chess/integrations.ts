@@ -29,6 +29,7 @@ export async function fetchChessComGames(username: string, limit: number): Promi
       black: game.black.username,
       result: game.white.result,
       end_time: game.end_time,
+      filename: game.url.split('/').pop() || game.url,
     }));
   } catch (error) {
     console.error("Error fetching Chess.com games:", error);
@@ -60,6 +61,7 @@ export async function fetchLichessGames(username: string, limit: number): Promis
             black: game.players.black.user.name,
             result: game.winner,
             end_time: game.createdAt,
+            filename: game.id,
           };
           return stdGame;
         } catch (e) {
