@@ -24,6 +24,7 @@ export async function fetchChessComGames(username: string, limit: number): Promi
     return allGames.slice(0, limit).map((game: any) => ({
       platform: "chess.com",
       url: game.url,
+      filename: game.url,
       pgn: game.pgn,
       white: game.white.username,
       black: game.black.username,
@@ -55,6 +56,7 @@ export async function fetchLichessGames(username: string, limit: number): Promis
           const stdGame: Game = {
             platform: "lichess",
             url: `https://lichess.org/${game.id}`,
+            filename: `https://lichess.org/${game.id}`,
             pgn: game.pgn,
             white: game.players.white.user.name,
             black: game.players.black.user.name,

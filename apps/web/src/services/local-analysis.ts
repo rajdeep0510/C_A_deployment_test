@@ -88,11 +88,17 @@ async function fetchPgn(
       return fetchLichessPgn(decoded);
     }
 
-    const chessComMatch = decoded.match(
-      /(?:chess\.com\/game\/(?:live|daily)\/)?(\d+)/i
+    // Full Chess.com URL (strict — requires the path prefix so we don't
+    // accidentally match stray digit sequences in other URL formats)
+    const chessComUrlMatch = decoded.match(
+      /chess\.com\/game\/(?:live|daily)\/(\d+)/i
     );
-    if (chessComMatch) {
-      return fetchChessComPgn(username, chessComMatch[1]);
+    if (chessComUrlMatch) {
+      return fetchChessComPgn(username, chessComUrlMatch[1]);
+    }
+    // Bare numeric game ID (digits only)
+    if (/^\d+$/.test(decoded)) {
+      return fetchChessComPgn(username, decoded);
     }
   }
 
@@ -162,7 +168,8 @@ async function fetchChessComPgn(
   const { archives } = await archivesRes.json();
   if (!archives?.length) throw new Error("No Chess.com archives found");
 
-  const recentArchives = archives.slice(-3).reverse();
+  // Search up to 12 months of archives (newest first) so older games are found
+  const recentArchives = [...archives].reverse().slice(0, 12);
   for (const archiveUrl of recentArchives) {
     const archiveRes = await fetch(archiveUrl, {
       headers: { "User-Agent": "ChessCoachPlatform/1.0" },
