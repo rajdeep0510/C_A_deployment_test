@@ -173,13 +173,39 @@ class BatchAnalyzer:
                     phase_stats[phase]['moves'] += 1
 
         num_games = len(results)
-        
+
         # Calculate averages for phases
         for phase in phase_stats:
             if phase_stats[phase]['moves'] > 0:
                 phase_stats[phase]['avg_accuracy'] = round(phase_stats[phase]['accuracy'] / phase_stats[phase]['moves'], 2)
             else:
                 phase_stats[phase]['avg_accuracy'] = 0
+
+        # Aggregate time analysis across all games
+        time_pressure_games = 0
+        total_time_pressure_moves = 0
+        phase_time_buckets: dict = {"opening": [], "middlegame": [], "endgame": []}
+        games_with_time_data = 0
+        for game in results:
+            ta = game.get("time_analysis")
+            if ta:
+                games_with_time_data += 1
+                if ta.get("time_pressure_risk"):
+                    time_pressure_games += 1
+                total_time_pressure_moves += ta.get("time_pressure_move_count", 0)
+                for phase, avg in (ta.get("phase_time_breakdown") or {}).items():
+                    if phase in phase_time_buckets and avg is not None:
+                        phase_time_buckets[phase].append(avg)
+        time_analysis_summary = {
+            "games_with_time_data": games_with_time_data,
+            "games_with_time_pressure": time_pressure_games,
+            "time_pressure_pct": round(time_pressure_games / games_with_time_data * 100, 1) if games_with_time_data > 0 else 0,
+            "avg_time_pressure_moves_per_game": round(total_time_pressure_moves / games_with_time_data, 1) if games_with_time_data > 0 else 0,
+            "phase_avg_time": {
+                phase: round(sum(times) / len(times), 2) if times else None
+                for phase, times in phase_time_buckets.items()
+            },
+        }
 
         trends = self.trend_analyzer.calculate_trends(results)
         
@@ -212,6 +238,7 @@ class BatchAnalyzer:
             },
             "patterns": patterns,
             "mistake_stats": mistake_stats,
+            "time_analysis": time_analysis_summary,
             "individual_games": [
                 {
                     "filename": g.get('filename'),

@@ -180,25 +180,27 @@ export default function GameAnalysisPage({
     return map;
   }, [analysis, moveHistoryToPly]);
 
-  // Build eval series for the game graph: one point per ply.
+  // Build eval series using win probability (0-100) from the user's perspective.
   const evalSeries = useMemo(() => {
-    if (!analysis?.full_history || !analysis?.move_history) return [];
-    const pts: { ply: number; ev: number; quality?: string; san?: string }[] = [
-      { ply: 0, ev: 0 },
+    if (!analysis?.full_history) return [];
+    const pts: { ply: number; ev: number; quality?: string; opp_quality?: string; san?: string }[] = [
+      { ply: 0, ev: 50 },
     ];
     let userIdx = 0;
-    const mh: any[] = analysis.move_history;
+    const mh: any[] = analysis.move_history || [];
     (analysis.full_history as any[]).forEach((m, i) => {
       const ply = i + 1;
+      const ev = m.win_prob ?? 50;
+      const entry: any = { ply, ev };
       if (m.is_user && userIdx < mh.length) {
         const s = mh[userIdx++];
-        pts.push({ ply, ev: Math.max(-10, Math.min(10, s.eval_after ?? s.eval ?? 0)), quality: s.quality, san: s.san });
-      } else {
-        // Opponent move: use eval_before of next user move if available
-        const next = mh[userIdx];
-        const ev = next ? (next.eval_before ?? 0) : (pts[pts.length - 1]?.ev ?? 0);
-        pts.push({ ply, ev: Math.max(-10, Math.min(10, ev)) });
+        entry.quality = s.quality;
+        entry.san = m.san;
+      } else if (!m.is_user) {
+        if (m.opp_quality) entry.opp_quality = m.opp_quality;
+        entry.san = m.san;
       }
+      pts.push(entry);
     });
     return pts;
   }, [analysis]);
@@ -458,48 +460,49 @@ export default function GameAnalysisPage({
             <ArrowLeft size={18} /> Back
           </button>
           {analysis && (
-            <div style={{ display: "flex", gap: "24px", alignItems: "center" }}>
-              <div style={{ textAlign: "right" }}>
-                <span
-                  style={{
-                    color: "var(--text-secondary)",
-                    fontSize: "14px",
-                    marginRight: "8px",
-                  }}
-                >
-                  Accuracy
-                </span>
-                <span
-                  style={{
-                    fontSize: "24px",
-                    fontWeight: "700",
-                    color: "var(--accent-color)",
-                  }}
-                >
-                  {analysis.game_accuracy}%
-                </span>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px", minWidth: 0, maxWidth: "55%" }}>
+              <div style={{
+                fontSize: "13px",
+                fontWeight: "600",
+                color: "var(--text-primary)",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                maxWidth: "100%",
+              }}>
+                {analysis.white_player} vs {analysis.black_player}
               </div>
-              <div
-                style={{
-                  height: "32px",
-                  width: "1px",
-                  background: "var(--glass-border)",
-                }}
-              />
-              <div>
-                <span
+              <div style={{ display: "flex", gap: "20px", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
+                <div style={{ whiteSpace: "nowrap" }}>
+                  <span style={{ color: "var(--text-secondary)", fontSize: "13px", marginRight: "6px" }}>Accuracy</span>
+                  <span style={{ fontSize: "22px", fontWeight: "700", color: "var(--accent-color)" }}>
+                    {analysis.game_accuracy}%
+                  </span>
+                </div>
+                <div
                   style={{
-                    color: "var(--text-secondary)",
-                    fontSize: "14px",
-                    marginRight: "8px",
+                    height: "28px",
+                    width: "1px",
+                    background: "var(--glass-border)",
+                    flexShrink: 0,
                   }}
-                >
-                  Opening
-                </span>
-                <span style={{ fontSize: "16px", fontWeight: "500" }}>
-                  {analysis.opening_name || "Unknown"} (
-                  {analysis.eco_code || "?"})
-                </span>
+                />
+                <div style={{ minWidth: 0, maxWidth: "260px" }}>
+                  <span style={{ color: "var(--text-secondary)", fontSize: "13px", marginRight: "6px" }}>Opening</span>
+                  <span style={{
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    display: "inline-block",
+                    maxWidth: "200px",
+                    verticalAlign: "middle",
+                  }}>
+                    {analysis.opening_name || "Unknown"}
+                    {analysis.eco_code ? ` (${analysis.eco_code})` : ""}
+                  </span>
+                </div>
               </div>
             </div>
           )}
@@ -846,34 +849,37 @@ export default function GameAnalysisPage({
                             <AreaChart data={evalSeries} margin={{ top: 4, right: 0, left: 0, bottom: 4 }}>
                               <defs>
                                 <linearGradient id="evalGrad" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="0%" stopColor="rgba(255,255,255,0.55)" />
-                                  <stop offset="50%" stopColor="rgba(255,255,255,0.08)" />
-                                  <stop offset="100%" stopColor="rgba(0,0,0,0.45)" />
+                                  <stop offset="0%" stopColor="rgba(255,255,255,0.70)" />
+                                  <stop offset="45%" stopColor="rgba(255,255,255,0.20)" />
+                                  <stop offset="55%" stopColor="rgba(30,30,30,0.20)" />
+                                  <stop offset="100%" stopColor="rgba(10,10,10,0.65)" />
                                 </linearGradient>
                               </defs>
                               <XAxis dataKey="ply" hide />
-                              <YAxis domain={[-10, 10]} hide />
-                              <ReferenceLine y={0} stroke="rgba(255,255,255,0.25)" strokeWidth={1} />
+                              <YAxis domain={[0, 100]} hide />
+                              <ReferenceLine y={50} stroke="rgba(255,255,255,0.35)" strokeWidth={1} strokeDasharray="4 3" />
                               <Tooltip
                                 content={({ active, payload }) => {
                                   if (!active || !payload?.[0]) return null;
                                   const d = payload[0].payload;
+                                  const q = d.quality || d.opp_quality;
                                   return (
                                     <div style={{ background: "rgba(0,0,0,0.85)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "6px", padding: "6px 10px", fontSize: "11px", color: "#fff" }}>
                                       {d.san && <div style={{ fontWeight: 700 }}>{d.san}</div>}
-                                      <div style={{ color: d.quality ? QUALITY_COLOR[d.quality] || "var(--text-secondary)" : "var(--text-secondary)" }}>
-                                        {d.quality || `Ply ${d.ply}`}
+                                      <div style={{ color: q ? QUALITY_COLOR[q] || "var(--text-secondary)" : "var(--text-secondary)" }}>
+                                        {q || `Ply ${d.ply}`}
                                       </div>
-                                      <div style={{ color: "var(--text-secondary)" }}>Eval: {d.ev > 0 ? "+" : ""}{d.ev.toFixed(2)}</div>
+                                      <div style={{ color: "var(--text-secondary)" }}>Win%: {d.ev.toFixed(1)}%</div>
                                     </div>
                                   );
                                 }}
                               />
-                              <Area type="monotone" dataKey="ev" stroke="rgba(255,255,255,0.6)" strokeWidth={1.5} fill="url(#evalGrad)"
+                              <Area type="monotone" dataKey="ev" stroke="rgba(255,255,255,0.5)" strokeWidth={1.5} fill="url(#evalGrad)"
                                 dot={(props: any) => {
                                   const { cx, cy, payload } = props;
-                                  if (!payload.quality) return <g key={props.key} />;
-                                  const col = QUALITY_COLOR[payload.quality] || "rgba(255,255,255,0.4)";
+                                  const q = payload.quality || payload.opp_quality;
+                                  if (!q) return <g key={props.key} />;
+                                  const col = QUALITY_COLOR[q] || "rgba(255,255,255,0.4)";
                                   return <circle key={props.key} cx={cx} cy={cy} r={3.5} fill={col} stroke="rgba(0,0,0,0.5)" strokeWidth={0.5} />;
                                 }}
                                 activeDot={{ r: 5, fill: "var(--accent-color)" }}
@@ -951,8 +957,9 @@ export default function GameAnalysisPage({
                         >
                           Phase Accuracy
                         </div>
-                        {Object.entries(analysis.phase_accuracy).map(
-                          ([phase, val]) => {
+                        {(["opening", "middlegame", "endgame"] as const).map((phase) => {
+                            const val = analysis.phase_accuracy[phase];
+                            if (val === undefined) return null;
                             const pct = parseFloat(val as string);
                             return (
                               <div key={phase} style={{ marginBottom: "10px" }}>
@@ -1006,8 +1013,7 @@ export default function GameAnalysisPage({
                                 </div>
                               </div>
                             );
-                          },
-                        )}
+                          })}
                       </div>
                     )}
 
@@ -1231,12 +1237,13 @@ export default function GameAnalysisPage({
                                 ) {
                                   stats = analysis.move_history[userMoveIdx++];
                                 }
-                                const qColor = stats
-                                  ? QUALITY_COLOR[stats.quality] ||
-                                    "var(--text-secondary)"
-                                  : "transparent";
-                                const qBg = stats
-                                  ? QUALITY_BG[stats.quality] || "transparent"
+                                const oppQuality = !m.is_user ? m.opp_quality : null;
+                                const displayQuality = stats?.quality || oppQuality;
+                                const qColor = displayQuality
+                                  ? QUALITY_COLOR[displayQuality] || "var(--text-secondary)"
+                                  : "var(--text-secondary)";
+                                const qBg = displayQuality
+                                  ? QUALITY_BG[displayQuality] || "transparent"
                                   : "transparent";
                                 return (
                                   <tr
@@ -1289,7 +1296,7 @@ export default function GameAnalysisPage({
                                       {typeof m === "string" ? m : m.san || m}
                                     </td>
                                     <td style={{ padding: "10px 8px" }}>
-                                      {stats ? (
+                                      {displayQuality ? (
                                         <span
                                           style={{
                                             padding: "3px 8px",
@@ -1299,9 +1306,10 @@ export default function GameAnalysisPage({
                                             backgroundColor: qBg,
                                             color: qColor,
                                             border: `1px solid ${qColor}44`,
+                                            opacity: m.is_user ? 1 : 0.7,
                                           }}
                                         >
-                                          {stats.quality}
+                                          {displayQuality}
                                         </span>
                                       ) : (
                                         <span

@@ -2,11 +2,41 @@ import Link from "next/link";
 import { Swords, Calendar } from "lucide-react";
 import "./GameCard.css";
 
-export default function GameCard({ game }) {
-  const isWhite =
-    game.platform === "chess.com" || game.platform === "lichess"
-      ? true // This would typically check if the active user played as white
-      : false;
+const DRAW_RESULTS = new Set([
+  "stalemate", "insufficient", "agreed", "repetition",
+  "timevsinsufficient", "50move", "1/2-1/2",
+]);
+const LOSS_RESULTS = new Set([
+  "checkmated", "resigned", "timeout", "abandoned", "loss",
+]);
+
+function resolveOutcome(
+  result: string,
+  white: string,
+  black: string,
+  username: string,
+): "Win" | "Loss" | "Draw" {
+  const r = (result || "").toLowerCase().trim();
+  const isWhite = white?.toLowerCase() === username?.toLowerCase();
+
+  if (r === "1-0") return isWhite ? "Win" : "Loss";
+  if (r === "0-1") return isWhite ? "Loss" : "Win";
+  if (r === "white") return isWhite ? "Win" : "Loss";
+  if (r === "black") return isWhite ? "Loss" : "Win";
+  if (DRAW_RESULTS.has(r)) return "Draw";
+  if (r === "win") return "Win";
+  if (LOSS_RESULTS.has(r)) return "Loss";
+  return "Draw";
+}
+
+const OUTCOME_COLOR = {
+  Win: "var(--success)",
+  Loss: "var(--danger)",
+  Draw: "#60a5fa",
+};
+
+export default function GameCard({ game, username = "" }: { game: any; username?: string }) {
+  const outcome = resolveOutcome(game.result, game.white, game.black, username);
 
   return (
     <div className="glass-card game-card">
@@ -35,29 +65,16 @@ export default function GameCard({ game }) {
       <div className="game-footer">
         <div className="result">
           Result:{" "}
-          <span
-            style={{
-              color: (game.result || "").toLowerCase().includes("stalemate")
-                ? "#60a5fa"
-                : (game.result || "").toLowerCase().includes("resign")
-                  ? "#facc15"
-                  : (game.result || "").toLowerCase().includes("win")
-                    ? "var(--success)"
-                    : "var(--danger)",
-              fontWeight: 700,
-            }}
-          >
-            {game.result || "Unknown"}
+          <span style={{ color: OUTCOME_COLOR[outcome], fontWeight: 700 }}>
+            {outcome}
           </span>
         </div>
-        {game.filename && (
-          <Link
-            href={`/analysis/${encodeURIComponent(game.filename)}`}
-            className="btn btn-primary btn-sm"
-          >
-            Analyze Game
-          </Link>
-        )}
+        <Link
+          href={`/analysis/${encodeURIComponent(game.filename)}`}
+          className="btn btn-primary btn-sm"
+        >
+          Analyze Game
+        </Link>
       </div>
     </div>
   );

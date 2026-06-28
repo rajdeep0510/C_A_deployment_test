@@ -13,15 +13,43 @@ def _default_analysis_nodes() -> int:
     from worker_config import settings
     return settings.ANALYSIS_NODES
 
+# Root of the stockfish-worker package (one level up from worker_core/)
+_WORKER_ROOT = Path(__file__).parent.parent
+
+
 class EngineManager:
     def __init__(self, stockfish_path: str = None, analysis_nodes: int = None):
-        # Priority: explicit argument > central config > auto-discovery.
-        # Always validate the resolved path — fall back to _find_stockfish() if
-        # the configured value doesn't point to a real executable.
         candidate = stockfish_path or _default_stockfish()
-        self.stockfish_path = candidate if self._path_is_valid(candidate) else self._find_stockfish()
+        resolved  = self._resolve(candidate)
+        self.stockfish_path = resolved if resolved else self._find_stockfish()
         self.analysis_nodes = analysis_nodes if analysis_nodes is not None else _default_analysis_nodes()
         self.engine = None
+
+    @staticmethod
+    def _resolve(path: str) -> "str | None":
+        """
+        Return an absolute path string for the given path, or None if not found.
+        Tries (in order): system PATH (bare names only), absolute path, worker-root-relative path.
+        """
+        # shutil.which short-circuits on paths with directory separators and
+        # returns the relative path as-is if the file is accessible from CWD.
+        # Only use it for bare command names (e.g. 'stockfish' on Linux).
+        if not os.path.split(path)[0]:
+            which_result = shutil.which(path)
+            if which_result:
+                return which_result
+
+        p = Path(path)
+        if p.is_absolute() and p.exists():
+            return str(p)
+
+        # Resolve relative to the worker package root — always produces an
+        # absolute path, so CreateProcess/asyncio can find it regardless of CWD.
+        abs_candidate = (_WORKER_ROOT / path).resolve()
+        if abs_candidate.exists():
+            return str(abs_candidate)
+
+        return None
 
     @staticmethod
     def _path_is_valid(path: str) -> bool:
@@ -43,13 +71,13 @@ class EngineManager:
             "/usr/bin/stockfish",
         ]
         
-        # Only add Windows paths if NOT on Linux
+        # Only add Windows paths if NOT on Linux — resolved relative to worker root
         if not is_linux:
             possible_paths.extend([
-                "bin/stockfish/stockfish-windows-x86-64-avx2.exe",
-                "bin/stockfish/stockfish.exe",
+                str(_WORKER_ROOT / "bin/stockfish/stockfish-windows-x86-64-avx2.exe"),
+                str(_WORKER_ROOT / "bin/stockfish/stockfish.exe"),
             ])
-            
+
         for path in possible_paths:
             if Path(path).is_file():
                 return path

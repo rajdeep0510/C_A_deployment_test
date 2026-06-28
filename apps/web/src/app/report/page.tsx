@@ -194,19 +194,39 @@ export default function ReportPage() {
                 <h3 style={{ marginBottom: "24px", fontSize: "18px" }}>
                   Phase Performance
                 </h3>
-                <ChartRadar
-                  data={
-                    reportData.visuals?.phase_radar?.labels
-                      ? reportData.visuals.phase_radar.labels.map(
-                          (label: string, idx: number) => ({
-                            subject: label,
-                            score: reportData.visuals.phase_radar.data[idx],
-                          }),
-                        )
-                      : []
-                  }
-                  dataKey="score"
-                />
+                {(() => {
+                  const phaseData = reportData.visuals?.phase_radar?.labels
+                    ? reportData.visuals.phase_radar.labels.map(
+                        (label: string, idx: number) => ({
+                          subject: label,
+                          score: reportData.visuals.phase_radar.data[idx] ?? 0,
+                        }),
+                      )
+                    : [];
+                  const hasPhaseData = phaseData.some((d: any) => d.score > 0);
+                  return hasPhaseData ? (
+                    <ChartRadar data={phaseData} dataKey="score" />
+                  ) : (
+                    <div style={{
+                      height: 200,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "10px",
+                      color: "var(--text-secondary)",
+                      textAlign: "center",
+                    }}>
+                      <div style={{ fontSize: "32px", opacity: 0.4 }}>◎</div>
+                      <div style={{ fontSize: "14px" }}>
+                        Phase accuracy requires engine analysis.
+                      </div>
+                      <div style={{ fontSize: "13px", opacity: 0.7 }}>
+                        Analyze individual games to populate this chart.
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="glass-card">
@@ -287,10 +307,10 @@ export default function ReportPage() {
                         color: "var(--accent-color)",
                       }}
                     >
-                      {parseFloat(
-                        reportData.report.period_summary.overall_avg_accuracy,
-                      ).toFixed(1)}
-                      %
+                      {(() => {
+                        const v = parseFloat(reportData.report.period_summary.overall_avg_accuracy);
+                        return isNaN(v) || v === 0 ? "—" : `${v.toFixed(1)}%`;
+                      })()}
                     </div>
                   </div>
                   <div>

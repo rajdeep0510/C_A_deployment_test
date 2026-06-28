@@ -88,11 +88,17 @@ async function fetchPgn(
       return fetchLichessPgn(decoded);
     }
 
-    const chessComMatch = decoded.match(
-      /(?:chess\.com\/game\/(?:live|daily)\/)?(\d+)/i
+    // Full Chess.com URL (strict — requires the path prefix so we don't
+    // accidentally match stray digit sequences in other URL formats)
+    const chessComUrlMatch = decoded.match(
+      /chess\.com\/game\/(?:live|daily)\/(\d+)/i
     );
-    if (chessComMatch) {
-      return fetchChessComPgn(username, chessComMatch[1]);
+    if (chessComUrlMatch) {
+      return fetchChessComPgn(username, chessComUrlMatch[1]);
+    }
+    // Bare numeric game ID (digits only)
+    if (/^\d+$/.test(decoded)) {
+      return fetchChessComPgn(username, decoded);
     }
   }
 
@@ -162,7 +168,8 @@ async function fetchChessComPgn(
   const { archives } = await archivesRes.json();
   if (!archives?.length) throw new Error("No Chess.com archives found");
 
-  const recentArchives = archives.slice(-3).reverse();
+  // Search up to 12 months of archives (newest first) so older games are found
+  const recentArchives = [...archives].reverse().slice(0, 12);
   for (const archiveUrl of recentArchives) {
     const archiveRes = await fetch(archiveUrl, {
       headers: { "User-Agent": "ChessCoachPlatform/1.0" },
@@ -235,7 +242,10 @@ function mapToAnalysisSchema(
 ): any {
   const history = game.history({ verbose: true });
   const headers = game.getHeaders();
-  const fullHistory = buildFullHistory(history, userColor, username);
+  const positions = gameEval.positions;
+  const positionsWin = positions.map(getPositionWinPercentage);
+
+  const fullHistory = buildFullHistory(history, userColor, username, positions, positionsWin);
   const sanitizedHistory = history.map((m) => ({
     ...m,
     is_user:
@@ -295,12 +305,31 @@ function mapToAnalysisSchema(
 function buildFullHistory(
   history: any[],
   userColor: "white" | "black",
-  username: string
-): Array<{ san: string; is_user: boolean }> {
-  return history.map((move) => ({
-    san: move.san,
-    is_user: move.color === (userColor === "white" ? "w" : "b"),
-  }));
+  username: string,
+  positions: any[],
+  positionsWin: number[]
+): Array<{ san: string; is_user: boolean; win_prob?: number; opp_quality?: string }> {
+  const userSide = userColor === "white" ? "w" : "b";
+  return history.map((move, i) => {
+    const isUser = move.color === userSide;
+    const whitePctAfter = positionsWin[i + 1] ?? 50;
+    const userWinPctAfter = userColor === "white" ? whitePctAfter : 100 - whitePctAfter;
+
+    const entry: any = {
+      san: move.san,
+      is_user: isUser,
+      win_prob: Math.round(userWinPctAfter * 10) / 10,
+    };
+
+    if (!isUser) {
+      const rawQuality = positions[i + 1]?.moveClassification;
+      if (rawQuality) {
+        entry.opp_quality = QUALITY_MAP[rawQuality] || "Good";
+      }
+    }
+
+    return entry;
+  });
 }
 
 function buildMoveHistory(
