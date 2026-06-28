@@ -5,7 +5,7 @@ import Header from "@/components/Header";
 import GameCard from "@/components/GameCard";
 import Loader from "@/components/Loader";
 import { usePlayer } from "@/contexts/PlayerContext";
-import { getStats, batchAnalyze, fetchGames } from "@/services/api";
+import { getStats, fetchGames } from "@/services/api";
 import { Play, TrendingUp, TrendingDown, Minus, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
 
 function MomentumBadge({ momentum }: { momentum: string }) {
@@ -51,7 +51,6 @@ export default function Dashboard() {
   const [realStats, setRealStats] = useState<any>(null);
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [batchAnalyzing, setBatchAnalyzing] = useState(false);
   const [showFetchPanel, setShowFetchPanel] = useState(false);
   const [fetchPlatform, setFetchPlatform] = useState("chess.com");
   const [fetchLimit, setFetchLimit] = useState(10);
@@ -129,20 +128,6 @@ export default function Dashboard() {
     }
   };
 
-  const handleBatchAnalyze = async () => {
-    setBatchAnalyzing(true);
-    try {
-      await batchAnalyze(chessUsername, 5);
-      router.push("/report");
-    } catch (e) {
-      console.error(e);
-      alert(
-        "Batch analysis failed. Please ensure the backend and Stockfish are running properly.",
-      );
-      setBatchAnalyzing(false);
-    }
-  };
-
   if (!chessUsername) return null;
 
   return (
@@ -173,12 +158,11 @@ export default function Dashboard() {
           </div>
           <button
             className="btn btn-primary"
-            onClick={handleBatchAnalyze}
-            disabled={batchAnalyzing}
+            onClick={() => router.push("/batch")}
             style={{ padding: "12px 24px", fontSize: "15px" }}
           >
             <Play size={18} fill="currentColor" />
-            {batchAnalyzing ? "Analyzing..." : "Run Batch Analysis"}
+            Batch Analysis
           </button>
         </div>
 

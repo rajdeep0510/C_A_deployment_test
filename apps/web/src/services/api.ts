@@ -94,6 +94,28 @@ export async function batchAnalyze(username, limit = 5) {
   return res.json();
 }
 
+export async function createBatchJob(username: string, game_urls: string[]): Promise<any> {
+  const res = await apiFetch(`${BASE_URL}/api/batch`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, game_urls }),
+  });
+  if (!res.ok) throw new Error("Failed to create batch job");
+  return res.json();
+}
+
+export async function getBatchJob(jobId: string): Promise<any> {
+  const res = await apiFetch(`${BASE_URL}/api/batch?jobId=${encodeURIComponent(jobId)}`);
+  if (!res.ok) throw new Error("Failed to fetch batch job");
+  return res.json();
+}
+
+export async function getBatchJobs(username: string): Promise<any[]> {
+  const res = await apiFetch(`${BASE_URL}/api/batch?username=${encodeURIComponent(username)}`);
+  if (!res.ok) return [];
+  return res.json();
+}
+
 export function getReport(username, limit = 50) {
   return dedupedGet(`${BASE_URL}/api/report/${username}?limit=${limit}`);
 }

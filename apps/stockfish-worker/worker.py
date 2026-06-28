@@ -16,6 +16,7 @@ import requests
 from supabase import create_client, Client
 from worker_config import settings
 from worker_core.game_analyzer import GameAnalyzer
+from worker_core.batch_analyzer import BatchAnalyzer
 
 supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
 
@@ -155,6 +156,46 @@ def process_job(job: dict, analyzer: GameAnalyzer) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Batch job processing
+# ---------------------------------------------------------------------------
+
+def process_batch_job(job: dict) -> None:
+    job_id   = job["id"]
+    username = job["username"]
+    game_urls = job.get("game_urls") or []
+
+    logger.info("Processing batch job %s — %s, %d games", job_id, username, len(game_urls))
+    supabase.table("batch_jobs").update({"status": "processing"}).eq("id", job_id).execute()
+
+    try:
+        pgn_list = []
+        for url in game_urls:
+            try:
+                pgn = fetch_pgn(username, url)
+                pgn_list.append(pgn)
+                logger.info("Fetched PGN for %s", url)
+            except Exception as e:
+                logger.warning("Could not fetch PGN for %s: %s", url, e)
+
+        if not pgn_list:
+            raise ValueError("No valid PGNs could be fetched for any of the %d URLs" % len(game_urls))
+
+        batch_analyzer = BatchAnalyzer(engine_path=settings.STOCKFISH_PATH)
+        result = batch_analyzer.analyze_pgn_list(pgn_list, username)
+
+        supabase.table("batch_jobs").update(
+            {"status": "completed", "result": result}
+        ).eq("id", job_id).execute()
+
+        logger.info("Batch job %s completed — %d/%d games analyzed",
+                    job_id, result.get("total_analyzed", 0), len(game_urls))
+
+    except Exception as e:
+        logger.error("Batch job %s failed: %s", job_id, e, exc_info=True)
+        supabase.table("batch_jobs").update({"status": "failed"}).eq("id", job_id).execute()
+
+
+# ---------------------------------------------------------------------------
 # Main polling loop
 # ---------------------------------------------------------------------------
 
@@ -169,6 +210,7 @@ def main() -> None:
     try:
         while True:
             try:
+                # Single-game jobs take priority
                 res = (
                     supabase.table("analysis_jobs")
                     .select("*")
@@ -179,8 +221,22 @@ def main() -> None:
                 )
                 if res.data:
                     process_job(res.data[0], analyzer)
-                else:
-                    time.sleep(POLL_INTERVAL)
+                    continue  # re-check immediately
+
+                # Then batch jobs
+                batch_res = (
+                    supabase.table("batch_jobs")
+                    .select("*")
+                    .eq("status", "pending")
+                    .order("created_at")
+                    .limit(1)
+                    .execute()
+                )
+                if batch_res.data:
+                    process_batch_job(batch_res.data[0])
+                    continue  # re-check immediately
+
+                time.sleep(POLL_INTERVAL)
             except Exception as e:
                 logger.error("Worker loop error: %s", e, exc_info=True)
                 time.sleep(RETRY_SLEEP)
