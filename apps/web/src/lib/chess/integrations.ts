@@ -72,6 +72,7 @@ export async function fetchLichessGames(username: string, limit: number): Promis
             black: game.players.black.user?.name ?? game.players.black.name ?? "",
             result,
             end_time: game.createdAt,
+            filename: game.id,
           };
           return stdGame;
         } catch (e) {

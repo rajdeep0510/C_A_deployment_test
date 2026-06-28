@@ -23,7 +23,7 @@ export interface Game {
   black: string;
   result: string;
   end_time: number;
-  filename?: string;
+  filename: string;
 }
 
 export interface Puzzle {
