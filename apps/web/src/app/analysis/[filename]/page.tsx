@@ -957,8 +957,9 @@ export default function GameAnalysisPage({
                         >
                           Phase Accuracy
                         </div>
-                        {Object.entries(analysis.phase_accuracy).map(
-                          ([phase, val]) => {
+                        {(["opening", "middlegame", "endgame"] as const).map((phase) => {
+                            const val = analysis.phase_accuracy[phase];
+                            if (val === undefined) return null;
                             const pct = parseFloat(val as string);
                             return (
                               <div key={phase} style={{ marginBottom: "10px" }}>
@@ -1012,8 +1013,7 @@ export default function GameAnalysisPage({
                                 </div>
                               </div>
                             );
-                          },
-                        )}
+                          })}
                       </div>
                     )}
 

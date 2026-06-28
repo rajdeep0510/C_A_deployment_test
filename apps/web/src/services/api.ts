@@ -52,13 +52,38 @@ export async function analyzeGame(username: string, filename: string): Promise<a
     throw new Error("Client-side analysis is disabled. Set NEXT_PUBLIC_ANALYSIS_ENABLE_WASM=true");
   }
 
-  const { isWasmSupported, getRecommendedWorkersNb } = await import("@/lib/engine/wasm-detect");
+  const { isWasmSupported } = await import("@/lib/engine/wasm-detect");
   if (typeof window === "undefined" || !isWasmSupported()) {
     throw new Error("WebAssembly is not supported in this browser. Please use a modern browser like Chrome, Firefox, or Edge.");
   }
 
+  // Check Supabase for a cached completed analysis
+  const cached = await fetch(
+    `/api/analyze?username=${encodeURIComponent(username)}&filename=${encodeURIComponent(filename)}`
+  ).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+
+  if (cached?.result) return cached.result;
+
+  // Create a pending job so the result can be saved back
+  const job = await fetch("/api/analyze", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, filename }),
+  }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+
   const { analyzeLocally } = await import("@/services/local-analysis");
-  return await analyzeLocally(username, filename);
+  const result = await analyzeLocally(username, filename);
+
+  // Persist the result so future visits skip re-analysis
+  if (job?.id) {
+    fetch("/api/analyze", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jobId: job.id, status: "completed", result }),
+    }).catch(() => {});
+  }
+
+  return result;
 }
 
 export async function batchAnalyze(username, limit = 5) {
