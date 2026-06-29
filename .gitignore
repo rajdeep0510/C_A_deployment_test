@@ -39,3 +39,6 @@ yarn-error.log*
 
 # Chesskit
 Chesskit/
+
+# Lichess puzzle database (large CSV, ~1GB)
+lichess_db_puzzle.csv/

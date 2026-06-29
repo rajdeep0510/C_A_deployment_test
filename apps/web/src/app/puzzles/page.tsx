@@ -107,16 +107,26 @@ export default function PuzzlesPage() {
     setLoading(true);
     setLoadError(null);
     setCurrentIndex(0);
+    const phaseParam = phase !== "all" ? phase : undefined;
+    const loadLibrary = async () => {
+      const data = await getLibraryPuzzles(undefined, phaseParam, 800, 2500, 20);
+      return (data.puzzles || []).map(extractPuzzle).filter(Boolean) as Puzzle[];
+    };
     try {
       let raw: Puzzle[] = [];
       if (source === "own") {
-        const phaseParam = phase !== "all" ? phase : undefined;
-        const data = await getPuzzleQueue(chessUsername!, 20, phaseParam);
-        raw = (data.queue || []).map(extractPuzzle).filter(Boolean) as Puzzle[];
+        // "Your missed opportunities" needs the games-analysis backend, which may
+        // not be available. If it fails or returns nothing, fall back to the
+        // (always-available) Lichess library so the page still shows puzzles.
+        try {
+          const data = await getPuzzleQueue(chessUsername!, 20, phaseParam);
+          raw = (data.queue || []).map(extractPuzzle).filter(Boolean) as Puzzle[];
+        } catch {
+          raw = [];
+        }
+        if (raw.length === 0) raw = await loadLibrary();
       } else {
-        const phaseParam = phase !== "all" ? phase : undefined;
-        const data = await getLibraryPuzzles(undefined, phaseParam, 800, 2500, 20);
-        raw = (data.puzzles || []).map(extractPuzzle).filter(Boolean) as Puzzle[];
+        raw = await loadLibrary();
       }
       setPuzzles(raw);
     } catch (e: any) {
