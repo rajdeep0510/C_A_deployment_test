@@ -1,3 +1,4 @@
+
 import re
 import time
 import logging
@@ -23,6 +24,7 @@ supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVIC
 HEADERS_CHESS_COM = {"User-Agent": "ChessAdvisor/1.0 (academic project)"}
 POLL_INTERVAL = 5          # seconds between polls when idle
 RETRY_SLEEP   = 10         # seconds to sleep after an unexpected worker-loop error
+STUCK_JOB_TIMEOUT_MINUTES = 30  # reset processing jobs older than this
 
 
 # ---------------------------------------------------------------------------
@@ -127,6 +129,26 @@ def fetch_pgn(username: str, filename: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Startup maintenance
+# ---------------------------------------------------------------------------
+
+def reset_stuck_jobs() -> None:
+    """On startup, reset any jobs left in 'processing' from a previous crashed worker."""
+    from datetime import datetime, timezone, timedelta
+    cutoff = (datetime.now(timezone.utc) - timedelta(minutes=STUCK_JOB_TIMEOUT_MINUTES)).isoformat()
+    res = (
+        supabase.table("analysis_jobs")
+        .update({"status": "pending"})
+        .eq("status", "processing")
+        .lt("created_at", cutoff)
+        .execute()
+    )
+    count = len(res.data) if res.data else 0
+    if count:
+        logger.info("Reset %d stuck processing job(s) back to pending", count)
+
+
+# ---------------------------------------------------------------------------
 # Job processing
 # ---------------------------------------------------------------------------
 
@@ -201,6 +223,7 @@ def process_batch_job(job: dict) -> None:
 
 def main() -> None:
     logger.info("Stockfish worker started — Stockfish path: %s", settings.STOCKFISH_PATH)
+    reset_stuck_jobs()
     analyzer = GameAnalyzer(engine_path=settings.STOCKFISH_PATH)
 
     # Start engine once and keep it warm across jobs

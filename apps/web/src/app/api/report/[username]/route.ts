@@ -94,7 +94,7 @@ function buildReportFromJobs(username: string, jobs: any[]) {
   const worstPhase = Object.entries(phaseAvg).filter(([, v]) => v > 0).sort((a, b) => a[1] - b[1])[0]?.[0] ?? "endgame";
   const momentum = avgAcc >= 70 ? "Improving" : avgAcc >= 55 ? "Stable" : "Needs Work";
 
-  const accuracyTimeline = completed.slice(-10).map((job, i) => ({
+  const accuracyTimeline = [...completed].reverse().map((job, i) => ({
     label: `G${i + 1}`,
     accuracy: parseFloat(job.result?.game_accuracy || 0),
   }));

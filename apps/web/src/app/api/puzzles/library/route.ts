@@ -1,25 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-import { resolveCsvUrl, EloBracket } from "@/lib/puzzles/resolver";
-import { sampleCsv } from "@/lib/puzzles/parser";
+import { loadRandomPuzzles } from "@/lib/puzzles/chunks";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = req.nextUrl;
-  const puzzleType = searchParams.get("type")       ?? "phase_middlegame";
-  const difficulty  = (searchParams.get("difficulty") ?? "intermediate") as EloBracket;
-  const limit       = Math.min(parseInt(searchParams.get("limit") ?? "20"), 50);
-
-  const csvUrl = resolveCsvUrl(puzzleType, difficulty);
-
-  let text: string;
   try {
-    const res = await fetch(csvUrl, { next: { revalidate: 86400 } });
-    if (!res.ok) throw new Error(`CSV fetch failed: ${res.status} — ${csvUrl}`);
-    text = await res.text();
-  } catch (err) {
-    console.error("[puzzles/library]", err);
-    return NextResponse.json({ error: "Failed to fetch puzzle data" }, { status: 502 });
-  }
+    const { searchParams } = new URL(req.url);
+    const limit     = parseInt(searchParams.get("limit")      || "10");
+    const ratingMin = parseInt(searchParams.get("rating_min") || "800");
+    const ratingMax = parseInt(searchParams.get("rating_max") || "2500");
+    const targetTheme = searchParams.get("theme")  ?? undefined;
+    const targetPhase = searchParams.get("phase")  ?? undefined;
 
-  const puzzles = sampleCsv(text, limit);
-  return NextResponse.json({ puzzles });
+    const selected = await loadRandomPuzzles({
+      ratingMin, ratingMax, limit,
+      theme: targetTheme,
+      phase: targetPhase,
+    });
+
+    return NextResponse.json({ puzzles: selected });
+  } catch (error) {
+    console.error("Error serving puzzles locally:", error);
+    return NextResponse.json({ error: "Failed to load puzzles" }, { status: 500 });
+  }
 }

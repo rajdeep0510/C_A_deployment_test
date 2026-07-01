@@ -60,7 +60,7 @@ export async function GET(
 ) {
   const { username } = await params;
   const { searchParams } = new URL(request.url);
-  const limit = Math.min(parseInt(searchParams.get("limit") || "5", 10), 10);
+  const limit = Math.min(parseInt(searchParams.get("limit") || "50", 10), 50);
 
   try {
     const gameUrls = await fetchGameUrlsForBatch(username, limit);
@@ -73,7 +73,18 @@ export async function GET(
     }
 
     const jobs: any[] = [];
+    let skipped = 0;
     for (const url of gameUrls) {
+      const { data: existing } = await supabaseAdmin
+        .from("analysis_jobs")
+        .select("id, status")
+        .eq("username", username)
+        .eq("filename", url)
+        .in("status", ["pending", "processing", "completed"])
+        .maybeSingle();
+
+      if (existing) { skipped++; continue; }
+
       const { data, error } = await supabaseAdmin
         .from("analysis_jobs")
         .insert({ username, filename: url, status: "pending" })
@@ -82,7 +93,7 @@ export async function GET(
       if (!error && data) jobs.push(data);
     }
 
-    return NextResponse.json({ queued: jobs.length, jobs });
+    return NextResponse.json({ queued: jobs.length, skipped, jobs });
   } catch (err) {
     console.error("Batch analyze error:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

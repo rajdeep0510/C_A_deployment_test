@@ -86,7 +86,7 @@ export async function analyzeGame(username: string, filename: string): Promise<a
   return result;
 }
 
-export async function batchAnalyze(username, limit = 5) {
+export async function batchAnalyze(username: string, limit = 50) {
   const res = await apiFetch(
     `${BASE_URL}/api/analyze/${username}/batch?limit=${limit}`,
   );
@@ -298,12 +298,58 @@ export async function getRushPuzzles(count = 60) {
   return res.json();
 }
 
+// Maps our UI puzzle types to Lichess theme tags used in the chunks data
+const PUZZLE_TYPE_TO_THEME: Record<string, string | undefined> = {
+  tactic_fork:               "fork",
+  tactic_pin:                "pin",
+  tactic_skewer:             "skewer",
+  tactic_sacrifice:          "sacrifice",
+  tactic_discovered_attack:  "discoveredAttack",
+  mate_in_1:                 "mateIn1",
+  mate_in_2:                 "mateIn2",
+  mate_in_3:                 "mateIn3",
+  mate_in_4plus:             "mateIn4",
+  mate_back_rank:            "backRankMate",
+  mate_smothered:            "smotheredMate",
+  mate_arabian:              "arabianMate",
+  mate_opera:                "operaMate",
+  endgame_pawn:              "pawnEndgame",
+  endgame_rook:              "rookEndgame",
+  endgame_bishop:            "bishopEndgame",
+  endgame_knight:            "knightEndgame",
+  endgame_queen:             "queenEndgame",
+};
+
+const PUZZLE_TYPE_TO_PHASE: Record<string, string | undefined> = {
+  phase_opening:    "opening",
+  phase_middlegame: "middlegame",
+  phase_endgame:    "endgame",
+};
+
+const DIFFICULTY_RANGES: Record<string, [number, number]> = {
+  beginner:     [200,  1000],
+  intermediate: [1000, 1400],
+  advanced:     [1400, 1800],
+  expert:       [1800, 2500],
+};
+
 export async function getLibraryPuzzles(
   puzzleType = "phase_middlegame",
   difficulty  = "intermediate",
   limit = 20,
 ) {
-  const params = new URLSearchParams({ type: puzzleType, difficulty, limit: String(limit) });
+  const [ratingMin, ratingMax] = DIFFICULTY_RANGES[difficulty] ?? [1000, 1400];
+  const params = new URLSearchParams({
+    rating_min: String(ratingMin),
+    rating_max: String(ratingMax),
+    limit: String(limit),
+  });
+
+  const theme = PUZZLE_TYPE_TO_THEME[puzzleType];
+  const phase = PUZZLE_TYPE_TO_PHASE[puzzleType];
+  if (theme) params.set("theme", theme);
+  if (phase) params.set("phase", phase);
+
   const res = await apiFetch(`${BASE_URL}/api/puzzles/library?${params}`);
   if (!res.ok) throw new Error("Failed to fetch library puzzles");
   return res.json();
