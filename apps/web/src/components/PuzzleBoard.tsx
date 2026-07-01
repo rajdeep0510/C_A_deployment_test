@@ -29,6 +29,7 @@ type Puzzle = {
   theme:      string;
   difficulty: number;
   rating?:    number;
+  gameUrl?:   string;
 };
 
 type Props = {
@@ -79,18 +80,35 @@ export default function PuzzleBoard({
     return [];
   }, [puzzle.puzzle_id]);
 
-  const boardOrientation: "white" | "black" =
-    puzzle.fen.split(" ")[1] === "w" ? "white" : "black";
+  // Lichess puzzle format: first move in Moves is the opponent's setup move (auto-played).
+  // The solver plays from the OPPOSITE side of whoever is to move in the FEN.
+  const isLichessFormat = solutionMoves.length >= 2;
+  const fenActiveColor  = puzzle.fen.split(" ")[1]; // "w" or "b"
+  const boardOrientation: "white" | "black" = isLichessFormat
+    ? (fenActiveColor === "w" ? "black" : "white")
+    : (fenActiveColor === "w" ? "white" : "black");
 
   const currentExpected  = moveIndex < solutionMoves.length ? solutionMoves[moveIndex] : null;
   const hintSquare       = currentExpected?.slice(0, 2) ?? "";
-  const totalPlayerMoves = Math.ceil(solutionMoves.length / 2);
-  const playerMovesDone  = Math.floor(moveIndex / 2);
+  // Solver moves are at indices 1, 3, 5... (index 0 is setup move)
+  const totalPlayerMoves = isLichessFormat
+    ? Math.ceil((solutionMoves.length - 1) / 2)
+    : Math.ceil(solutionMoves.length / 2);
+  const playerMovesDone = isLichessFormat
+    ? Math.floor((moveIndex - 1) / 2)
+    : Math.floor(moveIndex / 2);
 
   useEffect(() => {
-    setGame(new Chess(puzzle.fen));
+    const g = new Chess(puzzle.fen);
+    let startIdx = 0;
+    if (isLichessFormat) {
+      const sm = solutionMoves[0];
+      try { g.move({ from: sm.slice(0, 2), to: sm.slice(2, 4), promotion: sm[4] as PromoType }); } catch {}
+      startIdx = 1;
+    }
+    setGame(g);
     setSolveState("waiting");
-    setMoveIndex(0);
+    setMoveIndex(startIdx);
     setBoardFlash(null);
     setHintLevel(0);
     setFailMove("");
@@ -244,9 +262,16 @@ export default function PuzzleBoard({
   }
 
   function handleTryAgain() {
-    setGame(new Chess(puzzle.fen));
+    const g = new Chess(puzzle.fen);
+    let startIdx = 0;
+    if (isLichessFormat) {
+      const sm = solutionMoves[0];
+      try { g.move({ from: sm.slice(0, 2), to: sm.slice(2, 4), promotion: sm[4] as PromoType }); } catch {}
+      startIdx = 1;
+    }
+    setGame(g);
     setSolveState("waiting");
-    setMoveIndex(0);
+    setMoveIndex(startIdx);
     setBoardFlash(null);
     setHintLevel(0);
     setFailMove("");
@@ -482,13 +507,23 @@ export default function PuzzleBoard({
               </span>
             )}
           </div>
-          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
             {solveState === "failed" && (
               <button onClick={handleTryAgain} style={secondaryBtnStyle}>
                 <RotateCcw size={13} /> Try Again
               </button>
             )}
             <button onClick={onNext} style={primaryBtnStyle}>Next Puzzle →</button>
+            {puzzle.gameUrl && (
+              <a
+                href={puzzle.gameUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ fontSize: "12px", color: "var(--text-secondary)", textDecoration: "underline", marginLeft: "auto" }}
+              >
+                View source game ↗
+              </a>
+            )}
           </div>
         </div>
       )}

@@ -194,6 +194,7 @@ export async function recordPuzzleAttempt(
   timeTakenSeconds: number,
   puzzleRating?: number,
   source: "own_game" | "library" = "own_game",
+  puzzleType = "",
 ) {
   const res = await apiFetch(
     `${BASE_URL}/api/puzzles/${username}/${encodeURIComponent(puzzleId)}/attempt`,
@@ -204,8 +205,8 @@ export async function recordPuzzleAttempt(
         solved,
         time_taken_seconds: timeTakenSeconds,
         puzzle_rating:      puzzleRating ?? null,
-        player_rating:      null,
         source,
+        puzzle_type:        puzzleType,
       }),
     },
   );
@@ -298,19 +299,11 @@ export async function getRushPuzzles(count = 60) {
 }
 
 export async function getLibraryPuzzles(
-  theme?: string,
-  phase?: string,
-  ratingMin = 800,
-  ratingMax = 2500,
-  limit = 10,
+  puzzleType = "phase_middlegame",
+  difficulty  = "intermediate",
+  limit = 20,
 ) {
-  const params = new URLSearchParams({
-    rating_min: String(ratingMin),
-    rating_max: String(ratingMax),
-    limit: String(limit),
-  });
-  if (theme) params.set("theme", theme);
-  if (phase) params.set("phase", phase);
+  const params = new URLSearchParams({ type: puzzleType, difficulty, limit: String(limit) });
   const res = await apiFetch(`${BASE_URL}/api/puzzles/library?${params}`);
   if (!res.ok) throw new Error("Failed to fetch library puzzles");
   return res.json();
