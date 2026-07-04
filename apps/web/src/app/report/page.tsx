@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import Header from "@/components/Header";
 import Loader from "@/components/Loader";
 import ChartRadar from "@/components/ChartRadar";
@@ -12,7 +13,7 @@ import PatternGrid from "@/components/PatternGrid";
 import TimeAnalysisCard from "@/components/TimeAnalysisCard";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { getReport } from "@/services/api";
-import { Download } from "lucide-react";
+import { Download, RefreshCw } from "lucide-react";
 
 const MOVE_QUALITY_COLORS: Record<string, string> = {
   Brilliant: "#6366f1",
@@ -160,20 +161,40 @@ export default function ReportPage() {
               Comprehensive analysis of your recent games.
             </p>
           </div>
-          <button
-            className="btn btn-primary"
-            onClick={handleDownloadPdf}
-            disabled={pdfLoading || loading}
-            style={{
-              padding: "10px 20px",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
-          >
-            <Download size={16} />
-            {pdfLoading ? "Generating…" : "Download PDF Report"}
-          </button>
+          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+            <Link
+              href="/batch"
+              style={{
+                padding: "10px 16px",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                fontSize: "14px",
+                color: "var(--text-secondary)",
+                border: "1px solid var(--glass-border)",
+                borderRadius: "8px",
+                textDecoration: "none",
+                background: "var(--surface-1)",
+              }}
+            >
+              <RefreshCw size={14} />
+              Re-analyze
+            </Link>
+            <button
+              className="btn btn-primary"
+              onClick={handleDownloadPdf}
+              disabled={pdfLoading || loading}
+              style={{
+                padding: "10px 20px",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <Download size={16} />
+              {pdfLoading ? "Generating…" : "Download PDF Report"}
+            </button>
+          </div>
         </div>
 
         {loading ? (
@@ -1199,15 +1220,39 @@ export default function ReportPage() {
           </div>
         ) : (
           <div
-            className="glass"
+            className="glass-card"
             style={{
-              padding: "32px",
+              padding: "48px 32px",
               textAlign: "center",
-              color: "var(--text-secondary)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "16px",
             }}
           >
-            Report data is unavailable. Please go back to Dashboard and run
-            Batch Analysis.
+            <div style={{ fontSize: "40px", opacity: 0.3 }}>📊</div>
+            <div style={{ fontSize: "18px", fontWeight: "700" }}>No report yet</div>
+            <p style={{ color: "var(--text-secondary)", margin: 0, maxWidth: "380px", lineHeight: "1.6" }}>
+              Run a batch analysis on your games first. Stockfish will analyze each game and the full report will appear here.
+            </p>
+            <Link
+              href="/batch"
+              style={{
+                marginTop: "8px",
+                padding: "12px 28px",
+                background: "var(--accent-color)",
+                color: "#fff",
+                borderRadius: "8px",
+                textDecoration: "none",
+                fontWeight: "600",
+                fontSize: "15px",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              Run Batch Analysis
+            </Link>
           </div>
         )}
       </main>
