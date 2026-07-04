@@ -1,11 +1,11 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import GameCard from "@/components/GameCard";
 import Loader from "@/components/Loader";
 import { usePlayer } from "@/contexts/PlayerContext";
-import { getStats, fetchGames } from "@/services/api";
+import { getStats, fetchGames, getBatchJobs } from "@/services/api";
 import { Play, TrendingUp, TrendingDown, Minus, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
 
 function MomentumBadge({ momentum }: { momentum: string }) {
@@ -51,12 +51,16 @@ export default function Dashboard() {
   const [realStats, setRealStats] = useState<any>(null);
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
+  // Map of time_class → most recent completed batch job summary
+  // null key = all-games job
+  const [batchStatus, setBatchStatus] = useState<Record<string, any>>({});
   const [showFetchPanel, setShowFetchPanel] = useState(false);
   const [fetchPlatform, setFetchPlatform] = useState("chess.com");
   const [fetchLimit, setFetchLimit] = useState(10);
   const [fetchMode, setFetchMode] = useState<"append" | "replace">("append");
   const [fetching, setFetching] = useState(false);
   const [fetchError, setFetchError] = useState("");
+  const [gameFilter, setGameFilter] = useState<string>("all");
 
   useEffect(() => {
     if (playerLoading) return;
@@ -101,6 +105,20 @@ export default function Dashboard() {
         localStorage.setItem(realStatsKey, JSON.stringify(s));
       })
       .catch(console.error);
+
+    // Fetch batch job statuses to show analysis state on each tc card
+    getBatchJobs(chessUsername)
+      .then(jobs => {
+        const completed = jobs.filter((j: any) => j.status === "completed");
+        const statusMap: Record<string, any> = {};
+        for (const job of completed) {
+          const key = job.time_class ?? "all";
+          // Keep only the most recent per key (jobs are ordered newest-first)
+          if (!statusMap[key]) statusMap[key] = job;
+        }
+        setBatchStatus(statusMap);
+      })
+      .catch(() => {});
   }, [chessUsername, isApproved, playerLoading, router]);
 
   const handleLoadGames = async (e: React.FormEvent) => {
@@ -214,8 +232,23 @@ export default function Dashboard() {
                       const { record, last } = realStats[key];
                       const games = record.win + record.loss + record.draw;
                       const wr = games > 0 ? Math.round((record.win / games) * 100) : 0;
+                      const tc = label.toLowerCase();
+                      const job = batchStatus[tc];
+                      const analyzed = job?.status === "completed";
+                      const daysAgo = analyzed
+                        ? Math.floor((Date.now() - new Date(job.created_at).getTime()) / 86400000)
+                        : null;
+                      const analysisLabel = analyzed
+                        ? daysAgo === 0
+                          ? "Today"
+                          : daysAgo === 1
+                            ? "Yesterday"
+                            : `${daysAgo}d ago`
+                        : null;
+
                       return (
-                        <div key={key} className="glass-card">
+                        <div key={key} className="glass-card" style={{ display: "flex", flexDirection: "column" }}>
+                          {/* Header */}
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                               <span style={{ fontSize: "18px" }}>{icon}</span>
@@ -227,6 +260,8 @@ export default function Dashboard() {
                               </span>
                             )}
                           </div>
+
+                          {/* Stats */}
                           <div style={{ fontSize: "26px", fontWeight: "800", marginBottom: "4px" }}>
                             {games.toLocaleString()}
                             <span style={{ fontSize: "13px", fontWeight: "400", color: "var(--text-secondary)", marginLeft: "6px" }}>games</span>
@@ -239,10 +274,73 @@ export default function Dashboard() {
                             <span style={{ color: "var(--danger)" }}>{record.loss}L</span>
                             <span style={{ color: "var(--warning)" }}>{record.draw}D</span>
                           </div>
-                          <div style={{ marginTop: "10px", height: "4px", borderRadius: "2px", background: "var(--surface-2)", overflow: "hidden", display: "flex" }}>
+                          <div style={{ marginTop: "10px", marginBottom: "14px", height: "4px", borderRadius: "2px", background: "var(--surface-2)", overflow: "hidden", display: "flex" }}>
                             <div style={{ width: `${games > 0 ? (record.win / games) * 100 : 0}%`, background: "var(--success)" }} />
                             <div style={{ width: `${games > 0 ? (record.draw / games) * 100 : 0}%`, background: "var(--warning)" }} />
                             <div style={{ width: `${games > 0 ? (record.loss / games) * 100 : 0}%`, background: "var(--danger)" }} />
+                          </div>
+
+                          {/* Analysis status */}
+                          <div style={{ borderTop: "1px solid var(--glass-border)", paddingTop: "12px", marginTop: "auto" }}>
+                            <div style={{ fontSize: "11px", color: analyzed ? "var(--success)" : "var(--text-secondary)", marginBottom: "10px", display: "flex", alignItems: "center", gap: "5px" }}>
+                              <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: analyzed ? "var(--success)" : "var(--glass-border)", flexShrink: 0, display: "inline-block" }} />
+                              {analyzed
+                                ? `Analyzed ${analysisLabel} · ${job.summary?.average_accuracy ?? "?"}% avg accuracy`
+                                : "Not analyzed yet"}
+                            </div>
+                            <div style={{ display: "flex", gap: "8px" }}>
+                              <button
+                                onClick={() => router.push(`/batch?tc=${tc}`)}
+                                style={{
+                                  flex: 1,
+                                  padding: "7px 0",
+                                  borderRadius: "6px",
+                                  border: "1px solid var(--glass-border)",
+                                  background: "var(--surface-1)",
+                                  color: "var(--text-primary)",
+                                  fontSize: "12px",
+                                  fontWeight: "600",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                {analyzed ? "Re-analyze" : "Analyze"}
+                              </button>
+                              <button
+                                onClick={() => router.push(`/games?tc=${tc}`)}
+                                style={{
+                                  flex: 1,
+                                  padding: "7px 0",
+                                  borderRadius: "6px",
+                                  border: "none",
+                                  background: analyzed ? "var(--accent-color)" : "var(--surface-2)",
+                                  color: analyzed ? "#fff" : "var(--text-secondary)",
+                                  fontSize: "12px",
+                                  fontWeight: "600",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                Browse Games
+                              </button>
+                            </div>
+                            {analyzed && (
+                              <button
+                                onClick={() => router.push(`/report?tc=${tc}`)}
+                                style={{
+                                  width: "100%",
+                                  marginTop: "6px",
+                                  padding: "5px 0",
+                                  borderRadius: "6px",
+                                  border: "1px solid var(--glass-border)",
+                                  background: "transparent",
+                                  color: "var(--accent-color)",
+                                  fontSize: "11px",
+                                  fontWeight: "600",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                View Analysis Report →
+                              </button>
+                            )}
                           </div>
                         </div>
                       );
@@ -361,7 +459,7 @@ export default function Dashboard() {
 
             {/* ── Recent Games ── */}
             <section>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
                 <h2
                   style={{
                     fontSize: "16px",
@@ -384,6 +482,63 @@ export default function Dashboard() {
                   {showFetchPanel ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                 </button>
               </div>
+
+              {/* Time control filter chips */}
+              {games.length > 0 && (() => {
+                const counts: Record<string, number> = { all: games.length };
+                (games as any[]).forEach(g => {
+                  const k = (g.time_class || "other").toLowerCase();
+                  counts[k] = (counts[k] || 0) + 1;
+                });
+                const filters = ["all", "rapid", "blitz", "bullet", "daily"];
+                return (
+                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "16px" }}>
+                    {filters.map(f => {
+                      const cnt = counts[f] ?? 0;
+                      if (f !== "all" && cnt === 0) return null;
+                      const active = gameFilter === f;
+                      return (
+                        <button
+                          key={f}
+                          onClick={() => setGameFilter(f)}
+                          style={{
+                            padding: "5px 14px",
+                            borderRadius: "20px",
+                            fontSize: "13px",
+                            fontWeight: active ? "700" : "500",
+                            cursor: "pointer",
+                            border: `1px solid ${active ? "var(--accent-color)" : "var(--glass-border)"}`,
+                            background: active ? "var(--accent-color)" : "transparent",
+                            color: active ? "#fff" : "var(--text-secondary)",
+                            transition: "all 0.15s ease",
+                          }}
+                        >
+                          {f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)}
+                          <span style={{ marginLeft: "6px", opacity: 0.7, fontSize: "11px" }}>{cnt}</span>
+                        </button>
+                      );
+                    })}
+                    {gameFilter !== "all" && (
+                      <button
+                        onClick={() => router.push(`/games?tc=${gameFilter}`)}
+                        style={{
+                          padding: "5px 14px",
+                          borderRadius: "20px",
+                          fontSize: "13px",
+                          fontWeight: "500",
+                          cursor: "pointer",
+                          border: "1px solid var(--glass-border)",
+                          background: "transparent",
+                          color: "var(--accent-color)",
+                          marginLeft: "auto",
+                        }}
+                      >
+                        Browse all {gameFilter.charAt(0).toUpperCase() + gameFilter.slice(1)} games →
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
 
               {showFetchPanel && (
                 <div
@@ -460,20 +615,28 @@ export default function Dashboard() {
                 </div>
               )}
 
-              {games.length > 0 ? (
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns:
-                      "repeat(auto-fill, minmax(300px, 1fr))",
-                    gap: "20px",
-                  }}
-                >
-                  {games.map((g, i) => (
-                    <GameCard key={i} game={g} username={chessUsername} />
-                  ))}
-                </div>
-              ) : (
+              {games.length > 0 ? (() => {
+                const filtered = gameFilter === "all"
+                  ? games as any[]
+                  : (games as any[]).filter(g => (g.time_class || "").toLowerCase() === gameFilter);
+                return filtered.length > 0 ? (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "20px" }}>
+                    {filtered.map((g, i) => (
+                      <GameCard key={i} game={g} username={chessUsername} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="glass" style={{ padding: "32px", textAlign: "center", color: "var(--text-secondary)" }}>
+                    No {gameFilter} games in your loaded set.{" "}
+                    <button
+                      onClick={() => router.push(`/games?tc=${gameFilter}`)}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent-color)", fontSize: "inherit", textDecoration: "underline" }}
+                    >
+                      Browse all {gameFilter} games from Chess.com →
+                    </button>
+                  </div>
+                );
+              })() : (
                 <div
                   className="glass"
                   style={{

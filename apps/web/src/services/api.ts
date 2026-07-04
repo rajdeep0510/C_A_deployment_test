@@ -86,6 +86,61 @@ export async function analyzeGame(username: string, filename: string): Promise<a
   return result;
 }
 
+// Fetch up to `limit` games of a specific time class directly from Chess.com archives.
+// Returns games normalized to the same shape GameCard + createBatchJob expect.
+export async function fetchGamesByTimeControl(
+  username: string,
+  timeClass: string,
+  limit = 50,
+): Promise<any[]> {
+  const headers = { "User-Agent": "ChessAdvisor/1.0" };
+  const archivesRes = await fetch(
+    `https://api.chess.com/pub/player/${username}/games/archives`,
+    { headers }
+  );
+  if (!archivesRes.ok) throw new Error("Could not fetch Chess.com archives");
+  const { archives } = await archivesRes.json();
+  if (!archives?.length) return [];
+
+  const result: any[] = [];
+  for (const archiveUrl of [...archives].reverse()) {
+    if (result.length >= limit) break;
+    try {
+      const res = await fetch(archiveUrl, { headers });
+      if (!res.ok) continue;
+      const { games } = await res.json();
+      const matching = ([...games] as any[])
+        .reverse()
+        .filter(g => (g.time_class || "").toLowerCase() === timeClass)
+        .map(g => {
+          // Normalize to the Game shape expected by GameCard and createBatchJob
+          let gameResult: string;
+          if (g.white?.result === "win") gameResult = "1-0";
+          else if (g.black?.result === "win") gameResult = "0-1";
+          else gameResult = "1/2-1/2";
+          return {
+            platform: "chess.com",
+            filename: g.url,
+            url: g.url,
+            white: g.white?.username ?? "",
+            black: g.black?.username ?? "",
+            white_rating: g.white?.rating,
+            black_rating: g.black?.rating,
+            result: gameResult,
+            end_time: g.end_time,
+            time_class: g.time_class,
+            time_control: g.time_control,
+            pgn: g.pgn,
+          };
+        });
+      result.push(...matching.slice(0, limit - result.length));
+    } catch {
+      // skip months that fail to load
+    }
+  }
+  return result;
+}
+
 export async function batchAnalyze(username: string, limit = 50) {
   const res = await apiFetch(
     `${BASE_URL}/api/analyze/${username}/batch?limit=${limit}`,
@@ -94,11 +149,11 @@ export async function batchAnalyze(username: string, limit = 50) {
   return res.json();
 }
 
-export async function createBatchJob(username: string, game_urls: string[]): Promise<any> {
+export async function createBatchJob(username: string, game_urls: string[], tc?: string): Promise<any> {
   const res = await apiFetch(`${BASE_URL}/api/batch`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, game_urls }),
+    body: JSON.stringify({ username, game_urls, time_class: tc || null }),
   });
   if (!res.ok) throw new Error("Failed to create batch job");
   return res.json();
@@ -116,8 +171,10 @@ export async function getBatchJobs(username: string): Promise<any[]> {
   return res.json();
 }
 
-export function getReport(username, limit = 50) {
-  return dedupedGet(`${BASE_URL}/api/report/${username}?limit=${limit}`);
+export function getReport(username: string, limit = 50, tc?: string) {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (tc && tc !== "all") params.set("tc", tc);
+  return dedupedGet(`${BASE_URL}/api/report/${username}?${params}`);
 }
 
 export function getTrainingPlan(username, limit = 50) {

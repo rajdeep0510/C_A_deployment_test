@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Loader from "@/components/Loader";
@@ -85,12 +85,29 @@ function buildOpeningTableRowsFlat(perfData: any): OpeningRow[] {
   return buildOpeningTableRows(perfData, "white");
 }
 
+const TC_FILTERS = [
+  { value: "all",    label: "All Games" },
+  { value: "rapid",  label: "Rapid" },
+  { value: "blitz",  label: "Blitz" },
+  { value: "bullet", label: "Bullet" },
+  { value: "daily",  label: "Daily" },
+] as const;
+
 export default function ReportPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { chessUsername, isApproved, loading: playerLoading } = usePlayer();
   const [reportData, setReportData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [tc, setTc] = useState<string>(() => searchParams.get("tc") || "all");
+
+  function handleTcChange(newTc: string) {
+    setTc(newTc);
+    const params = new URLSearchParams();
+    if (newTc !== "all") params.set("tc", newTc);
+    router.replace(params.size > 0 ? `/report?${params}` : "/report", { scroll: false });
+  }
 
   useEffect(() => {
     if (playerLoading) return;
@@ -99,16 +116,16 @@ export default function ReportPage() {
       return;
     }
 
-    getReport(chessUsername)
+    setLoading(true);
+    setReportData(null);
+    getReport(chessUsername, 50, tc === "all" ? undefined : tc)
       .then(setReportData)
       .catch((e) => {
         console.error(e);
-        alert(
-          "Failed to load report. Ensure you have run Batch Analysis first.",
-        );
+        alert("Failed to load report. Ensure you have run Batch Analysis first.");
       })
       .finally(() => setLoading(false));
-  }, [chessUsername, isApproved, playerLoading, router]);
+  }, [chessUsername, isApproved, playerLoading, router, tc]);
 
   const handleDownloadPdf = async () => {
     setPdfLoading(true);
@@ -157,9 +174,40 @@ export default function ReportPage() {
             <h1 style={{ fontSize: "32px", marginBottom: "8px" }}>
               Progress Report
             </h1>
-            <p style={{ color: "var(--text-secondary)" }}>
+            <p style={{ color: "var(--text-secondary)", marginBottom: "16px" }}>
               Comprehensive analysis of your recent games.
             </p>
+            {/* Time control filter chips */}
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              {TC_FILTERS.map(({ value, label }) => {
+                const active = tc === value;
+                return (
+                  <button
+                    key={value}
+                    onClick={() => handleTcChange(value)}
+                    style={{
+                      padding: "5px 14px",
+                      borderRadius: "20px",
+                      fontSize: "13px",
+                      fontWeight: active ? "700" : "500",
+                      cursor: "pointer",
+                      border: `1px solid ${active ? "var(--accent-color)" : "var(--glass-border)"}`,
+                      background: active ? "var(--accent-color)" : "transparent",
+                      color: active ? "#fff" : "var(--text-secondary)",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+            {tc !== "all" && (
+              <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "10px", marginBottom: 0 }}>
+                Showing {TC_FILTERS.find(f => f.value === tc)?.label} games only.
+                Re-run batch analysis if filter has no effect (time control data requires a fresh run).
+              </p>
+            )}
           </div>
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
             <Link
@@ -199,6 +247,56 @@ export default function ReportPage() {
 
         {loading ? (
           <Loader message="Loading your comprehensive report..." />
+        ) : reportData?.tc_no_data ? (
+          /* ── TIME CONTROL FILTER: NO DATA ── */
+          <div className="glass-card" style={{ textAlign: "center", padding: "48px 32px", maxWidth: "520px", margin: "0 auto" }}>
+            <div style={{ fontSize: "48px", marginBottom: "16px", opacity: 0.5 }}>
+              {tc === "bullet" ? "⚡" : tc === "blitz" ? "⏱" : tc === "rapid" ? "🕐" : "📅"}
+            </div>
+            <h2 style={{ marginBottom: "12px", fontSize: "22px" }}>
+              {reportData.tc_reason === "no_games"
+                ? `No ${TC_FILTERS.find(f => f.value === tc)?.label} games found`
+                : `Time control data not available`}
+            </h2>
+            <p style={{ color: "var(--text-secondary)", marginBottom: "24px", lineHeight: "1.6" }}>
+              {reportData.tc_reason === "no_games"
+                ? `Your batch analysis didn't find any ${TC_FILTERS.find(f => f.value === tc)?.label} games in the analyzed set. Try "All Games" or run a fresh batch analysis to update the data.`
+                : `Your current batch analysis data was generated before time control filtering was supported. Re-run batch analysis to enable this feature.`}
+            </p>
+            <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
+              <button
+                onClick={() => handleTcChange("all")}
+                style={{
+                  padding: "10px 20px",
+                  borderRadius: "8px",
+                  border: "1px solid var(--glass-border)",
+                  background: "var(--surface-1)",
+                  color: "var(--text-primary)",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                }}
+              >
+                View All Games
+              </button>
+              <Link
+                href={tc && tc !== "all" ? `/batch?tc=${tc}` : "/batch"}
+                style={{
+                  padding: "10px 20px",
+                  borderRadius: "8px",
+                  background: "var(--accent-color)",
+                  color: "#fff",
+                  textDecoration: "none",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                }}
+              >
+                {tc && tc !== "all"
+                  ? `Analyze ${TC_FILTERS.find(f => f.value === tc)?.label} Games`
+                  : "Re-run Batch Analysis"}
+              </Link>
+            </div>
+          </div>
         ) : reportData ? (
           <div
             style={{ display: "flex", flexDirection: "column", gap: "32px" }}
@@ -259,15 +357,16 @@ export default function ReportPage() {
                     reportData.visuals?.accuracy_over_time?.labels
                       ? reportData.visuals.accuracy_over_time.labels.map(
                           (label: string, idx: number) => ({
-                            date: label,
-                            accuracy:
-                              reportData.visuals.accuracy_over_time.data[idx],
+                            game: label,
+                            accuracy: reportData.visuals.accuracy_over_time.data[idx],
+                            opening: reportData.visuals.accuracy_over_time.openings?.[idx],
+                            date: reportData.visuals.accuracy_over_time.dates?.[idx],
                           }),
                         )
                       : []
                   }
                   dataKey="accuracy"
-                  xAxisKey="date"
+                  xAxisKey="game"
                 />
               </div>
             </div>

@@ -163,7 +163,9 @@ class BatchAnalyzer:
                 cached = cache_lookup(username, label) if cache_lookup else None
                 if cached:
                     logger.info("Cache hit — skipping engine: %s", label)
-                    results.append(cached)
+                    # Inject the game URL as filename so individual_games[].filename is
+                    # populated — the report route uses it to merge per-game accuracies.
+                    results.append({**cached, "filename": label})
                 else:
                     # ── Priority 3: run the engine
                     if not engine_started:
@@ -171,6 +173,7 @@ class BatchAnalyzer:
                         engine_started = True
                     try:
                         analysis = self.analyzer.analyze_pgn(pgn_text, username)
+                        analysis["filename"] = label  # URL → enables route-side accuracy merge
                         results.append(analysis)
                         # Save as a batch-level result (won't overwrite individual analysis)
                         if cache_save:
@@ -311,6 +314,10 @@ class BatchAnalyzer:
                     "white_rating": g.get('white_rating'),
                     "black_rating": g.get('black_rating'),
                     "user_color": g.get('user_color'),
+                    # TimeClass is a Chess.com header ("rapid"/"blitz"/"bullet"/"daily")
+                    # TimeControl is the raw seconds+increment string (e.g. "600+3")
+                    "time_class":   (g.get('metadata', {}).get('TimeClass') or '').lower(),
+                    "time_control": g.get('metadata', {}).get('TimeControl', ''),
                     # Full move-by-move data so consumers don't need to open cache files
                     "move_history": g.get('move_history', []),
                 } for g in results
