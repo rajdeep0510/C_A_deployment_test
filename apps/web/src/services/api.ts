@@ -298,7 +298,7 @@ export async function getRushPuzzles(count = 60) {
   return res.json();
 }
 
-// Maps our UI puzzle types to Lichess theme tags used in the chunks data
+// Maps our UI puzzle types to Lichess Themes column tags
 const PUZZLE_TYPE_TO_THEME: Record<string, string | undefined> = {
   tactic_fork:               "fork",
   tactic_pin:                "pin",
@@ -318,12 +318,50 @@ const PUZZLE_TYPE_TO_THEME: Record<string, string | undefined> = {
   endgame_bishop:            "bishopEndgame",
   endgame_knight:            "knightEndgame",
   endgame_queen:             "queenEndgame",
+  endgame_queen_rook:        "queenRookEndgame",
 };
 
 const PUZZLE_TYPE_TO_PHASE: Record<string, string | undefined> = {
   phase_opening:    "opening",
   phase_middlegame: "middlegame",
   phase_endgame:    "endgame",
+};
+
+// Maps opening_* UI types to Lichess OpeningTags column family names.
+// Lichess tags use Title_Case_With_Underscores (e.g. "Sicilian_Defense").
+// All opening types also implicitly use phase:"opening".
+const PUZZLE_TYPE_TO_OPENING: Record<string, string | undefined> = {
+  opening_sicilian_defense:      "Sicilian_Defense",
+  opening_french_defense:        "French_Defense",
+  "opening_caro-kann_defense":   "Caro-Kann_Defense",
+  opening_italian_game:          "Italian_Game",
+  opening_ruy_lopez:             "Ruy_Lopez",
+  opening_scotch_game:           "Scotch_Game",
+  opening_four_knights_game:     "Four_Knights_Game",
+  opening_russian_game:          "Russian_Game",
+  opening_philidor_defense:      "Philidor_Defense",
+  opening_bishops_opening:       "Bishops_Opening",
+  opening_kings_gambit_accepted: "Kings_Gambit_Accepted",
+  opening_kings_gambit_declined: "Kings_Gambit_Declined",
+  opening_vienna_game:           "Vienna_Game",
+  opening_kings_pawn_game:       "Kings_Pawn_Game",
+  opening_scandinavian_defense:  "Scandinavian_Defense",
+  opening_alekhine_defense:      "Alekhines_Defense",
+  opening_modern_defense:        "Modern_Defense",
+  opening_pirc_defense:          "Pirc_Defense",
+  opening_queens_gambit_declined:"Queens_Gambit_Declined",
+  opening_queens_gambit_accepted:"Queens_Gambit_Accepted",
+  opening_queens_pawn_game:      "Queens_Pawn_Game",
+  opening_slav_defense:          "Slav_Defense",
+  opening_kings_indian_defense:  "Kings_Indian_Defense",
+  opening_benoni_defense:        "Benoni_Defense",
+  opening_indian_defense:        "Indian_Defense",
+  "opening_nimzo-larsen_attack": "Nimzo-Larsen_Attack",
+  opening_nimzowitsch_defense:   "Nimzowitsch_Defense",
+  opening_zukertort_opening:     "Zukertort_Opening",
+  opening_english_opening:       "English_Opening",
+  opening_dutch_defense:         "Dutch_Defense",
+  opening_englund_gambit:        "Englund_Gambit",
 };
 
 const DIFFICULTY_RANGES: Record<string, [number, number]> = {
@@ -345,10 +383,14 @@ export async function getLibraryPuzzles(
     limit: String(limit),
   });
 
-  const theme = PUZZLE_TYPE_TO_THEME[puzzleType];
-  const phase = PUZZLE_TYPE_TO_PHASE[puzzleType];
-  if (theme) params.set("theme", theme);
-  if (phase) params.set("phase", phase);
+  const theme   = PUZZLE_TYPE_TO_THEME[puzzleType];
+  const phase   = PUZZLE_TYPE_TO_PHASE[puzzleType];
+  const opening = PUZZLE_TYPE_TO_OPENING[puzzleType];
+
+  if (theme)   params.set("theme",   theme);
+  if (phase)   params.set("phase",   phase);
+  // Opening puzzles always come from the opening phase
+  if (opening) { params.set("opening", opening); params.set("phase", "opening"); }
 
   const res = await apiFetch(`${BASE_URL}/api/puzzles/library?${params}`);
   if (!res.ok) throw new Error("Failed to fetch library puzzles");

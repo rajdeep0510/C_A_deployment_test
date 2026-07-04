@@ -3,23 +3,9 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { Chessboard } from "react-chessboard";
 import { Chess } from "chess.js";
 import { CheckCircle, XCircle, Lightbulb, RotateCcw, TrendingUp, TrendingDown } from "lucide-react";
+import { formatThemeTags } from "@/lib/puzzles/theme-utils";
 
 const BOARD_THEME = { dark: "#769656", light: "#eeeed2" };
-
-const THEME_LABELS: Record<string, string> = {
-  hanging_piece:      "Hanging Piece",
-  fork:               "Fork",
-  pin:                "Pin",
-  skewer:             "Skewer",
-  back_rank:          "Back Rank",
-  discovered_attack:  "Discovered Attack",
-  promotion:          "Promotion",
-  checkmate:          "Checkmate",
-  endgame_technique:  "Endgame",
-  middlegame_tactic:  "Middlegame Tactic",
-  smothered_mate:     "Smothered Mate",
-  sacrifice:          "Sacrifice",
-};
 
 type Puzzle = {
   puzzle_id:  string;
@@ -313,7 +299,7 @@ export default function PuzzleBoard({
             padding: "4px 12px", borderRadius: "20px", fontSize: "13px", fontWeight: 600,
             border: "1px solid rgba(29,193,137,0.3)",
           }}>
-            {THEME_LABELS[puzzle.theme] ?? puzzle.theme.replace("_", " ")}
+            {formatThemeTags(puzzle.theme)}
           </span>
           <span style={{
             background: `${diffColor}18`, color: diffColor,
@@ -377,7 +363,7 @@ export default function PuzzleBoard({
       )}
       {hintLevel === 2 && solveState === "waiting" && (
         <div style={hintBox}>
-          Theme: <strong>{THEME_LABELS[puzzle.theme] ?? puzzle.theme}</strong> — look for the tactical pattern
+          Theme: <strong>{formatThemeTags(puzzle.theme)}</strong> — look for the tactical pattern
         </div>
       )}
       {hintLevel === 3 && solveState === "waiting" && (

@@ -9,13 +9,15 @@ export async function GET(req: NextRequest) {
     const limit     = parseInt(searchParams.get("limit")      || "10");
     const ratingMin = parseInt(searchParams.get("rating_min") || "800");
     const ratingMax = parseInt(searchParams.get("rating_max") || "2500");
-    const targetTheme = searchParams.get("theme")  ?? undefined;
-    const targetPhase = searchParams.get("phase")  ?? undefined;
+    const targetTheme   = searchParams.get("theme")   ?? undefined;
+    const targetPhase   = searchParams.get("phase")   ?? undefined;
+    const targetOpening = searchParams.get("opening") ?? undefined;
 
     const selected = await loadRandomPuzzles({
       ratingMin, ratingMax, limit,
-      theme: targetTheme,
-      phase: targetPhase,
+      theme:   targetTheme,
+      phase:   targetPhase,
+      opening: targetOpening,
     });
 
     return NextResponse.json({ puzzles: selected });

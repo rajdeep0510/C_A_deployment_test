@@ -28,6 +28,7 @@ export type PuzzleRow = {
   fen: string;
   moves: string;
   theme: string;
+  opening: string; // Lichess OpeningTags column (space-separated, e.g. "Sicilian_Defense")
   difficulty: number;
   rating: number;
 };
@@ -96,9 +97,10 @@ function parseLine(line: string): PuzzleRow | null {
   if (Number.isNaN(rating)) return null;
   return {
     puzzle_id: parts[0],
-    fen: parts[1],
-    moves: parts[2],
-    theme: parts[7],
+    fen:       parts[1],
+    moves:     parts[2],
+    theme:     parts[7],
+    opening:   parts[9] ?? "",   // OpeningTags column (absent in older exports)
     difficulty: rating,
     rating,
   };
@@ -184,20 +186,22 @@ export type LoadOpts = {
   limit: number;
   theme?: string | null;
   phase?: string | null;
+  opening?: string | null; // Lichess opening family key, e.g. "Sicilian_Defense"
 };
 
 // Random sample within a rating window, filtered by optional theme/phase.
 // Reads random parts of the overlapping buckets until `limit` is satisfied.
 export async function loadRandomPuzzles(opts: LoadOpts): Promise<PuzzleRow[]> {
-  const { ratingMin, ratingMax, limit, theme, phase } = opts;
+  const { ratingMin, ratingMax, limit, theme, phase, opening } = opts;
   const files = shuffle(filesForRange(ratingMin, ratingMax));
   if (files.length === 0) return [];
 
   const accept = (row: PuzzleRow) =>
     row.rating >= ratingMin &&
     row.rating <= ratingMax &&
-    (!theme || row.theme.includes(theme)) &&
-    (!phase || phaseOf(row.theme) === phase);
+    (!theme   || row.theme.includes(theme)) &&
+    (!phase   || phaseOf(row.theme) === phase) &&
+    (!opening || row.opening.includes(opening));
 
   const target = limit * 5;
   const collected: PuzzleRow[] = [];

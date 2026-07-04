@@ -1,14 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-
-// Map puzzle_type string → broad category for theme rating
-function toCategory(puzzleType: string): string {
-  if (puzzleType.startsWith("tactic_") || puzzleType.startsWith("mate_")) return "tactics";
-  if (puzzleType.startsWith("phase_")) return "phase";
-  if (puzzleType.startsWith("endgame_")) return "endgame_material";
-  if (puzzleType.startsWith("opening_")) return "openings";
-  return puzzleType || "tactics";
-}
+import { toCategory } from "@/lib/puzzles/theme-utils";
 
 // Glicko-2-ish simple Elo delta
 function eloChange(rating: number, puzzleRating: number, solved: boolean): number {
