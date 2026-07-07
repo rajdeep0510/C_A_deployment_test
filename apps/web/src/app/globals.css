@@ -357,3 +357,228 @@ button {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.4);
 }
+
+/* ─── Responsive Layout Classes ─────────────────────────────────────────── */
+
+/* Puzzle page: 2-col layout becomes 1-col on mobile */
+.puzzle-main-grid {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 24px;
+  align-items: start;
+}
+
+/* Analysis page: 2-col layout becomes 1-col on mobile */
+.analysis-main-grid {
+  display: grid;
+  grid-template-columns: minmax(380px, 1fr) minmax(400px, 1.6fr);
+}
+
+/* Horizontal scroll container */
+.scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ─── Mobile Foundation (max-width: 768px) ───────────────────────────────── */
+@media (max-width: 768px) {
+  /* Container: tighter horizontal padding */
+  .container {
+    padding: 0 16px;
+  }
+
+  /* Cards: reduce inner padding */
+  .glass-card {
+    padding: 16px;
+  }
+
+  /* Inputs: 1rem prevents iOS auto-zoom on focus */
+  .input-field {
+    font-size: 1rem;
+  }
+
+  /* Buttons: minimum 44px touch target */
+  .btn {
+    min-height: 44px;
+  }
+
+  /* Puzzle layout: stack board above sidebar */
+  .puzzle-main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Analysis layout: stack board above annotation panel */
+  .analysis-main-grid {
+    grid-template-columns: 1fr;
+    overflow: visible;
+  }
+}
+
+/* ── Analysis page mobile overrides ─────────────────────────── */
+@media (max-width: 768px) {
+  /* Shrink the fixed-header spacer (header is 60px on mobile, not 70px) */
+  .analysis-header-spacer {
+    height: 60px !important;
+  }
+
+  /* Tighter container padding on mobile */
+  .analysis-main-container {
+    padding: 8px 12px !important;
+  }
+
+  /* Top bar: reduce bottom margin */
+  .analysis-top-bar {
+    margin-bottom: 6px !important;
+  }
+
+  /* Back button: hidden on mobile */
+  .analysis-back-btn {
+    display: none !important;
+  }
+
+  /* Info block: expand full width, flip to single row */
+  .analysis-top-info {
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    gap: 10px !important;
+  }
+
+  /* Game title: allow shrink in row layout */
+  .analysis-game-title {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+  }
+
+  /* Accuracy row: no wrap, tighter gap */
+  .analysis-accuracy-row {
+    flex-wrap: nowrap !important;
+    gap: 0 !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Accuracy number: smaller on mobile */
+  .analysis-accuracy-value {
+    font-size: 16px !important;
+  }
+
+  /* Opening label + value: hide on mobile to save space */
+  .analysis-opening-block {
+    display: none !important;
+  }
+
+  /* Divider between accuracy and opening: hide too */
+  .analysis-info-divider {
+    display: none !important;
+  }
+
+  /* Controls bar: compact */
+  .analysis-controls {
+    padding: 4px !important;
+    gap: 4px !important;
+    margin-top: 4px !important;
+  }
+
+  /* All nav buttons in controls: smaller, icons centered */
+  .analysis-controls .btn {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: 36px !important;
+    height: 36px !important;
+    width: 36px !important;
+    padding: 0 !important;
+    flex-shrink: 0;
+  }
+
+  /* Play/Pause button: same size as others, icon-only */
+  .analysis-play-btn {
+    padding: 0 !important;
+    width: 36px !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    gap: 0 !important;
+    flex-shrink: 0;
+  }
+
+  /* Hide Play/Pause text label on mobile */
+  .analysis-play-label {
+    display: none !important;
+  }
+
+  /* Player name row: slightly smaller */
+  .analysis-player-name {
+    font-size: 12px !important;
+  }
+
+  /* ── Scrollable layout: unfix the page so board fits ── */
+
+  /* Root: keep fixed positioning but allow internal scroll */
+  .analysis-root {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Main: release fixed height so content can grow naturally */
+  .analysis-main-container {
+    flex: none !important;
+    min-height: unset !important;
+    overflow: visible !important;
+    padding: 8px 12px calc(60px + env(safe-area-inset-bottom)) !important;
+  }
+
+  /* Grid: auto height, no clipping */
+  .analysis-main-grid {
+    flex: none !important;
+    overflow: visible !important;
+    height: auto !important;
+    gap: 12px !important;
+  }
+
+  /* Board column: shrink to content, no clipping */
+  .analysis-board-col {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Board fill: explicit square based on viewport width */
+  .analysis-board-fill {
+    flex: none !important;
+    min-height: unset !important;
+    height: calc(100vw - 24px) !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* Annotation panel: fixed height with internal scroll */
+  .analysis-annotation-col {
+    height: 460px !important;
+    overflow: hidden !important;
+  }
+}
+
+/* Touch devices: replace hover lifts with active press feedback */
+@media (pointer: coarse) {
+  .glass-card:hover {
+    transform: none;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.045),
+      0 2px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .glass-card:active {
+    transform: scale(0.99);
+    transition: transform 0.1s ease;
+  }
+
+  .btn:hover {
+    transform: none !important;
+  }
+
+  .btn:active {
+    transform: scale(0.97) !important;
+    transition: transform 0.1s ease !important;
+  }
+}

@@ -324,6 +324,7 @@ const STEPS = [
 export default function Home() {
   const router = useRouter();
   const [backendStatus, setBackendStatus] = useState("checking");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Hero board state
   const [heroFen, setHeroFen] = useState(HERO_GAMES[0].fen);
@@ -428,8 +429,56 @@ export default function Home() {
           <Link href="/login" className={styles.navLogin}>
             Login
           </Link>
+          {/* Hamburger — mobile only */}
+          <button
+            className={styles.hamburgerBtn}
+            onClick={() => setMobileMenuOpen((v) => !v)}
+            aria-label="Toggle menu"
+          >
+            <span className={mobileMenuOpen ? styles.hamburgerOpen : ""} />
+            <span className={mobileMenuOpen ? styles.hamburgerOpen : ""} />
+            <span className={mobileMenuOpen ? styles.hamburgerOpen : ""} />
+          </button>
         </div>
       </nav>
+
+      {/* Mobile menu overlay */}
+      {mobileMenuOpen && (
+        <div
+          className={styles.mobileMenuOverlay}
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Mobile menu drawer */}
+      <div className={`${styles.mobileMenu} ${mobileMenuOpen ? styles.mobileMenuOpen : ""}`}>
+        <div className={styles.mobileMenuHeader}>
+          <div className={styles.navBrand}>
+            <div className={styles.navBrandIcon}>♛</div>
+            <span className={styles.navBrandText}>Chess<span>Advisor</span></span>
+          </div>
+          <button
+            className={styles.mobileMenuClose}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            ✕
+          </button>
+        </div>
+        <div className={styles.mobileMenuLinks}>
+          <span className={styles.mobileMenuLink} onClick={() => { scrollTo("features"); setMobileMenuOpen(false); }}>Features</span>
+          <span className={styles.mobileMenuLink} onClick={() => { scrollTo("analytics"); setMobileMenuOpen(false); }}>Analytics</span>
+          <span className={styles.mobileMenuLink} onClick={() => { scrollTo("how-it-works"); setMobileMenuOpen(false); }}>How It Works</span>
+          <span className={styles.mobileMenuLink} onClick={() => { scrollTo("roles"); setMobileMenuOpen(false); }}>About</span>
+        </div>
+        <div className={styles.mobileMenuActions}>
+          <Link href="/login" className={styles.navLogin} onClick={() => setMobileMenuOpen(false)}>
+            Login
+          </Link>
+          <Link href="/register" className={styles.mobileMenuRegister} onClick={() => setMobileMenuOpen(false)}>
+            Sign Up
+          </Link>
+        </div>
+      </div>
 
       {/* ── Hero ── */}
       <section className={styles.hero}>

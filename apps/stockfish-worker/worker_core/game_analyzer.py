@@ -5,7 +5,7 @@ from typing import Dict, Any, List, Optional
 from worker_core.engine_manager import EngineManager
 from worker_core.move_classifier import MoveClassifier, identify_error_nature
 from worker_core.tactical_validator import TacticalValidator
-from metrics.accuracy_metrics import calculate_centipawn_loss, calculate_move_accuracy, calculate_win_prob_drop
+from metrics.accuracy_metrics import calculate_centipawn_loss, calculate_move_accuracy, calculate_win_prob_drop, win_prob_from_cp
 from utils.time_utils import calculate_time_spent
 from utils.position_utils import PositionUtils
 from config.thresholds import ANALYSIS_THRESHOLDS
@@ -281,13 +281,14 @@ class GameAnalyzer:
                 user_eval_after  = round(user_cp_after  / 100.0, 2)
 
                 analysis_data.append({
-                    "move_num": move_num,
+                    "move_number": move_num,
                     "san": san_move,
                     "eval_before": user_eval_before,
                     "eval_after": user_eval_after,
                     "eval": user_eval_after,
                     "best_move": best_move_san,
                     "cp_loss": cp_loss,
+                    "win_prob": round(win_prob_from_cp(user_cp_after), 2),
                     "win_prob_drop": round(win_prob_drop, 2),
                     "accuracy": round(move_acc, 2),
                     "quality": move_quality,
@@ -301,6 +302,16 @@ class GameAnalyzer:
 
         game_accuracy = round(sum(move_accuracies)/len(move_accuracies), 2) if move_accuracies else 0
         opp_accuracy = round(sum(opp_accuracies)/len(opp_accuracies), 2) if opp_accuracies else 70.0
+
+        phase_buckets: Dict[str, List[float]] = {"opening": [], "middlegame": [], "endgame": []}
+        for m in analysis_data:
+            p = m.get("phase")
+            if p in phase_buckets and m.get("quality") not in ("Book", "Forced"):
+                phase_buckets[p].append(m.get("accuracy", 0))
+        phase_accuracy = {
+            p: round(sum(v) / len(v), 2) if v else 0
+            for p, v in phase_buckets.items()
+        }
         
         perf_rating = self._estimate_performance_rating(
             game_accuracy, len(analysis_data), opp_accuracy,
@@ -320,6 +331,7 @@ class GameAnalyzer:
             "opening_name": opening_name,
             "eco_code": eco_code,
             "game_accuracy": game_accuracy,
+            "phase_accuracy": phase_accuracy,
             "opp_accuracy": opp_accuracy,
             "move_history": analysis_data,
             "full_history": full_history,

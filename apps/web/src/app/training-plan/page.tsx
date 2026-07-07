@@ -208,7 +208,7 @@ export default function TrainingPlanPage() {
     <>
       <Header />
       <main
-        className="container animate-fade-in"
+        className="container animate-fade-in page-content-mobile"
         style={{ paddingTop: "40px", paddingBottom: "60px" }}
       >
         <h1 style={{ fontSize: "32px", marginBottom: "8px" }}>

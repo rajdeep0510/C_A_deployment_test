@@ -13,16 +13,34 @@ def _default_analysis_nodes() -> int:
     from worker_config import settings
     return settings.ANALYSIS_NODES
 
+def _default_batch_analysis_time() -> float:
+    from worker_config import settings
+    return settings.BATCH_ANALYSIS_TIME
+
 # Root of the stockfish-worker package (one level up from worker_core/)
 _WORKER_ROOT = Path(__file__).parent.parent
 
 
 class EngineManager:
-    def __init__(self, stockfish_path: str = None, analysis_nodes: int = None):
+    def __init__(
+        self,
+        stockfish_path: str = None,
+        analysis_nodes: int = None,
+        batch_mode: bool = False,
+        batch_analysis_time: float = None,
+    ):
         candidate = stockfish_path or _default_stockfish()
         resolved  = self._resolve(candidate)
         self.stockfish_path = resolved if resolved else self._find_stockfish()
         self.analysis_nodes = analysis_nodes if analysis_nodes is not None else _default_analysis_nodes()
+        # Batch mode uses a time-based limit so simple/book positions finish fast
+        # and only complex middlegame positions use the full budget.
+        # Individual game analysis always uses the fixed node budget (unchanged).
+        self.batch_mode = batch_mode
+        self.batch_analysis_time = (
+            batch_analysis_time if batch_analysis_time is not None
+            else _default_batch_analysis_time()
+        )
         self.engine = None
 
     @staticmethod
@@ -99,7 +117,11 @@ class EngineManager:
             if cached is not None:
                 return cached
 
-        limit = chess.engine.Limit(nodes=self.analysis_nodes)
+        limit = (
+            chess.engine.Limit(time=self.batch_analysis_time)
+            if self.batch_mode
+            else chess.engine.Limit(nodes=self.analysis_nodes)
+        )
         info = self.engine.analyse(board, limit, multipv=multipv)
         
         # When multipv=1, info is an InfoDict

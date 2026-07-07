@@ -5,7 +5,19 @@
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**"]
+      "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**"],
+      "env": [
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "NEXT_PUBLIC_SUPABASE_URL",
+        "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+        "PUZZLE_RELEASE_BASE_URL",
+        "NEXT_PUBLIC_ANALYSIS_ENABLE_WASM",
+        "NEXT_PUBLIC_ANALYSIS_ENGINE_DEPTH",
+        "NEXT_PUBLIC_ANALYSIS_HASH_MB",
+        "NEXT_PUBLIC_ANALYSIS_MAX_WORKERS",
+        "NEXT_PUBLIC_ANALYSIS_MULTIPV",
+        "NEXT_PUBLIC_ANALYSIS_USE_LITE"
+      ]
     },
     "lint": {
       "dependsOn": ["^lint"]

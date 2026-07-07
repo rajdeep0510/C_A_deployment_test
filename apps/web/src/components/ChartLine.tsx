@@ -9,16 +9,51 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-export default function ChartLine({ data, dataKey = "uv", xAxisKey = "name" }) {
+function CustomTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  const point = payload[0]?.payload ?? {};
+  return (
+    <div style={{
+      background: "var(--card-bg)",
+      border: "1px solid var(--glass-border)",
+      borderRadius: "8px",
+      padding: "10px 14px",
+      fontSize: "13px",
+      maxWidth: "220px",
+    }}>
+      <div style={{ fontWeight: "700", marginBottom: "2px" }}>{label}</div>
+      {point.date && (
+        <div style={{ color: "var(--text-secondary)", fontSize: "12px", marginBottom: "2px" }}>
+          {point.date}
+        </div>
+      )}
+      {point.opening && (
+        <div style={{ color: "var(--text-secondary)", fontSize: "12px", marginBottom: "6px" }}>
+          {point.opening}
+        </div>
+      )}
+      <div style={{ color: "var(--accent-color)", fontWeight: "700" }}>
+        {payload[0].value}% accuracy
+      </div>
+    </div>
+  );
+}
+
+export default function ChartLine({
+  data,
+  dataKey = "uv",
+  xAxisKey = "name",
+}: {
+  data: any[];
+  dataKey?: string;
+  xAxisKey?: string;
+}) {
   if (!data || data.length === 0) return <div>No data available</div>;
 
   return (
     <div style={{ width: "100%", height: 300 }}>
       <ResponsiveContainer>
-        <LineChart
-          data={data}
-          margin={{ top: 5, right: 20, bottom: 5, left: 0 }}
-        >
+        <LineChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
           <CartesianGrid
             strokeDasharray="3 3"
             stroke="rgba(255,255,255,0.05)"
@@ -27,10 +62,11 @@ export default function ChartLine({ data, dataKey = "uv", xAxisKey = "name" }) {
           <XAxis
             dataKey={xAxisKey}
             stroke="var(--text-secondary)"
-            fontSize={12}
+            fontSize={11}
             tickLine={false}
             axisLine={false}
             padding={{ left: 10, right: 10 }}
+            interval={Math.max(0, Math.floor(data.length / 8) - 1)}
           />
           <YAxis
             stroke="var(--text-secondary)"
@@ -39,14 +75,7 @@ export default function ChartLine({ data, dataKey = "uv", xAxisKey = "name" }) {
             axisLine={false}
             domain={[0, 100]}
           />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: "var(--card-bg)",
-              border: "1px solid var(--glass-border)",
-              borderRadius: "8px",
-            }}
-            itemStyle={{ color: "var(--accent-color)" }}
-          />
+          <Tooltip content={(props) => <CustomTooltip {...props} />} />
           <Line
             type="monotone"
             dataKey={dataKey}

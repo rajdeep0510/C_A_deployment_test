@@ -19,37 +19,163 @@ import type { TimeLimit } from "@/components/TimedPuzzleBoard";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Puzzle = {
-  puzzle_id: string; fen: string; best_move: string; moves?: string;
-  theme: string; difficulty: number; phase?: string; rating?: number;
-  source?: string;
+  puzzle_id:     string;
+  fen:           string;
+  best_move:     string;
+  moves?:        string;
+  theme:         string;
+  difficulty:    number;
+  phase?:        string;
+  rating?:       number;
+  source?:       string;
+  gameUrl?:      string;
+  game_filename?: string;
+  move_number?:  number;
 };
-type Mode = "normal" | "survival" | "time" | "rush";
-type Phase = "all" | "opening" | "middlegame" | "endgame";
-type Source = "own" | "library";
+type Mode       = "normal" | "survival" | "time" | "rush";
+type Phase      = "all" | "opening" | "middlegame" | "endgame";
+type Source     = "own" | "library";
+type Difficulty = "beginner" | "intermediate" | "advanced" | "expert";
 
 const MAX_LIVES = 3;
-const PHASE_TABS: { value: Phase; label: string }[] = [
-  { value: "all",        label: "All"        },
-  { value: "opening",    label: "Opening"    },
-  { value: "middlegame", label: "Middlegame" },
-  { value: "endgame",    label: "Endgame"    },
+
+type Category = "tactics" | "phase" | "endgame_material" | "openings";
+
+const PHASE_TABS: { value: Phase; label: string; icon: string }[] = [
+  { value: "all",        label: "All Games",  icon: "♟️" },
+  { value: "opening",    label: "Opening",    icon: "📖" },
+  { value: "middlegame", label: "Middlegame", icon: "⚔️" },
+  { value: "endgame",    label: "Endgame",    icon: "👑" },
+];
+
+const THEME_META: Record<string, { label: string; icon: string; color: string }> = {
+  hanging_piece:    { label: "Hanging Piece",    icon: "🪝", color: "#ef4444" },
+  fork:             { label: "Fork",             icon: "🔱", color: "#f97316" },
+  pin:              { label: "Pin",              icon: "📌", color: "#f59e0b" },
+  skewer:           { label: "Skewer",           icon: "🏹", color: "#a855f7" },
+  back_rank:        { label: "Back Rank",        icon: "🏰", color: "#3b82f6" },
+  discovered_attack:{ label: "Discovered Attack",icon: "🎯", color: "#06b6d4" },
+  promotion:        { label: "Promotion",        icon: "♕",  color: "#22c55e" },
+  checkmate:        { label: "Missed Mate",      icon: "♛",  color: "#dc2626" },
+  smothered_mate:   { label: "Smothered Mate",   icon: "🌀", color: "#9333ea" },
+  sacrifice:        { label: "Sacrifice",        icon: "💥", color: "#ec4899" },
+  middlegame_tactic:{ label: "Tactic",           icon: "⚡", color: "#6366f1" },
+};
+
+const CATEGORIES: { value: Category; label: string; icon: string }[] = [
+  { value: "tactics",          label: "Tactics",      icon: "⚔️" },
+  { value: "phase",            label: "Game Phase",   icon: "🎮" },
+  { value: "endgame_material", label: "Endgame",      icon: "♟️" },
+  { value: "openings",         label: "Openings",     icon: "📖" },
+];
+
+interface PuzzleTypeOption { value: string; label: string; icon: string; desc: string }
+
+const TYPE_BY_CATEGORY: Record<Category, PuzzleTypeOption[]> = {
+  tactics: [
+    { value: "phase_middlegame",         label: "All Tactics",  icon: "⚔️", desc: "Mixed tactical positions" },
+    { value: "tactic_fork",              label: "Fork",          icon: "🔱", desc: "Attack two pieces at once" },
+    { value: "tactic_pin",               label: "Pin",           icon: "📌", desc: "Immobilize a piece" },
+    { value: "tactic_skewer",            label: "Skewer",        icon: "🏹", desc: "Force a valuable piece to move" },
+    { value: "tactic_sacrifice",         label: "Sacrifice",     icon: "💥", desc: "Give material to win" },
+    { value: "tactic_discovered_attack", label: "Discovery",     icon: "🎯", desc: "Reveal a hidden attack" },
+    { value: "mate_in_1",                label: "Mate in 1",     icon: "♛", desc: "One-move checkmate" },
+    { value: "mate_in_2",                label: "Mate in 2",     icon: "♕", desc: "Force mate in two moves" },
+    { value: "mate_in_3",                label: "Mate in 3",     icon: "♗", desc: "Three-move mating sequence" },
+    { value: "mate_in_4plus",            label: "Mate in 4+",   icon: "♘", desc: "Long mating combinations" },
+    { value: "mate_back_rank",           label: "Back Rank",     icon: "🏰", desc: "Exploit back rank weakness" },
+    { value: "mate_smothered",           label: "Smothered",     icon: "🌀", desc: "Knight delivers smothered mate" },
+    { value: "mate_opera",               label: "Opera Mate",    icon: "🎭", desc: "Classic rook + bishop mate" },
+    { value: "mate_arabian",             label: "Arabian",       icon: "🐴", desc: "Knight + rook checkmate" },
+  ],
+  phase: [
+    { value: "phase_opening",    label: "Opening",    icon: "♙", desc: "Tactics in the first 10–15 moves" },
+    { value: "phase_middlegame", label: "Middlegame", icon: "⚔️", desc: "Complex tactical battles" },
+    { value: "phase_endgame",    label: "Endgame",    icon: "👑", desc: "Convert advantages to a win" },
+  ],
+  endgame_material: [
+    { value: "endgame_pawn",       label: "Pawn",        icon: "♟️", desc: "Pawn promotion & opposition" },
+    { value: "endgame_rook",       label: "Rook",        icon: "♜", desc: "Rook vs pawn, Lucena, Philidor" },
+    { value: "endgame_bishop",     label: "Bishop",      icon: "♝", desc: "Good vs bad bishop endgames" },
+    { value: "endgame_knight",     label: "Knight",      icon: "♞", desc: "Knight manoeuvres & forks" },
+    { value: "endgame_queen",      label: "Queen",       icon: "♛", desc: "Queen vs rook, queen vs pawn" },
+    { value: "endgame_queen_rook", label: "Q + Rook",    icon: "⚡", desc: "Queen and rook coordination" },
+  ],
+  openings: [
+    // 1.e4 openings
+    { value: "opening_sicilian_defense",       label: "Sicilian",         icon: "🐉", desc: "1.e4 c5 — sharp & asymmetric" },
+    { value: "opening_french_defense",         label: "French",           icon: "🛡️", desc: "1.e4 e6 — solid and strategic" },
+    { value: "opening_caro-kann_defense",      label: "Caro-Kann",        icon: "🏰", desc: "1.e4 c6 — solid, less cramped" },
+    { value: "opening_italian_game",           label: "Italian",          icon: "♗", desc: "1.e4 e5 Nf3 Nc6 Bc4" },
+    { value: "opening_ruy_lopez",              label: "Ruy Lopez",        icon: "🗡️", desc: "1.e4 e5 Nf3 Nc6 Bb5" },
+    { value: "opening_scotch_game",            label: "Scotch",           icon: "⚡", desc: "1.e4 e5 Nf3 Nc6 d4" },
+    { value: "opening_four_knights_game",      label: "Four Knights",     icon: "♞", desc: "1.e4 e5 Nf3 Nc6 Nc3 Nf6" },
+    { value: "opening_russian_game",           label: "Petrov",           icon: "🐻", desc: "1.e4 e5 Nf3 Nf6 — solid defence" },
+    { value: "opening_philidor_defense",       label: "Philidor",         icon: "🎵", desc: "1.e4 e5 Nf3 d6 — solid but passive" },
+    { value: "opening_bishops_opening",        label: "Bishop's Opening", icon: "♝", desc: "1.e4 e5 Bc4 — positional" },
+    { value: "opening_kings_gambit_accepted",  label: "King's Gambit",    icon: "🔥", desc: "1.e4 e5 f4 exf4 — aggressive" },
+    { value: "opening_kings_gambit_declined",  label: "KG Declined",      icon: "🛡️", desc: "1.e4 e5 f4 d5 — counter-strike" },
+    { value: "opening_vienna_game",            label: "Vienna",           icon: "🎭", desc: "1.e4 e5 Nc3 — flexible setup" },
+    { value: "opening_kings_pawn_game",        label: "King's Pawn",      icon: "♙", desc: "1.e4 e5 — open game mix" },
+    { value: "opening_scandinavian_defense",   label: "Scandinavian",     icon: "⚔️", desc: "1.e4 d5 — early counterplay" },
+    { value: "opening_alekhine_defense",       label: "Alekhine",         icon: "🔮", desc: "1.e4 Nf6 — provoke & counter" },
+    { value: "opening_modern_defense",         label: "Modern",           icon: "🌐", desc: "1.e4 g6 — hypermodern fianchetto" },
+    { value: "opening_pirc_defense",           label: "Pirc",             icon: "🦊", desc: "1.e4 d6 2.d4 Nf6 — flexible" },
+    // 1.d4 openings
+    { value: "opening_queens_gambit_declined", label: "QGD",              icon: "♕", desc: "1.d4 d5 c4 e6 — classical" },
+    { value: "opening_queens_gambit_accepted", label: "QGA",              icon: "♔", desc: "1.d4 d5 c4 dxc4 — active" },
+    { value: "opening_queens_pawn_game",       label: "Queen's Pawn",     icon: "♟️", desc: "1.d4 d5 — solid and safe" },
+    { value: "opening_slav_defense",           label: "Slav",             icon: "❄️", desc: "1.d4 d5 c4 c6 — rock solid" },
+    { value: "opening_kings_indian_defense",   label: "King's Indian",    icon: "🏯", desc: "1.d4 Nf6 c4 g6 — sharp & dynamic" },
+    { value: "opening_benoni_defense",         label: "Benoni",           icon: "💣", desc: "1.d4 Nf6 c4 c5 — counterattack" },
+    { value: "opening_indian_defense",         label: "Indian",           icon: "🐘", desc: "1.d4 Nf6 — hypermodern" },
+    { value: "opening_nimzo-larsen_attack",    label: "Nimzo-Larsen",     icon: "🎪", desc: "1.b3 — fianchetto flank" },
+    { value: "opening_nimzowitsch_defense",    label: "Nimzowitsch",      icon: "🧠", desc: "1.e4 Nc6 — provocative" },
+    { value: "opening_zukertort_opening",      label: "Zukertort",        icon: "🕊️", desc: "1.Nf3 — flexible, transposes" },
+    // Flank / other
+    { value: "opening_english_opening",        label: "English",          icon: "🔄", desc: "1.c4 — flexible flank opening" },
+    { value: "opening_dutch_defense",          label: "Dutch",            icon: "🌷", desc: "1.d4 f5 — aggressive & creative" },
+    { value: "opening_englund_gambit",         label: "Englund Gambit",   icon: "🎰", desc: "1.d4 e5 — risky but fun" },
+  ],
+};
+
+const DIFFICULTIES: { value: Difficulty; label: string; range: string; color: string }[] = [
+  { value: "beginner",     label: "Beginner",     range: "< 1000",    color: "#22c55e" },
+  { value: "intermediate", label: "Intermediate", range: "1000–1400", color: "#f59e0b" },
+  { value: "advanced",     label: "Advanced",     range: "1400–1800", color: "#f97316" },
+  { value: "expert",       label: "Expert",       range: "1800+",     color: "#ef4444" },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+function formatGameName(filename?: string): string {
+  if (!filename) return "Your Game";
+  const base = filename.replace(/\.pgn$/i, "");
+  const dateMatch = base.match(/(\d{4})(\d{2})(\d{2})/);
+  if (dateMatch) {
+    const [, year, month] = dateMatch;
+    const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    return `${months[parseInt(month) - 1]} ${year}`;
+  }
+  return base.replace(/_/g, " ").slice(0, 30);
+}
+
 function extractPuzzle(item: any): Puzzle | null {
   const p = item?.puzzles ?? item?.puzzle_library ?? item;
   if (!p?.puzzle_id && !p?.id) return null;
   const isLibrary = !p.puzzle_id;
   return {
-    puzzle_id:  p.puzzle_id ?? p.id,
-    fen:        p.fen,
-    best_move:  p.moves ? p.moves.split(" ")[0] : p.best_move,
-    moves:      p.moves || undefined,
-    theme:      p.themes ?? p.theme ?? "",
-    difficulty: p.difficulty ?? p.rating ?? 0,
-    phase:      p.phase,
-    rating:     p.rating,
-    source:     isLibrary ? "library" : "own_game",
+    puzzle_id:     p.puzzle_id ?? p.id,
+    fen:           p.fen,
+    best_move:     p.moves ? p.moves.split(" ")[0] : p.best_move,
+    moves:         p.moves || undefined,
+    theme:         p.themes ?? p.theme ?? "",
+    difficulty:    p.difficulty ?? p.rating ?? 0,
+    phase:         p.phase,
+    rating:        p.rating ?? p.puzzle_rating,
+    source:        isLibrary ? "library" : "own_game",
+    gameUrl:       p.gameUrl ?? p.game_url,
+    game_filename: p.game_filename,
+    move_number:   p.move_number,
   };
 }
 
@@ -66,8 +192,16 @@ export default function PuzzlesPage() {
   const [stats, setStats]               = useState<any>(null);
 
   // Filters
-  const [phase, setPhase]   = useState<Phase>("all");
-  const [source, setSource] = useState<Source>("own");
+  const [phase,      setPhase]      = useState<Phase>("all");
+  const [source,     setSource]     = useState<Source>("own");
+  const [category,   setCategory]   = useState<Category>("tactics");
+  const [puzzleType, setPuzzleType] = useState("phase_middlegame");
+  const [difficulty, setDifficulty] = useState<Difficulty>("intermediate");
+
+  function handleCategoryChange(cat: Category) {
+    setCategory(cat);
+    setPuzzleType(TYPE_BY_CATEGORY[cat][0].value);
+  }
 
   // Mode
   const [mode, setMode]           = useState<Mode>("normal");
@@ -101,7 +235,7 @@ export default function PuzzlesPage() {
   useEffect(() => {
     if (!chessUsername || !isApproved || playerLoading) return;
     loadPuzzles();
-  }, [phase, source]);
+  }, [phase, source, puzzleType, difficulty]);
 
   async function loadPuzzles() {
     setLoading(true);
@@ -114,8 +248,7 @@ export default function PuzzlesPage() {
         const data = await getPuzzleQueue(chessUsername!, 20, phaseParam);
         raw = (data.queue || []).map(extractPuzzle).filter(Boolean) as Puzzle[];
       } else {
-        const phaseParam = phase !== "all" ? phase : undefined;
-        const data = await getLibraryPuzzles(undefined, phaseParam, 800, 2500, 20);
+        const data = await getLibraryPuzzles(puzzleType, difficulty, 20);
         raw = (data.puzzles || []).map(extractPuzzle).filter(Boolean) as Puzzle[];
       }
       setPuzzles(raw);
@@ -163,6 +296,10 @@ export default function PuzzlesPage() {
     setRatingDelta(null);
 
     try {
+      const resolvedPuzzleType = source === "library"
+        ? puzzleType
+        : (puzzle.theme ?? "");
+
       const result = await recordPuzzleAttempt(
         chessUsername,
         puzzle.puzzle_id,
@@ -170,6 +307,7 @@ export default function PuzzlesPage() {
         timeTaken,
         puzzle.rating,
         (puzzle.source ?? "own_game") as "own_game" | "library",
+        resolvedPuzzleType,
       );
       if (result?.rating_delta != null) setRatingDelta(result.rating_delta);
       if (result?.streak_days)          setStreakDays(result.streak_days);
@@ -228,7 +366,7 @@ export default function PuzzlesPage() {
     return (
       <div style={{ minHeight: "100vh", background: "var(--bg-color)" }}>
         <Header />
-        <div className="container" style={{ paddingTop: "32px", paddingBottom: "48px" }}>
+        <div className="container page-content-mobile" style={{ paddingTop: "32px", paddingBottom: "48px" }}>
           <PuzzleRush username={chessUsername!} onExit={() => setMode("normal")} />
         </div>
       </div>
@@ -260,7 +398,7 @@ export default function PuzzlesPage() {
         />
       )}
 
-      <div className="container" style={{ paddingTop: "32px", paddingBottom: "48px" }}>
+      <div className="container page-content-mobile" style={{ paddingTop: "32px", paddingBottom: "48px" }}>
 
         {/* ── Page header ── */}
         <div className="flex-between" style={{ marginBottom: "24px", flexWrap: "wrap", gap: "12px" }}>
@@ -337,49 +475,189 @@ export default function PuzzlesPage() {
           </div>
         )}
 
-        {/* ── Source + phase filters (hidden during active mode) ── */}
+        {/* ── Source + filters (hidden during active mode) ── */}
         {!isActiveMode && (
-          <div style={{ marginBottom: "20px", display: "flex", flexDirection: "column", gap: "12px" }}>
-            {/* Source toggle */}
-            <div style={{ display: "flex", gap: "8px" }}>
-              <button onClick={() => setSource("own")} style={sourceBtn(source === "own")}>
-                <Swords size={13} /> Your Missed Opportunities
-              </button>
-              <button onClick={() => setSource("library")} style={sourceBtn(source === "library")}>
-                <BookOpen size={13} /> Lichess Library
-              </button>
-            </div>
-            {/* Phase tabs */}
-            <div style={{ display: "flex", gap: "6px" }}>
-              {PHASE_TABS.map((tab) => (
+          <div style={{ marginBottom: "24px", display: "flex", flexDirection: "column", gap: "0" }}>
+
+            {/* ── Source tabs ── */}
+            <div style={{ display: "flex", borderBottom: "2px solid var(--border-color)", marginBottom: "20px" }}>
+              {([
+                { value: "own" as Source,     icon: <Swords size={14}/>,   label: "Your Games" },
+                { value: "library" as Source, icon: <BookOpen size={14}/>, label: "Lichess Library" },
+              ]).map(s => (
                 <button
-                  key={tab.value}
-                  onClick={() => setPhase(tab.value)}
+                  key={s.value}
+                  onClick={() => setSource(s.value)}
                   style={{
-                    padding: "6px 16px", borderRadius: "20px", cursor: "pointer",
-                    fontSize: "13px", fontWeight: 600,
-                    background: phase === tab.value ? "var(--accent-color)" : "transparent",
-                    color: phase === tab.value ? "#fff" : "var(--text-secondary)",
-                    border: `1px solid ${phase === tab.value ? "var(--accent-color)" : "var(--border-color)"}`,
-                    transition: "all 0.15s",
+                    display: "flex", alignItems: "center", gap: "6px",
+                    padding: "10px 20px", cursor: "pointer", fontSize: "14px", fontWeight: 700,
+                    background: "transparent", border: "none",
+                    borderBottom: source === s.value ? "2px solid var(--accent-color)" : "2px solid transparent",
+                    color: source === s.value ? "var(--accent-color)" : "var(--text-secondary)",
+                    marginBottom: "-2px", transition: "all 0.15s",
                   }}
                 >
-                  {tab.label}
+                  {s.icon} {s.label}
                 </button>
               ))}
             </div>
-            {/* Source description */}
+
+            {/* ── Own games ── */}
             {source === "own" && (
-              <p style={{ margin: 0, fontSize: "13px", color: "var(--text-secondary)" }}>
-                <Swords size={12} style={{ marginRight: "5px", verticalAlign: "middle" }} />
-                Positions from <strong>your own games</strong> where you missed a tactic — sorted by spaced repetition
-              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+
+                {/* Phase tabs + sync button row */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
+                  <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                    {PHASE_TABS.map((tab) => (
+                      <button key={tab.value} onClick={() => setPhase(tab.value)} style={{
+                        display: "flex", alignItems: "center", gap: "5px",
+                        padding: "7px 16px", borderRadius: "20px", cursor: "pointer",
+                        fontSize: "13px", fontWeight: 600,
+                        background: phase === tab.value ? "var(--accent-color)" : "rgba(255,255,255,0.04)",
+                        color: phase === tab.value ? "#fff" : "var(--text-secondary)",
+                        border: `1.5px solid ${phase === tab.value ? "var(--accent-color)" : "var(--border-color)"}`,
+                        transition: "all 0.15s",
+                      }}>
+                        <span>{tab.icon}</span> {tab.label}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={handleGenerate}
+                    disabled={generating}
+                    style={{
+                      display: "flex", alignItems: "center", gap: "5px",
+                      padding: "7px 14px", borderRadius: "8px",
+                      cursor: generating ? "default" : "pointer",
+                      background: "rgba(29,193,137,0.08)", color: "var(--accent-color)",
+                      border: "1px solid rgba(29,193,137,0.25)",
+                      fontWeight: 600, fontSize: "12px", opacity: generating ? 0.7 : 1,
+                    }}
+                  >
+                    <RefreshCw size={11} style={{ animation: generating ? "spin 1s linear infinite" : "none" }} />
+                    {generating ? "Syncing…" : "Sync from games"}
+                  </button>
+                </div>
+
+                {/* Explanation banner */}
+                <div style={{
+                  padding: "12px 16px", borderRadius: "10px",
+                  background: "rgba(29,193,137,0.05)", border: "1px solid rgba(29,193,137,0.12)",
+                  display: "flex", alignItems: "flex-start", gap: "10px",
+                }}>
+                  <span style={{ fontSize: "16px", flexShrink: 0, marginTop: "1px" }}>🎯</span>
+                  <div>
+                    <p style={{ margin: 0, fontSize: "13px", fontWeight: 600 }}>Only concrete missed tactics</p>
+                    <p style={{ margin: "3px 0 0", fontSize: "12px", color: "var(--text-secondary)" }}>
+                      Blunders and significant Mistakes only — hanging pieces, forks, missed mates.
+                      Regular "not best" moves are excluded.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── Lichess Library ── */}
+            {source === "library" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+
+                {/* Difficulty pills */}
+                <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+                  <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.08em", marginRight: "4px" }}>
+                    Level
+                  </span>
+                  {DIFFICULTIES.map((d) => (
+                    <button key={d.value} onClick={() => setDifficulty(d.value)} style={{
+                      padding: "5px 14px", borderRadius: "20px", cursor: "pointer",
+                      fontSize: "12px", fontWeight: 700,
+                      background: difficulty === d.value ? d.color : "transparent",
+                      color: difficulty === d.value ? "#fff" : d.color,
+                      border: `1.5px solid ${d.color}`,
+                      transition: "all 0.15s",
+                    }}>
+                      {d.label} <span style={{ opacity: 0.7, fontWeight: 400 }}>{d.range}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Category tabs */}
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(4, 1fr)",
+                  gap: "8px",
+                }}>
+                  {CATEGORIES.map((cat) => {
+                    const active = category === cat.value;
+                    return (
+                      <button key={cat.value} onClick={() => handleCategoryChange(cat.value)} style={{
+                        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                        gap: "6px", padding: "14px 8px", borderRadius: "12px", cursor: "pointer",
+                        background: active ? "var(--accent-color)" : "rgba(255,255,255,0.03)",
+                        color: active ? "#fff" : "var(--text-secondary)",
+                        border: `1.5px solid ${active ? "var(--accent-color)" : "var(--border-color)"}`,
+                        boxShadow: active ? "0 4px 16px rgba(29,193,137,0.2)" : "none",
+                        transition: "all 0.2s", fontWeight: 700, fontSize: "13px",
+                      }}>
+                        <span style={{ fontSize: "22px", lineHeight: 1 }}>{cat.icon}</span>
+                        {cat.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Type cards grid */}
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+                  gap: "10px",
+                }}>
+                  {TYPE_BY_CATEGORY[category].map((t) => {
+                    const active = puzzleType === t.value;
+                    return (
+                      <button key={t.value} onClick={() => setPuzzleType(t.value)} style={{
+                        display: "flex", alignItems: "center", gap: "12px",
+                        padding: "12px 14px", borderRadius: "12px", cursor: "pointer",
+                        background: active ? "rgba(29,193,137,0.12)" : "rgba(255,255,255,0.03)",
+                        border: `1.5px solid ${active ? "var(--accent-color)" : "var(--border-color)"}`,
+                        transition: "all 0.15s", textAlign: "left",
+                        boxShadow: active ? "0 0 0 1px rgba(29,193,137,0.3)" : "none",
+                      }}>
+                        <span style={{
+                          fontSize: "22px", lineHeight: 1, flexShrink: 0,
+                          width: "36px", height: "36px",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          background: active ? "rgba(29,193,137,0.15)" : "rgba(255,255,255,0.05)",
+                          borderRadius: "8px",
+                        }}>
+                          {t.icon}
+                        </span>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{
+                            fontWeight: 700, fontSize: "13px",
+                            color: active ? "var(--accent-color)" : "var(--text-primary)",
+                          }}>
+                            {t.label}
+                          </div>
+                          <div style={{
+                            fontSize: "11px", color: "var(--text-secondary)",
+                            marginTop: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                          }}>
+                            {t.desc}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+              </div>
             )}
           </div>
         )}
 
         {/* ── Main grid ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: "24px", alignItems: "start" }}>
+        <div className="puzzle-main-grid">
 
           {/* Left — board area */}
           <div>
@@ -444,16 +722,70 @@ export default function PuzzlesPage() {
             {/* Empty state */}
             {!loading && !puzzle && !loadError && !(mode === "survival" && gameOver) && (
               <div className="glass-card" style={{ padding: "48px 32px", textAlign: "center" }}>
-                <p style={{ color: "var(--text-secondary)", marginBottom: "16px" }}>
-                  {source === "own"
-                    ? "No puzzles found — generate them from your analyzed games."
-                    : "No library puzzles found for this filter."}
-                </p>
-                {source === "own" && (
-                  <button onClick={handleGenerate} disabled={generating} style={primaryBtn}>
-                    {generating ? "Generating…" : "Generate from My Games"}
-                  </button>
+                {source === "own" ? (
+                  <>
+                    <div style={{ fontSize: "48px", marginBottom: "16px" }}>🎯</div>
+                    <h3 style={{ margin: "0 0 8px", fontSize: "18px" }}>No missed tactics found</h3>
+                    <p style={{ margin: "0 0 20px", color: "var(--text-secondary)", fontSize: "13px", maxWidth: "400px", marginInline: "auto" }}>
+                      Sync your analyzed games to extract positions where you missed concrete tactics.
+                    </p>
+                    <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", justifyContent: "center", marginBottom: "24px" }}>
+                      {[["🪝","Hanging Piece"], ["🔱","Fork"], ["📌","Pin"], ["♛","Missed Mate"], ["🎯","Discovery"]].map(([icon, name]) => (
+                        <span key={name} style={{
+                          padding: "5px 12px", borderRadius: "6px", fontSize: "12px",
+                          background: "rgba(255,255,255,0.04)", border: "1px solid var(--border-color)",
+                          color: "var(--text-secondary)",
+                        }}>
+                          {icon} {name}
+                        </span>
+                      ))}
+                    </div>
+                    <button onClick={handleGenerate} disabled={generating} style={primaryBtn}>
+                      {generating ? "Syncing…" : "Sync from My Analyzed Games"}
+                    </button>
+                  </>
+                ) : (
+                  <p style={{ color: "var(--text-secondary)" }}>
+                    No library puzzles found for this filter.
+                  </p>
                 )}
+              </div>
+            )}
+
+            {/* Own-game context banner */}
+            {!loading && puzzle && source === "own" && !(mode === "survival" && gameOver) && !(mode === "time") && (
+              <div style={{
+                marginBottom: "10px", padding: "12px 16px", borderRadius: "10px",
+                background: "rgba(255,255,255,0.03)", border: "1px solid var(--border-color)",
+                display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap",
+              }}>
+                {/* Theme badge */}
+                {(() => {
+                  const meta = THEME_META[puzzle.theme] ?? { label: puzzle.theme || "Tactic", icon: "⚡", color: "#6366f1" };
+                  return (
+                    <span style={{
+                      display: "inline-flex", alignItems: "center", gap: "4px",
+                      padding: "4px 10px", borderRadius: "6px",
+                      background: `${meta.color}1a`, color: meta.color,
+                      border: `1px solid ${meta.color}30`,
+                      fontWeight: 700, fontSize: "12px",
+                    }}>
+                      {meta.icon} {meta.label}
+                    </span>
+                  );
+                })()}
+                {puzzle.move_number != null && (
+                  <span style={{ fontSize: "12px", color: "var(--text-secondary)", fontWeight: 600 }}>
+                    Move {puzzle.move_number}
+                  </span>
+                )}
+                <span style={{ color: "var(--border-color)", fontSize: "10px" }}>·</span>
+                <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
+                  📁 {formatGameName(puzzle.game_filename)}
+                </span>
+                <span style={{ marginLeft: "auto", fontSize: "11px", color: "var(--text-secondary)", opacity: 0.7 }}>
+                  {currentIndex + 1} / {puzzles.length}
+                </span>
               </div>
             )}
 

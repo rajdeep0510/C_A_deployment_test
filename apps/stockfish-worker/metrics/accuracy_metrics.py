@@ -18,6 +18,11 @@ def calculate_centipawn_loss(eval_before: float, eval_after: float, side: str) -
         return max(0.0, eval_after - eval_before)
 
 
+def win_prob_from_cp(cp: float) -> float:
+    """Win probability (0–100) from a centipawn evaluation (user-centric, positive = user better)."""
+    return _win_prob(cp)
+
+
 def calculate_win_prob_drop(user_cp_before: float, user_cp_after: float) -> float:
     """
     Win-probability drop from the user's perspective (0-100 scale).

@@ -1,7 +1,7 @@
 import os
 import chess.pgn
 import logging
-from typing import List, Dict, Any, Optional
+from typing import Callable, List, Dict, Any, Optional
 from worker_core.game_analyzer import GameAnalyzer
 from worker_core.engine_manager import EngineManager
 from metrics.time_analysis import TimeAnalyzer
@@ -17,11 +17,16 @@ from storage.analysis_storage import AnalysisStorage
 
 logger = logging.getLogger(__name__)
 
+# Type aliases for the Supabase-backed cache callbacks
+CacheLookup = Callable[[str, str], Optional[Dict[str, Any]]]  # (username, game_url) -> result | None
+CacheSave   = Callable[[str, str, Dict[str, Any]], None]       # (username, game_url, result) -> None
+
+
 class BatchAnalyzer:
     """Handles analysis of multiple games, providing aggregated statistics."""
     
     def __init__(self, engine_path: str = None):
-        self.engine_manager = EngineManager(stockfish_path=engine_path)
+        self.engine_manager = EngineManager(stockfish_path=engine_path, batch_mode=True)
         self.analyzer = GameAnalyzer(engine_manager=self.engine_manager)
         self.time_analyzer = TimeAnalyzer()
         self.trend_analyzer = PerformanceTrendAnalyzer()
@@ -39,7 +44,7 @@ class BatchAnalyzer:
         # Mistake Analyzers
         self.mistake_frequency = MistakeFrequency()
 
-        # Disk cache
+        # Disk cache (kept for analyze_directory path only)
         self.storage = AnalysisStorage()
 
     def analyze_directory(self, directory_path: str, username: str, limit: int = 10) -> Dict[str, Any]:
@@ -118,23 +123,78 @@ class BatchAnalyzer:
         self.storage.save_batch_raw(username, limit, all_results)
         return report
 
-    def analyze_pgn_list(self, pgn_strings: List[str], username: str) -> Dict[str, Any]:
-        """Analyzes a list of PGN strings."""
+    def analyze_pgn_list(
+        self,
+        pgn_strings: List[str],
+        username: str,
+        labels: Optional[List[str]] = None,
+        on_progress: Optional[Callable[[int, int, str], None]] = None,
+        cache_lookup: Optional[CacheLookup] = None,
+        cache_save: Optional[CacheSave] = None,
+    ) -> Dict[str, Any]:
+        """Analyzes a list of PGN strings with a three-level cache priority.
+
+        Priority per game (highest accuracy first):
+          1. Individual game analysis result from Supabase (500K nodes)
+          2. Previous batch analysis result from Supabase (time-based)
+          3. Fresh batch analysis — engine runs at BATCH_ANALYSIS_TIME
+
+        Args:
+            pgn_strings:   Raw PGN text for each game.
+            username:      Player username used to determine user color.
+            labels:        Original game URL per entry — used as the cache key
+                           and for progress reporting. Must match pgn_strings length.
+            on_progress:   Called after each game: (games_done, games_total, label).
+            cache_lookup:  (username, game_url) -> cached result dict or None.
+                           Checks Supabase — individual results take priority over
+                           batch results because the caller stores them that way.
+            cache_save:    (username, game_url, result) -> None.
+                           Persists a fresh batch result so the next run skips it.
+        """
         results = []
-        self.engine_manager.start()
-        
+        total = len(pgn_strings)
+        engine_started = False
+
         try:
-            for pgn_text in pgn_strings:
-                try:
-                    analysis = self.analyzer.analyze_pgn(pgn_text, username)
-                    results.append(analysis)
-                except ValueError as e:
-                    logger.error("Invalid PGN string: %s", e)
-                except Exception:
-                    logger.exception("Unexpected error analysing PGN string")
+            for i, pgn_text in enumerate(pgn_strings):
+                label = (labels[i] if labels and i < len(labels) else None) or f"game_{i + 1}"
+
+                # ── Priority 1 & 2: Supabase cache (individual beats batch via upsert rules)
+                cached = cache_lookup(username, label) if cache_lookup else None
+                if cached:
+                    logger.info("Cache hit — skipping engine: %s", label)
+                    # Inject the game URL as filename so individual_games[].filename is
+                    # populated — the report route uses it to merge per-game accuracies.
+                    results.append({**cached, "filename": label})
+                else:
+                    # ── Priority 3: run the engine
+                    if not engine_started:
+                        self.engine_manager.start()
+                        engine_started = True
+                    try:
+                        analysis = self.analyzer.analyze_pgn(pgn_text, username)
+                        analysis["filename"] = label  # URL → enables route-side accuracy merge
+                        results.append(analysis)
+                        # Save as a batch-level result (won't overwrite individual analysis)
+                        if cache_save:
+                            try:
+                                cache_save(username, label, analysis)
+                            except Exception:
+                                logger.warning("cache_save failed for %s — continuing", label)
+                    except ValueError as e:
+                        logger.error("Invalid PGN string: %s", e)
+                    except Exception:
+                        logger.exception("Unexpected error analysing %s", label)
+
+                if on_progress:
+                    try:
+                        on_progress(i + 1, total, label)
+                    except Exception:
+                        logger.warning("on_progress raised — continuing")
         finally:
-            self.engine_manager.stop()
-            
+            if engine_started:
+                self.engine_manager.stop()
+
         return self._aggregate_results(results, username)
 
     def _aggregate_results(self, results: List[Dict[str, Any]], username: str) -> Dict[str, Any]:
@@ -254,6 +314,10 @@ class BatchAnalyzer:
                     "white_rating": g.get('white_rating'),
                     "black_rating": g.get('black_rating'),
                     "user_color": g.get('user_color'),
+                    # TimeClass is a Chess.com header ("rapid"/"blitz"/"bullet"/"daily")
+                    # TimeControl is the raw seconds+increment string (e.g. "600+3")
+                    "time_class":   (g.get('metadata', {}).get('TimeClass') or '').lower(),
+                    "time_control": g.get('metadata', {}).get('TimeControl', ''),
                     # Full move-by-move data so consumers don't need to open cache files
                     "move_history": g.get('move_history', []),
                 } for g in results

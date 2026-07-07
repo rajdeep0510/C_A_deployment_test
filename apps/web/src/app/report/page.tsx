@@ -1,6 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import Header from "@/components/Header";
 import Loader from "@/components/Loader";
 import ChartRadar from "@/components/ChartRadar";
@@ -12,7 +13,7 @@ import PatternGrid from "@/components/PatternGrid";
 import TimeAnalysisCard from "@/components/TimeAnalysisCard";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { getReport } from "@/services/api";
-import { Download } from "lucide-react";
+import { Download, RefreshCw } from "lucide-react";
 
 const MOVE_QUALITY_COLORS: Record<string, string> = {
   Brilliant: "#6366f1",
@@ -84,12 +85,29 @@ function buildOpeningTableRowsFlat(perfData: any): OpeningRow[] {
   return buildOpeningTableRows(perfData, "white");
 }
 
-export default function ReportPage() {
+const TC_FILTERS = [
+  { value: "all",    label: "All Games" },
+  { value: "rapid",  label: "Rapid" },
+  { value: "blitz",  label: "Blitz" },
+  { value: "bullet", label: "Bullet" },
+  { value: "daily",  label: "Daily" },
+] as const;
+
+function ReportPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { chessUsername, isApproved, loading: playerLoading } = usePlayer();
   const [reportData, setReportData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [tc, setTc] = useState<string>(() => searchParams.get("tc") || "all");
+
+  function handleTcChange(newTc: string) {
+    setTc(newTc);
+    const params = new URLSearchParams();
+    if (newTc !== "all") params.set("tc", newTc);
+    router.replace(params.size > 0 ? `/report?${params}` : "/report", { scroll: false });
+  }
 
   useEffect(() => {
     if (playerLoading) return;
@@ -98,16 +116,16 @@ export default function ReportPage() {
       return;
     }
 
-    getReport(chessUsername)
+    setLoading(true);
+    setReportData(null);
+    getReport(chessUsername, 50, tc === "all" ? undefined : tc)
       .then(setReportData)
       .catch((e) => {
         console.error(e);
-        alert(
-          "Failed to load report. Ensure you have run Batch Analysis first.",
-        );
+        alert("Failed to load report. Ensure you have run Batch Analysis first.");
       })
       .finally(() => setLoading(false));
-  }, [chessUsername, isApproved, playerLoading, router]);
+  }, [chessUsername, isApproved, playerLoading, router, tc]);
 
   const handleDownloadPdf = async () => {
     setPdfLoading(true);
@@ -139,7 +157,7 @@ export default function ReportPage() {
     <>
       <Header />
       <main
-        className="container animate-fade-in"
+        className="container animate-fade-in page-content-mobile"
         style={{ paddingTop: "40px", paddingBottom: "60px" }}
       >
         <div
@@ -156,28 +174,129 @@ export default function ReportPage() {
             <h1 style={{ fontSize: "32px", marginBottom: "8px" }}>
               Progress Report
             </h1>
-            <p style={{ color: "var(--text-secondary)" }}>
+            <p style={{ color: "var(--text-secondary)", marginBottom: "16px" }}>
               Comprehensive analysis of your recent games.
             </p>
+            {/* Time control filter chips */}
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              {TC_FILTERS.map(({ value, label }) => {
+                const active = tc === value;
+                return (
+                  <button
+                    key={value}
+                    onClick={() => handleTcChange(value)}
+                    style={{
+                      padding: "5px 14px",
+                      borderRadius: "20px",
+                      fontSize: "13px",
+                      fontWeight: active ? "700" : "500",
+                      cursor: "pointer",
+                      border: `1px solid ${active ? "var(--accent-color)" : "var(--glass-border)"}`,
+                      background: active ? "var(--accent-color)" : "transparent",
+                      color: active ? "#fff" : "var(--text-secondary)",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+            {tc !== "all" && (
+              <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "10px", marginBottom: 0 }}>
+                Showing {TC_FILTERS.find(f => f.value === tc)?.label} games only.
+                Re-run batch analysis if filter has no effect (time control data requires a fresh run).
+              </p>
+            )}
           </div>
-          <button
-            className="btn btn-primary"
-            onClick={handleDownloadPdf}
-            disabled={pdfLoading || loading}
-            style={{
-              padding: "10px 20px",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
-          >
-            <Download size={16} />
-            {pdfLoading ? "Generating…" : "Download PDF Report"}
-          </button>
+          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+            <Link
+              href="/batch"
+              style={{
+                padding: "10px 16px",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                fontSize: "14px",
+                color: "var(--text-secondary)",
+                border: "1px solid var(--glass-border)",
+                borderRadius: "8px",
+                textDecoration: "none",
+                background: "var(--surface-1)",
+              }}
+            >
+              <RefreshCw size={14} />
+              Re-analyze
+            </Link>
+            <button
+              className="btn btn-primary"
+              onClick={handleDownloadPdf}
+              disabled={pdfLoading || loading}
+              style={{
+                padding: "10px 20px",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <Download size={16} />
+              {pdfLoading ? "Generating…" : "Download PDF Report"}
+            </button>
+          </div>
         </div>
 
         {loading ? (
           <Loader message="Loading your comprehensive report..." />
+        ) : reportData?.tc_no_data ? (
+          /* ── TIME CONTROL FILTER: NO DATA ── */
+          <div className="glass-card" style={{ textAlign: "center", padding: "48px 32px", maxWidth: "520px", margin: "0 auto" }}>
+            <div style={{ fontSize: "48px", marginBottom: "16px", opacity: 0.5 }}>
+              {tc === "bullet" ? "⚡" : tc === "blitz" ? "⏱" : tc === "rapid" ? "🕐" : "📅"}
+            </div>
+            <h2 style={{ marginBottom: "12px", fontSize: "22px" }}>
+              {reportData.tc_reason === "no_games"
+                ? `No ${TC_FILTERS.find(f => f.value === tc)?.label} games found`
+                : `Time control data not available`}
+            </h2>
+            <p style={{ color: "var(--text-secondary)", marginBottom: "24px", lineHeight: "1.6" }}>
+              {reportData.tc_reason === "no_games"
+                ? `Your batch analysis didn't find any ${TC_FILTERS.find(f => f.value === tc)?.label} games in the analyzed set. Try "All Games" or run a fresh batch analysis to update the data.`
+                : `Your current batch analysis data was generated before time control filtering was supported. Re-run batch analysis to enable this feature.`}
+            </p>
+            <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
+              <button
+                onClick={() => handleTcChange("all")}
+                style={{
+                  padding: "10px 20px",
+                  borderRadius: "8px",
+                  border: "1px solid var(--glass-border)",
+                  background: "var(--surface-1)",
+                  color: "var(--text-primary)",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                }}
+              >
+                View All Games
+              </button>
+              <Link
+                href={tc && tc !== "all" ? `/batch?tc=${tc}` : "/batch"}
+                style={{
+                  padding: "10px 20px",
+                  borderRadius: "8px",
+                  background: "var(--accent-color)",
+                  color: "#fff",
+                  textDecoration: "none",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                }}
+              >
+                {tc && tc !== "all"
+                  ? `Analyze ${TC_FILTERS.find(f => f.value === tc)?.label} Games`
+                  : "Re-run Batch Analysis"}
+              </Link>
+            </div>
+          </div>
         ) : reportData ? (
           <div
             style={{ display: "flex", flexDirection: "column", gap: "32px" }}
@@ -186,7 +305,7 @@ export default function ReportPage() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(400px, 1fr))",
+                gridTemplateColumns: "repeat(auto-fit, minmax(min(400px, 100%), 1fr))",
                 gap: "24px",
               }}
             >
@@ -238,15 +357,16 @@ export default function ReportPage() {
                     reportData.visuals?.accuracy_over_time?.labels
                       ? reportData.visuals.accuracy_over_time.labels.map(
                           (label: string, idx: number) => ({
-                            date: label,
-                            accuracy:
-                              reportData.visuals.accuracy_over_time.data[idx],
+                            game: label,
+                            accuracy: reportData.visuals.accuracy_over_time.data[idx],
+                            opening: reportData.visuals.accuracy_over_time.openings?.[idx],
+                            date: reportData.visuals.accuracy_over_time.dates?.[idx],
                           }),
                         )
                       : []
                   }
                   dataKey="accuracy"
-                  xAxisKey="date"
+                  xAxisKey="game"
                 />
               </div>
             </div>
@@ -267,7 +387,7 @@ export default function ReportPage() {
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(min(200px, 100%), 1fr))",
                     gap: "16px",
                     marginBottom: "32px",
                     padding: "16px",
@@ -344,7 +464,7 @@ export default function ReportPage() {
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(min(280px, 100%), 1fr))",
                     gap: "24px",
                     marginBottom: "32px",
                   }}
@@ -423,7 +543,7 @@ export default function ReportPage() {
                     style={{
                       display: "grid",
                       gridTemplateColumns:
-                        "repeat(auto-fit, minmax(200px, 1fr))",
+                        "repeat(auto-fit, minmax(min(200px, 100%), 1fr))",
                       gap: "16px",
                     }}
                   >
@@ -525,7 +645,7 @@ export default function ReportPage() {
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))",
                     gap: "24px",
                     alignItems: "center",
                   }}
@@ -801,7 +921,7 @@ export default function ReportPage() {
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))",
                     gap: "28px",
                   }}
                 >
@@ -930,7 +1050,7 @@ export default function ReportPage() {
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(min(280px, 100%), 1fr))",
                     gap: "24px",
                   }}
                 >
@@ -1199,18 +1319,50 @@ export default function ReportPage() {
           </div>
         ) : (
           <div
-            className="glass"
+            className="glass-card"
             style={{
-              padding: "32px",
+              padding: "48px 32px",
               textAlign: "center",
-              color: "var(--text-secondary)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "16px",
             }}
           >
-            Report data is unavailable. Please go back to Dashboard and run
-            Batch Analysis.
+            <div style={{ fontSize: "40px", opacity: 0.3 }}>📊</div>
+            <div style={{ fontSize: "18px", fontWeight: "700" }}>No report yet</div>
+            <p style={{ color: "var(--text-secondary)", margin: 0, maxWidth: "380px", lineHeight: "1.6" }}>
+              Run a batch analysis on your games first. Stockfish will analyze each game and the full report will appear here.
+            </p>
+            <Link
+              href="/batch"
+              style={{
+                marginTop: "8px",
+                padding: "12px 28px",
+                background: "var(--accent-color)",
+                color: "#fff",
+                borderRadius: "8px",
+                textDecoration: "none",
+                fontWeight: "600",
+                fontSize: "15px",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              Run Batch Analysis
+            </Link>
           </div>
         )}
       </main>
     </>
+  );
+}
+
+export default function ReportPage() {
+  return (
+    <Suspense>
+      <ReportPageInner />
+    </Suspense>
   );
 }
