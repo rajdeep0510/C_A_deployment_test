@@ -28,6 +28,7 @@ type Section =
   | "openings"
   | "mistakes"
   | "training"
+  | "puzzles"
   | "games";
 
 const MOVE_QUALITY_COLORS: Record<string, string> = {
@@ -129,6 +130,7 @@ export default function CoachPlayerView({
   const [plan, setPlan] = useState<any>(null);
   const [stats, setStats] = useState<any>(null);
   const [quickOpenings, setQuickOpenings] = useState<any[]>([]);
+  const [puzzleStats, setPuzzleStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeSection, setActiveSection] = useState<Section>("overview");
 
@@ -164,12 +166,15 @@ export default function CoachPlayerView({
         return;
       }
       setPlayer(playerData);
-      const [reportRes, planRes, statsRes, openingsRes] =
+      const [reportRes, planRes, statsRes, openingsRes, puzzleRes] =
         await Promise.allSettled([
           getReport(username),
           getTrainingPlan(username),
           getStats(username),
           getOpenings(username),
+          fetch(`/api/puzzles/${encodeURIComponent(username)}/stats`).then((r) =>
+            r.ok ? r.json() : null,
+          ),
         ]);
       if (reportRes.status === "fulfilled") setReportData(reportRes.value);
       if (planRes.status === "fulfilled") setPlan(planRes.value);
@@ -179,6 +184,8 @@ export default function CoachPlayerView({
         Array.isArray(openingsRes.value)
       )
         setQuickOpenings(openingsRes.value);
+      if (puzzleRes.status === "fulfilled" && puzzleRes.value)
+        setPuzzleStats(puzzleRes.value);
       setLoading(false);
     }
     load();
@@ -249,12 +256,13 @@ export default function CoachPlayerView({
     );
 
   const TABS: { key: Section; label: string }[] = [
-    { key: "overview", label: "Overview" },
-    { key: "performance", label: "Performance" },
-    { key: "openings", label: "Openings" },
-    { key: "mistakes", label: "Mistakes & Patterns" },
-    { key: "training", label: "Training Plan" },
-    { key: "games", label: "Games" },
+    { key: "overview",     label: "Overview" },
+    { key: "performance",  label: "Performance" },
+    { key: "openings",     label: "Openings" },
+    { key: "mistakes",     label: "Mistakes & Patterns" },
+    { key: "training",     label: "Training Plan" },
+    { key: "puzzles",      label: "Puzzle Progress" },
+    { key: "games",        label: "Games" },
   ];
 
   const noData = (msg: string) => (
@@ -2007,7 +2015,176 @@ export default function CoachPlayerView({
             </div>
           ))}
 
-        {/* ── TAB 6: GAMES ── */}
+        {/* ── TAB 6: PUZZLE PROGRESS ── */}
+        {activeSection === "puzzles" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+            {!puzzleStats ? (
+              <div className="glass-card" style={{ padding: "48px", textAlign: "center" }}>
+                <div style={{ fontSize: "48px", marginBottom: "12px" }}>♟</div>
+                <h3 style={{ fontSize: "18px", marginBottom: "8px" }}>No Puzzle Data Yet</h3>
+                <p style={{ color: "var(--text-secondary)", fontSize: "14px" }}>
+                  {username} hasn't solved any puzzles yet, or puzzles haven't been generated from their games.
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* KPI strip */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "14px" }}>
+                  {[
+                    { label: "Puzzle Rating",    value: Math.round(puzzleStats.rating ?? 1200), color: "var(--accent-color)" },
+                    { label: "Total Attempted",  value: puzzleStats.total_attempted ?? 0,        color: "var(--text-primary)" },
+                    { label: "Solved",           value: puzzleStats.total_solved ?? 0,            color: "var(--success)" },
+                    { label: "Solve Rate",       value: `${puzzleStats.solve_rate ?? 0}%`,        color: puzzleStats.solve_rate >= 60 ? "var(--success)" : "var(--warning)" },
+                    { label: "This Week",        value: puzzleStats.weekly_solved ?? 0,           color: "var(--text-primary)" },
+                    { label: "Streak",           value: `${puzzleStats.streak_days ?? 0}d 🔥`,   color: "var(--warning)" },
+                  ].map(({ label, value, color }) => (
+                    <div key={label} className="glass-card" style={{ padding: "16px 18px" }}>
+                      <div style={{ fontSize: "11px", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "6px" }}>{label}</div>
+                      <div style={{ fontSize: "22px", fontWeight: 800, color }}>{value}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Skill radar + category breakdown */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: "24px" }}>
+                  {/* Radar */}
+                  <div className="glass-card" style={{ padding: "24px" }}>
+                    <h3 style={{ fontSize: "16px", marginBottom: "16px", fontWeight: 700 }}>Skill Radar</h3>
+                    {Object.keys(puzzleStats.accuracy_by_theme ?? {}).length === 0 ? (
+                      <div style={{ textAlign: "center", padding: "32px 0", color: "var(--text-secondary)", fontSize: "13px" }}>
+                        No category data yet — student needs to solve library puzzles
+                      </div>
+                    ) : (() => {
+                      const LABELS: Record<string, string> = {
+                        tactics: "Tactics", phase: "Game Phase",
+                        endgame_material: "Endgame", openings: "Openings",
+                      };
+                      const entries = Object.entries(puzzleStats.accuracy_by_theme as Record<string, number>);
+                      return (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                          {entries.map(([cat, score]) => (
+                            <div key={cat}>
+                              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                                <span style={{ fontSize: "13px", color: "var(--text-secondary)", fontWeight: 600 }}>
+                                  {LABELS[cat] ?? cat}
+                                </span>
+                                <span style={{ fontSize: "13px", fontWeight: 700 }}>{score}/100</span>
+                              </div>
+                              <div style={{ height: "8px", borderRadius: "4px", background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+                                <div style={{
+                                  height: "100%", borderRadius: "4px", transition: "width 0.5s",
+                                  width: `${score}%`,
+                                  background: score >= 67 ? "var(--success)" : score >= 40 ? "var(--warning)" : "var(--danger)",
+                                }} />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Specific type breakdown */}
+                  <div className="glass-card" style={{ padding: "24px" }}>
+                    <h3 style={{ fontSize: "16px", marginBottom: "16px", fontWeight: 700 }}>Type Breakdown</h3>
+                    {Object.keys(puzzleStats.theme_breakdown ?? {}).length === 0 ? (
+                      <div style={{ textAlign: "center", padding: "32px 0", color: "var(--text-secondary)", fontSize: "13px" }}>
+                        No type data yet
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "280px", overflowY: "auto" }}>
+                        {Object.entries(puzzleStats.theme_breakdown as Record<string, number>)
+                          .sort((a, b) => b[1] - a[1])
+                          .map(([type, score]) => (
+                            <div key={type} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid var(--glass-border)" }}>
+                              <span style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
+                                {type.replace(/_/g, " ")}
+                              </span>
+                              <span style={{
+                                fontSize: "12px", fontWeight: 700, padding: "2px 10px",
+                                borderRadius: "20px",
+                                background: score >= 67 ? "rgba(16,185,129,0.12)" : score >= 40 ? "rgba(245,158,11,0.12)" : "rgba(239,68,68,0.12)",
+                                color: score >= 67 ? "var(--success)" : score >= 40 ? "var(--warning)" : "var(--danger)",
+                              }}>
+                                {score}/100
+                              </span>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Rating history */}
+                {puzzleStats.rating_history?.length > 1 && (
+                  <div className="glass-card" style={{ padding: "24px" }}>
+                    <h3 style={{ fontSize: "16px", marginBottom: "16px", fontWeight: 700 }}>Rating Progress</h3>
+                    <div style={{ display: "flex", alignItems: "flex-end", gap: "6px", height: "80px" }}>
+                      {puzzleStats.rating_history.map((h: any, i: number) => {
+                        const all = puzzleStats.rating_history.map((x: any) => x.rating);
+                        const min = Math.min(...all) - 50;
+                        const max = Math.max(...all) + 50;
+                        const pct = ((h.rating - min) / (max - min)) * 100;
+                        return (
+                          <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
+                            <div style={{
+                              width: "100%", background: "var(--accent-color)", borderRadius: "3px 3px 0 0",
+                              height: `${pct}%`, minHeight: "4px", opacity: 0.8,
+                            }} title={`${h.date}: ${h.rating}`} />
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px", fontSize: "11px", color: "var(--text-secondary)" }}>
+                      <span>{puzzleStats.rating_history[0]?.date}</span>
+                      <span style={{ fontWeight: 700, color: "var(--accent-color)" }}>
+                        Current: {puzzleStats.rating_history[puzzleStats.rating_history.length - 1]?.rating}
+                      </span>
+                      <span>{puzzleStats.rating_history[puzzleStats.rating_history.length - 1]?.date}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Weakest areas (bottom 2 categories) */}
+                {Object.keys(puzzleStats.accuracy_by_theme ?? {}).length > 0 && (
+                  <div className="glass-card" style={{ padding: "24px" }}>
+                    <h3 style={{ fontSize: "16px", marginBottom: "14px", fontWeight: 700, color: "var(--warning)" }}>
+                      Coach Recommendations
+                    </h3>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                      {Object.entries(puzzleStats.accuracy_by_theme as Record<string, number>)
+                        .sort((a, b) => a[1] - b[1])
+                        .slice(0, 3)
+                        .map(([cat, score]) => {
+                          const LABELS: Record<string, string> = {
+                            tactics: "Tactics", phase: "Game Phase",
+                            endgame_material: "Endgame", openings: "Openings",
+                          };
+                          const label = LABELS[cat] ?? cat;
+                          return (
+                            <div key={cat} style={{
+                              padding: "12px 16px", borderRadius: "8px",
+                              background: "rgba(245,158,11,0.06)",
+                              borderLeft: "4px solid var(--warning)",
+                            }}>
+                              <div style={{ fontWeight: 700, fontSize: "14px", marginBottom: "3px" }}>
+                                Focus on {label} <span style={{ color: "var(--warning)" }}>({score}/100)</span>
+                              </div>
+                              <div style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
+                                Assign more {label.toLowerCase()} puzzles — currently the weakest category
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ── TAB 7: GAMES ── */}
         {activeSection === "games" && (
           <div
             style={{ display: "flex", flexDirection: "column", gap: "24px" }}

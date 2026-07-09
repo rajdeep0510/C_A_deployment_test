@@ -1,3 +1,4 @@
+
 import re
 import time
 import logging
@@ -17,12 +18,82 @@ from supabase import create_client, Client
 from worker_config import settings
 from worker_core.game_analyzer import GameAnalyzer
 from worker_core.batch_analyzer import BatchAnalyzer
+from storage.analysis_storage import CURRENT_ANALYSIS_VERSION
 
 supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
 
 HEADERS_CHESS_COM = {"User-Agent": "ChessAdvisor/1.0 (academic project)"}
 POLL_INTERVAL = 5          # seconds between polls when idle
 RETRY_SLEEP   = 10         # seconds to sleep after an unexpected worker-loop error
+STUCK_JOB_TIMEOUT_MINUTES = 30  # reset processing jobs older than this
+
+
+# ---------------------------------------------------------------------------
+# Supabase-backed per-game analysis cache
+#
+# Priority enforced by upsert semantics:
+#   individual → ON CONFLICT DO UPDATE  (always overwrites — highest accuracy)
+#   batch      → ON CONFLICT DO NOTHING (never overwrites an existing entry)
+#
+# So when batch asks for a game that was individually analyzed, it gets the
+# 500K-node result. When batch asks for a game only it has seen, it gets its
+# own cached 0.1s result. Individual analysis always wins.
+# ---------------------------------------------------------------------------
+
+def _cache_lookup(username: str, game_url: str) -> "dict | None":
+    """Return a cached analysis result from Supabase, or None if not found / stale."""
+    try:
+        res = (
+            supabase.table("game_analysis_cache")
+            .select("result, source")
+            .eq("username", username)
+            .eq("game_url", game_url)
+            .eq("analysis_version", CURRENT_ANALYSIS_VERSION)
+            .limit(1)
+            .execute()
+        )
+        if res.data:
+            row = res.data[0]
+            logger.info("Cache hit (%s): %s", row.get("source", "?"), game_url)
+            return row["result"]
+    except Exception as e:
+        logger.warning("cache_lookup failed for %s: %s", game_url, e)
+    return None
+
+
+def _cache_save_individual(username: str, game_url: str, result: dict) -> None:
+    """Persist an individual game result — always overwrites batch-level cache."""
+    try:
+        supabase.table("game_analysis_cache").upsert(
+            {
+                "username":         username,
+                "game_url":         game_url,
+                "analysis_version": CURRENT_ANALYSIS_VERSION,
+                "source":           "individual",
+                "result":           result,
+            },
+            on_conflict="username,game_url",
+        ).execute()
+    except Exception as e:
+        logger.warning("cache_save_individual failed for %s: %s", game_url, e)
+
+
+def _cache_save_batch(username: str, game_url: str, result: dict) -> None:
+    """Persist a batch result — never overwrites an existing individual result."""
+    try:
+        supabase.table("game_analysis_cache").upsert(
+            {
+                "username":         username,
+                "game_url":         game_url,
+                "analysis_version": CURRENT_ANALYSIS_VERSION,
+                "source":           "batch",
+                "result":           result,
+            },
+            on_conflict="username,game_url",
+            ignore_duplicates=True,   # DO NOTHING if a row already exists
+        ).execute()
+    except Exception as e:
+        logger.warning("cache_save_batch failed for %s: %s", game_url, e)
 
 
 # ---------------------------------------------------------------------------
@@ -127,6 +198,26 @@ def fetch_pgn(username: str, filename: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Startup maintenance
+# ---------------------------------------------------------------------------
+
+def reset_stuck_jobs() -> None:
+    """On startup, reset any jobs left in 'processing' from a previous crashed worker."""
+    from datetime import datetime, timezone, timedelta
+    cutoff = (datetime.now(timezone.utc) - timedelta(minutes=STUCK_JOB_TIMEOUT_MINUTES)).isoformat()
+    res = (
+        supabase.table("analysis_jobs")
+        .update({"status": "pending"})
+        .eq("status", "processing")
+        .lt("created_at", cutoff)
+        .execute()
+    )
+    count = len(res.data) if res.data else 0
+    if count:
+        logger.info("Reset %d stuck processing job(s) back to pending", count)
+
+
+# ---------------------------------------------------------------------------
 # Job processing
 # ---------------------------------------------------------------------------
 
@@ -148,6 +239,10 @@ def process_job(job: dict, analyzer: GameAnalyzer) -> None:
             {"status": "completed", "result": result}
         ).eq("id", job_id).execute()
 
+        # Write to shared cache so batch analysis can reuse this high-accuracy
+        # result instead of re-running Stockfish at lower batch depth.
+        _cache_save_individual(username, filename, result)
+
         logger.info("Job %s completed (accuracy=%.1f%%)", job_id, result.get("game_accuracy", 0))
 
     except Exception as e:
@@ -159,20 +254,41 @@ def process_job(job: dict, analyzer: GameAnalyzer) -> None:
 # Batch job processing
 # ---------------------------------------------------------------------------
 
+def _batch_progress_callback(job_id: str, done: int, total: int, current: str) -> None:
+    """Writes per-game progress to batch_jobs so the frontend can show a real progress bar."""
+    try:
+        supabase.table("batch_jobs").update({
+            "games_done":  done,
+            "games_total": total,
+            "current_game": current,
+        }).eq("id", job_id).execute()
+    except Exception as e:
+        logger.warning("Could not write batch progress for job %s: %s", job_id, e)
+
+
 def process_batch_job(job: dict) -> None:
-    job_id   = job["id"]
-    username = job["username"]
+    job_id    = job["id"]
+    username  = job["username"]
     game_urls = job.get("game_urls") or []
 
     logger.info("Processing batch job %s — %s, %d games", job_id, username, len(game_urls))
-    supabase.table("batch_jobs").update({"status": "processing"}).eq("id", job_id).execute()
+
+    # Mark as processing and write the total up-front so the frontend
+    # can show "0 / N" immediately and render an accurate progress bar.
+    supabase.table("batch_jobs").update({
+        "status":      "processing",
+        "games_total": len(game_urls),
+        "games_done":  0,
+    }).eq("id", job_id).execute()
 
     try:
-        pgn_list = []
+        pgn_list: list[str] = []
+        fetched_labels: list[str] = []
         for url in game_urls:
             try:
                 pgn = fetch_pgn(username, url)
                 pgn_list.append(pgn)
+                fetched_labels.append(url)
                 logger.info("Fetched PGN for %s", url)
             except Exception as e:
                 logger.warning("Could not fetch PGN for %s: %s", url, e)
@@ -181,11 +297,22 @@ def process_batch_job(job: dict) -> None:
             raise ValueError("No valid PGNs could be fetched for any of the %d URLs" % len(game_urls))
 
         batch_analyzer = BatchAnalyzer(engine_path=settings.STOCKFISH_PATH)
-        result = batch_analyzer.analyze_pgn_list(pgn_list, username)
+        result = batch_analyzer.analyze_pgn_list(
+            pgn_list,
+            username,
+            labels=fetched_labels,
+            on_progress=lambda done, total, current: _batch_progress_callback(
+                job_id, done, total, current
+            ),
+            cache_lookup=_cache_lookup,
+            cache_save=_cache_save_batch,
+        )
 
-        supabase.table("batch_jobs").update(
-            {"status": "completed", "result": result}
-        ).eq("id", job_id).execute()
+        supabase.table("batch_jobs").update({
+            "status": "completed",
+            "result": result,
+            "games_done": result.get("total_analyzed", len(pgn_list)),
+        }).eq("id", job_id).execute()
 
         logger.info("Batch job %s completed — %d/%d games analyzed",
                     job_id, result.get("total_analyzed", 0), len(game_urls))
@@ -201,6 +328,7 @@ def process_batch_job(job: dict) -> None:
 
 def main() -> None:
     logger.info("Stockfish worker started — Stockfish path: %s", settings.STOCKFISH_PATH)
+    reset_stuck_jobs()
     analyzer = GameAnalyzer(engine_path=settings.STOCKFISH_PATH)
 
     # Start engine once and keep it warm across jobs

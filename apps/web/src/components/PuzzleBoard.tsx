@@ -3,22 +3,16 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { Chessboard } from "react-chessboard";
 import { Chess } from "chess.js";
 import { CheckCircle, XCircle, Lightbulb, RotateCcw, TrendingUp, TrendingDown } from "lucide-react";
+import { formatThemeTags } from "@/lib/puzzles/theme-utils";
+import { useSettings } from "@/contexts/SettingsContext";
+import { useChessSound } from "@/hooks/useChessSound";
 
-const BOARD_THEME = { dark: "#769656", light: "#eeeed2" };
-
-const THEME_LABELS: Record<string, string> = {
-  hanging_piece:      "Hanging Piece",
-  fork:               "Fork",
-  pin:                "Pin",
-  skewer:             "Skewer",
-  back_rank:          "Back Rank",
-  discovered_attack:  "Discovered Attack",
-  promotion:          "Promotion",
-  checkmate:          "Checkmate",
-  endgame_technique:  "Endgame",
-  middlegame_tactic:  "Middlegame Tactic",
-  smothered_mate:     "Smothered Mate",
-  sacrifice:          "Sacrifice",
+const BOARD_THEMES: Record<string, { dark: string; light: string }> = {
+  classic: { dark: "#b58863", light: "#f0d9b5" },
+  green:   { dark: "#769656", light: "#eeeed2" },
+  mono:    { dark: "#4a4a4a", light: "#e8e8e8" },
+  ocean:   { dark: "#4870ac", light: "#dae3f5" },
+  walnut:  { dark: "#7c3f00", light: "#f5d6a4" },
 };
 
 type Puzzle = {
@@ -29,6 +23,7 @@ type Puzzle = {
   theme:      string;
   difficulty: number;
   rating?:    number;
+  gameUrl?:   string;
 };
 
 type Props = {
@@ -71,6 +66,9 @@ export default function PuzzleBoard({
   const [selectedSquare,   setSelectedSquare]   = useState<string | null>(null);
   const [pendingPromotion, setPendingPromotion] = useState<{ from: string; to: string } | null>(null);
   const startTime = useRef(Date.now());
+  const { boardTheme } = useSettings();
+  const boardColors = BOARD_THEMES[boardTheme] ?? BOARD_THEMES.classic;
+  const { play } = useChessSound();
   const firedRef  = useRef(false);
 
   const solutionMoves = useMemo(() => {
@@ -79,18 +77,35 @@ export default function PuzzleBoard({
     return [];
   }, [puzzle.puzzle_id]);
 
-  const boardOrientation: "white" | "black" =
-    puzzle.fen.split(" ")[1] === "w" ? "white" : "black";
+  // Lichess puzzle format: first move in Moves is the opponent's setup move (auto-played).
+  // The solver plays from the OPPOSITE side of whoever is to move in the FEN.
+  const isLichessFormat = solutionMoves.length >= 2;
+  const fenActiveColor  = puzzle.fen.split(" ")[1]; // "w" or "b"
+  const boardOrientation: "white" | "black" = isLichessFormat
+    ? (fenActiveColor === "w" ? "black" : "white")
+    : (fenActiveColor === "w" ? "white" : "black");
 
   const currentExpected  = moveIndex < solutionMoves.length ? solutionMoves[moveIndex] : null;
   const hintSquare       = currentExpected?.slice(0, 2) ?? "";
-  const totalPlayerMoves = Math.ceil(solutionMoves.length / 2);
-  const playerMovesDone  = Math.floor(moveIndex / 2);
+  // Solver moves are at indices 1, 3, 5... (index 0 is setup move)
+  const totalPlayerMoves = isLichessFormat
+    ? Math.ceil((solutionMoves.length - 1) / 2)
+    : Math.ceil(solutionMoves.length / 2);
+  const playerMovesDone = isLichessFormat
+    ? Math.floor((moveIndex - 1) / 2)
+    : Math.floor(moveIndex / 2);
 
   useEffect(() => {
-    setGame(new Chess(puzzle.fen));
+    const g = new Chess(puzzle.fen);
+    let startIdx = 0;
+    if (isLichessFormat) {
+      const sm = solutionMoves[0];
+      try { g.move({ from: sm.slice(0, 2), to: sm.slice(2, 4), promotion: sm[4] as PromoType }); } catch {}
+      startIdx = 1;
+    }
+    setGame(g);
     setSolveState("waiting");
-    setMoveIndex(0);
+    setMoveIndex(startIdx);
     setBoardFlash(null);
     setHintLevel(0);
     setFailMove("");
@@ -123,7 +138,9 @@ export default function PuzzleBoard({
       const to    = opponentUci.slice(2, 4);
       const promo = opponentUci[4] as PromoType | undefined;
       const copy  = new Chess(boardAfterPlayer.fen());
-      try { copy.move({ from, to, promotion: promo }); } catch { /* ignore */ }
+      let oppMove;
+      try { oppMove = copy.move({ from, to, promotion: promo }); } catch { /* ignore */ }
+      play(oppMove?.captured ? "capture" : "move");
       setGame(copy);
       setMoveIndex(nextPlayerIndex);
       onOpponentPlaying?.(false);
@@ -135,11 +152,12 @@ export default function PuzzleBoard({
           onAttempt(true, (Date.now() - startTime.current) / 1000);
         }
         flash("green");
+        setTimeout(() => play("solved"), 120);
       } else {
         setSolveState("waiting");
       }
     }, 600);
-  }, [solutionMoves, onAttempt, onOpponentPlaying]);
+  }, [solutionMoves, onAttempt, onOpponentPlaying, play]);
 
   function flash(colour: "green" | "red") {
     setBoardFlash(colour);
@@ -158,8 +176,10 @@ export default function PuzzleBoard({
 
     const promoChar = promotion ?? "q";
     const copy = new Chess(game.fen());
+    let moveResult;
     try {
-      if (!copy.move({ from, to, promotion: promoChar })) return false;
+      moveResult = copy.move({ from, to, promotion: promoChar });
+      if (!moveResult) return false;
     } catch { return false; }
 
     const base   = from + to;
@@ -172,6 +192,7 @@ export default function PuzzleBoard({
     setSelectedSquare(null);
 
     if (correct) {
+      play(moveResult.captured ? "capture" : "move");
       setGame(copy);
       setHintLevel(0);
       const nextIndex = moveIndex + 1;
@@ -182,10 +203,12 @@ export default function PuzzleBoard({
           firedRef.current = true;
           onAttempt(true, (Date.now() - startTime.current) / 1000);
         }
+        setTimeout(() => play("solved"), 120);
       } else {
         playOpponentReply(copy, solutionMoves[nextIndex], nextIndex + 1);
       }
     } else {
+      play("wrong");
       flash("red");
       setSolveState("failed");
       setFailMove(currentExpected);
@@ -244,9 +267,16 @@ export default function PuzzleBoard({
   }
 
   function handleTryAgain() {
-    setGame(new Chess(puzzle.fen));
+    const g = new Chess(puzzle.fen);
+    let startIdx = 0;
+    if (isLichessFormat) {
+      const sm = solutionMoves[0];
+      try { g.move({ from: sm.slice(0, 2), to: sm.slice(2, 4), promotion: sm[4] as PromoType }); } catch {}
+      startIdx = 1;
+    }
+    setGame(g);
     setSolveState("waiting");
-    setMoveIndex(0);
+    setMoveIndex(startIdx);
     setBoardFlash(null);
     setHintLevel(0);
     setFailMove("");
@@ -271,9 +301,20 @@ export default function PuzzleBoard({
     }
     if (selectedSquare && !attempted) {
       styles[selectedSquare] = { backgroundColor: "rgba(20,85,255,0.35)", borderRadius: "4px" };
+
+      // Legal move indicators
+      const legalTargets = game.moves({ square: selectedSquare as any, verbose: true });
+      for (const mv of legalTargets) {
+        const occupied = !!game.get(mv.to as Parameters<typeof game.get>[0]);
+        styles[mv.to] = occupied
+          // Capture ring: hollow circle around the enemy piece
+          ? { backgroundImage: "radial-gradient(circle at center, transparent 57%, rgba(0,0,0,0.22) 57%)" }
+          // Move dot: small filled circle on empty square
+          : { backgroundImage: "radial-gradient(circle, rgba(0,0,0,0.18) 23%, transparent 23%)" };
+      }
     }
     return styles;
-  }, [hintLevel, attempted, hintSquare, selectedSquare]);
+  }, [hintLevel, attempted, hintSquare, selectedSquare, game]);
 
   const promoChoices = game.turn() === "w" ? WHITE_PROMO : BLACK_PROMO;
 
@@ -288,7 +329,7 @@ export default function PuzzleBoard({
             padding: "4px 12px", borderRadius: "20px", fontSize: "13px", fontWeight: 600,
             border: "1px solid rgba(29,193,137,0.3)",
           }}>
-            {THEME_LABELS[puzzle.theme] ?? puzzle.theme.replace("_", " ")}
+            {formatThemeTags(puzzle.theme)}
           </span>
           <span style={{
             background: `${diffColor}18`, color: diffColor,
@@ -352,7 +393,7 @@ export default function PuzzleBoard({
       )}
       {hintLevel === 2 && solveState === "waiting" && (
         <div style={hintBox}>
-          Theme: <strong>{THEME_LABELS[puzzle.theme] ?? puzzle.theme}</strong> — look for the tactical pattern
+          Theme: <strong>{formatThemeTags(puzzle.theme)}</strong> — look for the tactical pattern
         </div>
       )}
       {hintLevel === 3 && solveState === "waiting" && (
@@ -360,7 +401,7 @@ export default function PuzzleBoard({
       )}
 
       {/* Board + promotion picker */}
-      <div style={{ position: "relative", maxWidth: "480px", width: "100%" }}>
+      <div style={{ position: "relative", maxWidth: "480px", width: "100%", marginInline: "auto" }}>
         <div style={{
           borderRadius: "12px", overflow: "hidden",
           outline: boardFlash === "green" ? "4px solid var(--success)" :
@@ -374,8 +415,8 @@ export default function PuzzleBoard({
               allowDragging:         solveState === "waiting" && !pendingPromotion,
               animationDurationInMs: 200,
               boardStyle:            { borderRadius: "8px" },
-              darkSquareStyle:       { backgroundColor: BOARD_THEME.dark },
-              lightSquareStyle:      { backgroundColor: BOARD_THEME.light },
+              darkSquareStyle:       { backgroundColor: boardColors.dark },
+              lightSquareStyle:      { backgroundColor: boardColors.light },
               squareStyles,
               onPieceDrop:           handlePieceDrop,
               onSquareClick:         handleSquareClick,
@@ -482,13 +523,23 @@ export default function PuzzleBoard({
               </span>
             )}
           </div>
-          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
             {solveState === "failed" && (
               <button onClick={handleTryAgain} style={secondaryBtnStyle}>
                 <RotateCcw size={13} /> Try Again
               </button>
             )}
             <button onClick={onNext} style={primaryBtnStyle}>Next Puzzle →</button>
+            {puzzle.gameUrl && (
+              <a
+                href={puzzle.gameUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ fontSize: "12px", color: "var(--text-secondary)", textDecoration: "underline", marginLeft: "auto" }}
+              >
+                View source game ↗
+              </a>
+            )}
           </div>
         </div>
       )}

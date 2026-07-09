@@ -86,7 +86,62 @@ export async function analyzeGame(username: string, filename: string): Promise<a
   return result;
 }
 
-export async function batchAnalyze(username, limit = 5) {
+// Fetch up to `limit` games of a specific time class directly from Chess.com archives.
+// Returns games normalized to the same shape GameCard + createBatchJob expect.
+export async function fetchGamesByTimeControl(
+  username: string,
+  timeClass: string,
+  limit = 50,
+): Promise<any[]> {
+  const headers = { "User-Agent": "ChessAdvisor/1.0" };
+  const archivesRes = await fetch(
+    `https://api.chess.com/pub/player/${username}/games/archives`,
+    { headers }
+  );
+  if (!archivesRes.ok) throw new Error("Could not fetch Chess.com archives");
+  const { archives } = await archivesRes.json();
+  if (!archives?.length) return [];
+
+  const result: any[] = [];
+  for (const archiveUrl of [...archives].reverse()) {
+    if (result.length >= limit) break;
+    try {
+      const res = await fetch(archiveUrl, { headers });
+      if (!res.ok) continue;
+      const { games } = await res.json();
+      const matching = ([...games] as any[])
+        .reverse()
+        .filter(g => (g.time_class || "").toLowerCase() === timeClass)
+        .map(g => {
+          // Normalize to the Game shape expected by GameCard and createBatchJob
+          let gameResult: string;
+          if (g.white?.result === "win") gameResult = "1-0";
+          else if (g.black?.result === "win") gameResult = "0-1";
+          else gameResult = "1/2-1/2";
+          return {
+            platform: "chess.com",
+            filename: g.url,
+            url: g.url,
+            white: g.white?.username ?? "",
+            black: g.black?.username ?? "",
+            white_rating: g.white?.rating,
+            black_rating: g.black?.rating,
+            result: gameResult,
+            end_time: g.end_time,
+            time_class: g.time_class,
+            time_control: g.time_control,
+            pgn: g.pgn,
+          };
+        });
+      result.push(...matching.slice(0, limit - result.length));
+    } catch {
+      // skip months that fail to load
+    }
+  }
+  return result;
+}
+
+export async function batchAnalyze(username: string, limit = 50) {
   const res = await apiFetch(
     `${BASE_URL}/api/analyze/${username}/batch?limit=${limit}`,
   );
@@ -94,11 +149,11 @@ export async function batchAnalyze(username, limit = 5) {
   return res.json();
 }
 
-export async function createBatchJob(username: string, game_urls: string[]): Promise<any> {
+export async function createBatchJob(username: string, game_urls: string[], tc?: string): Promise<any> {
   const res = await apiFetch(`${BASE_URL}/api/batch`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, game_urls }),
+    body: JSON.stringify({ username, game_urls, time_class: tc || null }),
   });
   if (!res.ok) throw new Error("Failed to create batch job");
   return res.json();
@@ -116,8 +171,10 @@ export async function getBatchJobs(username: string): Promise<any[]> {
   return res.json();
 }
 
-export function getReport(username, limit = 50) {
-  return dedupedGet(`${BASE_URL}/api/report/${username}?limit=${limit}`);
+export function getReport(username: string, limit = 50, tc?: string) {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (tc && tc !== "all") params.set("tc", tc);
+  return dedupedGet(`${BASE_URL}/api/report/${username}?${params}`);
 }
 
 export function getTrainingPlan(username, limit = 50) {
@@ -194,6 +251,7 @@ export async function recordPuzzleAttempt(
   timeTakenSeconds: number,
   puzzleRating?: number,
   source: "own_game" | "library" = "own_game",
+  puzzleType = "",
 ) {
   const res = await apiFetch(
     `${BASE_URL}/api/puzzles/${username}/${encodeURIComponent(puzzleId)}/attempt`,
@@ -204,8 +262,8 @@ export async function recordPuzzleAttempt(
         solved,
         time_taken_seconds: timeTakenSeconds,
         puzzle_rating:      puzzleRating ?? null,
-        player_rating:      null,
         source,
+        puzzle_type:        puzzleType,
       }),
     },
   );
@@ -297,20 +355,100 @@ export async function getRushPuzzles(count = 60) {
   return res.json();
 }
 
+// Maps our UI puzzle types to Lichess Themes column tags
+const PUZZLE_TYPE_TO_THEME: Record<string, string | undefined> = {
+  tactic_fork:               "fork",
+  tactic_pin:                "pin",
+  tactic_skewer:             "skewer",
+  tactic_sacrifice:          "sacrifice",
+  tactic_discovered_attack:  "discoveredAttack",
+  mate_in_1:                 "mateIn1",
+  mate_in_2:                 "mateIn2",
+  mate_in_3:                 "mateIn3",
+  mate_in_4plus:             "mateIn4",
+  mate_back_rank:            "backRankMate",
+  mate_smothered:            "smotheredMate",
+  mate_arabian:              "arabianMate",
+  mate_opera:                "operaMate",
+  endgame_pawn:              "pawnEndgame",
+  endgame_rook:              "rookEndgame",
+  endgame_bishop:            "bishopEndgame",
+  endgame_knight:            "knightEndgame",
+  endgame_queen:             "queenEndgame",
+  endgame_queen_rook:        "queenRookEndgame",
+};
+
+const PUZZLE_TYPE_TO_PHASE: Record<string, string | undefined> = {
+  phase_opening:    "opening",
+  phase_middlegame: "middlegame",
+  phase_endgame:    "endgame",
+};
+
+// Maps opening_* UI types to Lichess OpeningTags column family names.
+// Lichess tags use Title_Case_With_Underscores (e.g. "Sicilian_Defense").
+// All opening types also implicitly use phase:"opening".
+const PUZZLE_TYPE_TO_OPENING: Record<string, string | undefined> = {
+  opening_sicilian_defense:      "Sicilian_Defense",
+  opening_french_defense:        "French_Defense",
+  "opening_caro-kann_defense":   "Caro-Kann_Defense",
+  opening_italian_game:          "Italian_Game",
+  opening_ruy_lopez:             "Ruy_Lopez",
+  opening_scotch_game:           "Scotch_Game",
+  opening_four_knights_game:     "Four_Knights_Game",
+  opening_russian_game:          "Russian_Game",
+  opening_philidor_defense:      "Philidor_Defense",
+  opening_bishops_opening:       "Bishops_Opening",
+  opening_kings_gambit_accepted: "Kings_Gambit_Accepted",
+  opening_kings_gambit_declined: "Kings_Gambit_Declined",
+  opening_vienna_game:           "Vienna_Game",
+  opening_kings_pawn_game:       "Kings_Pawn_Game",
+  opening_scandinavian_defense:  "Scandinavian_Defense",
+  opening_alekhine_defense:      "Alekhines_Defense",
+  opening_modern_defense:        "Modern_Defense",
+  opening_pirc_defense:          "Pirc_Defense",
+  opening_queens_gambit_declined:"Queens_Gambit_Declined",
+  opening_queens_gambit_accepted:"Queens_Gambit_Accepted",
+  opening_queens_pawn_game:      "Queens_Pawn_Game",
+  opening_slav_defense:          "Slav_Defense",
+  opening_kings_indian_defense:  "Kings_Indian_Defense",
+  opening_benoni_defense:        "Benoni_Defense",
+  opening_indian_defense:        "Indian_Defense",
+  "opening_nimzo-larsen_attack": "Nimzo-Larsen_Attack",
+  opening_nimzowitsch_defense:   "Nimzowitsch_Defense",
+  opening_zukertort_opening:     "Zukertort_Opening",
+  opening_english_opening:       "English_Opening",
+  opening_dutch_defense:         "Dutch_Defense",
+  opening_englund_gambit:        "Englund_Gambit",
+};
+
+const DIFFICULTY_RANGES: Record<string, [number, number]> = {
+  beginner:     [200,  1000],
+  intermediate: [1000, 1400],
+  advanced:     [1400, 1800],
+  expert:       [1800, 2500],
+};
+
 export async function getLibraryPuzzles(
-  theme?: string,
-  phase?: string,
-  ratingMin = 800,
-  ratingMax = 2500,
-  limit = 10,
+  puzzleType = "phase_middlegame",
+  difficulty  = "intermediate",
+  limit = 20,
 ) {
+  const [ratingMin, ratingMax] = DIFFICULTY_RANGES[difficulty] ?? [1000, 1400];
   const params = new URLSearchParams({
     rating_min: String(ratingMin),
     rating_max: String(ratingMax),
     limit: String(limit),
   });
-  if (theme) params.set("theme", theme);
-  if (phase) params.set("phase", phase);
+
+  const theme   = PUZZLE_TYPE_TO_THEME[puzzleType];
+  const phase   = PUZZLE_TYPE_TO_PHASE[puzzleType];
+  const opening = PUZZLE_TYPE_TO_OPENING[puzzleType];
+
+  if (theme)   params.set("theme",   theme);
+  if (phase)   params.set("phase",   phase);
+  // Opening puzzles always come from the opening phase
+  if (opening) { params.set("opening", opening); params.set("phase", "opening"); }
+
   const res = await apiFetch(`${BASE_URL}/api/puzzles/library?${params}`);
   if (!res.ok) throw new Error("Failed to fetch library puzzles");
   return res.json();

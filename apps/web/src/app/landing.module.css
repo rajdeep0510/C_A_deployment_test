@@ -96,6 +96,145 @@
   gap: 10px;
 }
 
+/* ── Hamburger button (hidden on desktop) ── */
+.hamburgerBtn {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.hamburgerBtn span {
+  display: block;
+  width: 18px;
+  height: 2px;
+  background: #f7f7f7;
+  border-radius: 2px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: center;
+}
+
+/* ── Mobile menu overlay ── */
+.mobileMenuOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 590;
+  backdrop-filter: blur(2px);
+}
+
+/* ── Mobile menu drawer ── */
+.mobileMenu {
+  position: fixed;
+  top: 0;
+  right: -300px;
+  width: 280px;
+  height: 100%;
+  background: rgba(8, 8, 8, 0.97);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 600;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  gap: 0;
+}
+
+.mobileMenuOpen {
+  right: 0;
+}
+
+.mobileMenuHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 16px;
+}
+
+.mobileMenuClose {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #a1a1aa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.mobileMenuLinks {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.mobileMenuLink {
+  display: block;
+  padding: 12px 14px;
+  color: #a1a1aa;
+  font-size: 15px;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mobileMenuLink:hover {
+  color: #f7f7f7;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.mobileMenuActions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin-top: auto;
+}
+
+.mobileMenuActions .navLogin {
+  text-align: center;
+  width: 100%;
+  display: block;
+}
+
+.mobileMenuRegister {
+  display: block;
+  text-align: center;
+  padding: 10px 22px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.06);
+  color: #a1a1aa;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.mobileMenuRegister:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f7f7f7;
+}
+
 .navLogin {
   background: #f5f5f5;
   color: #050505;
@@ -1229,6 +1368,9 @@
   .navbar {
     padding: 14px 24px;
   }
+  .hamburgerBtn {
+    display: flex;
+  }
   .section {
     padding: 72px 24px;
   }
@@ -1316,7 +1458,7 @@
   }
   .heroCtas {
     flex-direction: column;
-    align-items: center;
+    align-items: stretch;
   }
   .btnGetStarted,
   .btnDemo {
@@ -1325,7 +1467,12 @@
   }
   .ctaButtons {
     flex-direction: column;
-    align-items: center;
+    align-items: stretch;
+  }
+  .ctaButtons .btnGetStarted,
+  .ctaButtons .btnAnalyze {
+    width: 100%;
+    justify-content: center;
   }
   .statsGrid {
     grid-template-columns: 1fr 1fr;
@@ -1340,5 +1487,29 @@
     flex-direction: column;
     align-items: center;
     text-align: center;
+  }
+  /* Hero section: tighter top padding on small phones */
+  .hero {
+    padding: 80px 20px 48px;
+  }
+  /* Sections: tighter padding on small phones */
+  .section {
+    padding: 56px 20px;
+  }
+  .classificationSection {
+    padding: 56px 20px;
+  }
+  .ctaSection {
+    padding: 56px 20px;
+  }
+  .analyticsSection {
+    padding: 56px 20px;
+  }
+  .numbersBar {
+    padding: 32px 20px;
+  }
+  /* Chessboard max-width on small phones */
+  .chessboardContainer {
+    max-width: 260px;
   }
 }

@@ -183,7 +183,7 @@ export default function AdminDashboard() {
       <CoachHeader />
       {/* Purple identity strip */}
       <div style={{ height: "4px", background: "linear-gradient(90deg, #6366f1, #a78bfa, #6366f1)" }} />
-      <main className="container animate-fade-in" style={{ paddingTop: "40px", paddingBottom: "60px" }}>
+      <main className="container animate-fade-in page-content-mobile" style={{ paddingTop: "40px", paddingBottom: "60px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "32px" }}>
           <div style={{ width: "42px", height: "42px", borderRadius: "10px", background: "linear-gradient(135deg,#6366f1,#818cf8)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <Shield size={22} color="#fff" />

@@ -68,7 +68,7 @@ export default function CoachAcademyPage() {
   return (
     <>
       <CoachHeader />
-      <main className="container animate-fade-in" style={{ paddingTop: "40px", paddingBottom: "60px" }}>
+      <main className="container animate-fade-in page-content-mobile" style={{ paddingTop: "40px", paddingBottom: "60px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "32px" }}>
           <div style={{ width: "42px", height: "42px", borderRadius: "10px", background: "linear-gradient(135deg,#f59e0b,#fbbf24)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <GraduationCap size={22} color="#fff" />

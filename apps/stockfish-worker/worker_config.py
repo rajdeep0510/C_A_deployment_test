@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     STOCKFISH_PATH: str = "stockfish"
     ANALYSIS_TIME: float = 0.1      # kept for reference; engine now uses ANALYSIS_NODES
     ANALYSIS_NODES: int = 500_000  # Reduced for Render free tier (30s timeout protection)
+    BATCH_ANALYSIS_TIME: float = 0.1  # seconds per position for batch jobs (time-based, adaptive)
     ENGINE_THREADS: int = 1        # Reduced for Render free tier
     ENGINE_HASH_MB: int = 64       # Reduced for Render free tier (512MB RAM protection)
 

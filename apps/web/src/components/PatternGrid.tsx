@@ -39,7 +39,7 @@ function PatternCard({
   color: string;
 }) {
   if (!summary) return null;
-  const entries = Object.entries(summary);
+  const entries = Object.entries(summary).filter(([, v]) => typeof v === "number");
   const totals = entries.filter(([k]) => isTotal(k));
   const details = entries.filter(([k]) => !isTotal(k));
 

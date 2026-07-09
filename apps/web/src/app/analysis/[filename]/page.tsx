@@ -415,6 +415,7 @@ export default function GameAnalysisPage({
 
   return (
     <div
+      className="analysis-root"
       style={{
         position: "fixed",
         top: 0,
@@ -428,10 +429,10 @@ export default function GameAnalysisPage({
     >
       <Header />
       {/* spacer for the 70px fixed header */}
-      <div style={{ height: "70px", flexShrink: 0 }} />
+      <div className="analysis-header-spacer" style={{ height: "70px", flexShrink: 0 }} />
 
       <main
-        className="container animate-fade-in"
+        className="container animate-fade-in analysis-main-container"
         style={{
           flex: 1,
           minHeight: 0,
@@ -445,6 +446,7 @@ export default function GameAnalysisPage({
       >
         {/* Top bar */}
         <div
+          className="analysis-top-bar"
           style={{
             display: "flex",
             justifyContent: "space-between",
@@ -453,15 +455,15 @@ export default function GameAnalysisPage({
           }}
         >
           <button
-            className="btn btn-secondary"
+            className="btn btn-secondary analysis-back-btn"
             onClick={() => router.push("/dashboard")}
             style={{ padding: "8px 12px" }}
           >
             <ArrowLeft size={18} /> Back
           </button>
           {analysis && (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px", minWidth: 0, maxWidth: "55%" }}>
-              <div style={{
+            <div className="analysis-top-info" style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px", minWidth: 0, maxWidth: "55%" }}>
+              <div className="analysis-game-title" style={{
                 fontSize: "13px",
                 fontWeight: "600",
                 color: "var(--text-primary)",
@@ -472,14 +474,15 @@ export default function GameAnalysisPage({
               }}>
                 {analysis.white_player} vs {analysis.black_player}
               </div>
-              <div style={{ display: "flex", gap: "20px", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
+              <div className="analysis-accuracy-row" style={{ display: "flex", gap: "20px", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
                 <div style={{ whiteSpace: "nowrap" }}>
                   <span style={{ color: "var(--text-secondary)", fontSize: "13px", marginRight: "6px" }}>Accuracy</span>
-                  <span style={{ fontSize: "22px", fontWeight: "700", color: "var(--accent-color)" }}>
+                  <span className="analysis-accuracy-value" style={{ fontSize: "22px", fontWeight: "700", color: "var(--accent-color)" }}>
                     {analysis.game_accuracy}%
                   </span>
                 </div>
                 <div
+                  className="analysis-info-divider"
                   style={{
                     height: "28px",
                     width: "1px",
@@ -487,7 +490,7 @@ export default function GameAnalysisPage({
                     flexShrink: 0,
                   }}
                 />
-                <div style={{ minWidth: 0, maxWidth: "260px" }}>
+                <div className="analysis-opening-block" style={{ minWidth: 0, maxWidth: "260px" }}>
                   <span style={{ color: "var(--text-secondary)", fontSize: "13px", marginRight: "6px" }}>Opening</span>
                   <span style={{
                     fontSize: "14px",
@@ -512,9 +515,8 @@ export default function GameAnalysisPage({
           <Loader message="Analyzing game with Stockfish… This may take a moment." />
         ) : analysis ? (
           <div
+            className="analysis-main-grid"
             style={{
-              display: "grid",
-              gridTemplateColumns: "minmax(380px, 1fr) minmax(400px, 1.6fr)",
               gap: "28px",
               flex: 1,
               overflow: "hidden",
@@ -522,6 +524,7 @@ export default function GameAnalysisPage({
           >
             {/* LEFT: Chessboard */}
             <div
+              className="analysis-board-col"
               style={{
                 display: "flex",
                 flexDirection: "column",
@@ -559,7 +562,7 @@ export default function GameAnalysisPage({
                   >
                     B
                   </div>
-                  <span style={{ fontSize: "14px", fontWeight: "600" }}>
+                  <span className="analysis-player-name" style={{ fontSize: "14px", fontWeight: "600" }}>
                     {analysis.black_player}
                   </span>
                 </div>
@@ -572,6 +575,7 @@ export default function GameAnalysisPage({
 
               {/* Board — fills all available height, maintains 1:1 aspect ratio */}
               <div
+                className="analysis-board-fill"
                 style={{
                   flex: 1,
                   minHeight: 0,
@@ -678,7 +682,7 @@ export default function GameAnalysisPage({
                   >
                     W
                   </div>
-                  <span style={{ fontSize: "14px", fontWeight: "600" }}>
+                  <span className="analysis-player-name" style={{ fontSize: "14px", fontWeight: "600" }}>
                     {analysis.white_player}
                   </span>
                 </div>
@@ -690,7 +694,7 @@ export default function GameAnalysisPage({
               </div>
 
               <div
-                className="glass-card"
+                className="glass-card analysis-controls"
                 style={{
                   flexShrink: 0,
                   display: "flex",
@@ -718,12 +722,14 @@ export default function GameAnalysisPage({
                   <ChevronLeft size={18} />
                 </button>
                 <button
+                  className="analysis-play-btn"
                   onClick={togglePlay}
                   disabled={fenHistory.length === 0}
                   title={isPlaying ? "Pause" : "Play through game"}
                   style={{
                     display: "flex",
                     alignItems: "center",
+                    justifyContent: "center",
                     gap: "6px",
                     padding: "8px 18px",
                     borderRadius: "8px",
@@ -739,7 +745,7 @@ export default function GameAnalysisPage({
                   }}
                 >
                   {isPlaying ? <Pause size={15} /> : <Play size={15} />}
-                  {isPlaying ? "Pause" : "Play"}
+                  <span className="analysis-play-label">{isPlaying ? "Pause" : "Play"}</span>
                 </button>
                 <button
                   className="btn btn-secondary"
@@ -763,6 +769,7 @@ export default function GameAnalysisPage({
 
             {/* RIGHT: Tabbed panel */}
             <div
+              className="analysis-annotation-col"
               style={{
                 display: "flex",
                 flexDirection: "column",

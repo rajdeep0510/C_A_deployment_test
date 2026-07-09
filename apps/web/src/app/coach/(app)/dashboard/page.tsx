@@ -369,7 +369,7 @@ export default function CoachDashboardPage() {
       {/* Indigo identity strip */}
       <div style={{ height: "4px", background: "linear-gradient(90deg, #6366f1, #818cf8, #6366f1)" }} />
       <main
-        className="container animate-fade-in"
+        className="container animate-fade-in page-content-mobile"
         style={{ paddingTop: "40px", paddingBottom: "60px" }}
       >
         {/* Page header */}
@@ -506,7 +506,7 @@ export default function CoachDashboardPage() {
                   style={{
                     display: "grid",
                     gridTemplateColumns:
-                      "repeat(auto-fill, minmax(300px, 1fr))",
+                      "repeat(auto-fill, minmax(min(300px, 100%), 1fr))",
                     gap: "20px",
                   }}
                 >
@@ -1136,7 +1136,7 @@ export default function CoachDashboardPage() {
                       style={{
                         display: "grid",
                         gridTemplateColumns:
-                          "repeat(auto-fill, minmax(320px, 1fr))",
+                          "repeat(auto-fill, minmax(min(300px, 100%), 1fr))",
                         gap: "16px",
                       }}
                     >

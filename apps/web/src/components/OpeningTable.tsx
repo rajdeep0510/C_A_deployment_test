@@ -61,6 +61,7 @@ function TH({ label, k, sortKey, sortDesc, toggle }: THProps) {
         whiteSpace: "nowrap",
         userSelect: "none",
         fontWeight: sortKey === k ? "700" : "400",
+        textAlign: k === "name" ? "left" : "right",
       }}
     >
       <span
@@ -127,9 +128,9 @@ export default function OpeningTable({ openings, caption }: Props) {
         <thead style={{ background: "var(--surface-1)" }}>
           <tr>
             <TH label="Opening" k="name" sortKey={sortKey} sortDesc={sortDesc} toggle={toggle} />
-            <TH label="W/L/D" k="wins" sortKey={sortKey} sortDesc={sortDesc} toggle={toggle} />
+            <TH label="W / L / D" k="wins" sortKey={sortKey} sortDesc={sortDesc} toggle={toggle} />
             <TH label="Accuracy" k="accuracy" sortKey={sortKey} sortDesc={sortDesc} toggle={toggle} />
-            <TH label="Mistake Rate" k="mistake_rate" sortKey={sortKey} sortDesc={sortDesc} toggle={toggle} />
+            <TH label="Err/Game" k="mistake_rate" sortKey={sortKey} sortDesc={sortDesc} toggle={toggle} />
           </tr>
         </thead>
         <tbody>
@@ -153,6 +154,7 @@ export default function OpeningTable({ openings, caption }: Props) {
                   padding: "10px 12px",
                   fontFamily: "monospace",
                   fontSize: "13px",
+                  textAlign: "right",
                 }}
               >
                 {wld(row)}
@@ -161,6 +163,7 @@ export default function OpeningTable({ openings, caption }: Props) {
                 style={{
                   padding: "10px 12px",
                   fontWeight: "700",
+                  textAlign: "right",
                   color: accuracyColor(row.accuracy),
                 }}
               >
@@ -169,6 +172,7 @@ export default function OpeningTable({ openings, caption }: Props) {
               <td
                 style={{
                   padding: "10px 12px",
+                  textAlign: "right",
                   color:
                     row.mistake_rate != null && row.mistake_rate > 1
                       ? "var(--danger)"
