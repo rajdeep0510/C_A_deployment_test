@@ -1,7 +1,7 @@
 # Chess Advisor — Product Vision & Feature Roadmap
 
 > **Internal document. For team and academy sales discussions.**
-> Last updated: June 2026
+> Last updated: July 2026
 
 ---
 
@@ -46,11 +46,17 @@ We target the gap: **the software that runs an entire chess academy**. Not a too
 | Incremental batch analysis (only new games re-analyzed) | ✅ Done |
 | Concurrency control (asyncio semaphore, max 2 engines, 503 on overflow) | ✅ Done |
 | Quick opening stats from PGN headers (no Stockfish) | ✅ Done |
-| Progress reports & training plans | ✅ Done (report/training-plan bug fix pending) |
+| Progress reports & training plans | ✅ Done |
 | Single-game board replay | ✅ Done |
 | Coach dashboard with player roster | ✅ Done |
-| YOLOv8 board detection from images | 🔬 Prototype |
-| Puzzle section | 🔲 Not started |
+| Blunder Clinic (review mistakes on an interactive board) | ✅ Done |
+| Opening Drill (play any opening vs Stockfish, configurable ELO) | ✅ Done |
+| Drill — Takeback & Hint training aids | ✅ Done |
+| Drill — Save PGN + browser-side WASM game analysis | ✅ Done |
+| Puzzle section (own-game + themed + time pressure) | 🔬 In progress |
+| Doubt Feature — position Q&A with Claude (Phase 1) | 🔲 Planned |
+| Doubt Feature — piece detection from photo (Phase 2) | 🔲 Planned |
+| YOLOv8 board detection from images | 🔬 Prototype (feeds Phase 2) |
 | AI Game Narrator | 🔲 Not started |
 | Parent portal | 🔲 Not started |
 | Coach annotation system | 🔲 Not started |
@@ -230,6 +236,160 @@ Every student's puzzle history is stored:
 
 ---
 
+## Opening Drill — Shipped July 2026
+
+A fully browser-side training mode where players practice any of 45 opening lines against Stockfish at a configurable ELO (600–2400). Zero server cost — the WASM engine that already powers game analysis does all the work.
+
+**Key decisions made:**
+- ELO below 1320 is approximated via Skill Level (0–10) + very short movetime (30–400ms). Stockfish's `UCI_Elo` minimum is 1320; this is as weak as it can physically play.
+- Training aids (Takeback, Hint) are opt-in toggles set before the drill starts — not always visible, so serious players aren't distracted.
+- Move log is always shown regardless of toggle state — players can always see what was just played.
+- WASM analysis after the game uses `score cp` from `info` lines, which is unaffected by Skill Level — so even at 600 ELO the post-game eval is accurate.
+- Save PGN downloads a standards-compliant `.pgn` with proper headers for import into any tool.
+
+**Weak-spot recommendations** pull from the existing `/api/report/{username}` endpoint (openings with win rate < 45%) and fuzzy-match to the drill opening list — no new backend work.
+
+---
+
+## THE DOUBT FEATURE — Next Major Milestone
+
+### The Problem We're Solving
+
+Players see a position — in a game, in a lesson, on a physical board — and want to understand it. Right now their options are: post in a Discord and wait, pay for a lesson, or try to interpret raw Stockfish output. None of these are fast, cheap, or satisfying.
+
+We build the instant answer layer: show the position, ask in plain English, get a real explanation.
+
+---
+
+### Phase 1 — Position Entry + Claude Q&A (Ship First)
+
+**How it works:**
+1. Player sets up a position — three input methods:
+   - **Board editor**: drag pieces onto an empty board
+   - **FEN paste**: copy from Lichess/Chess.com and paste directly
+   - **PGN paste**: paste a game, seek to any move
+2. Position loads on the interactive board
+3. Stockfish evaluates the position silently in the background (WASM, same engine already running)
+4. Player types a natural-language question:
+   - *"Why is Nf3 bad here?"*
+   - *"What's the plan for White?"*
+   - *"Is this a draw? How do I play for a win?"*
+   - *"My coach says I should have played d4 — why?"*
+5. Claude receives: the FEN, the top engine lines (UCI output), material count, whose turn it is
+6. Claude answers in plain English, referencing the actual position
+
+**What this looks like:**
+
+```
+┌──────────────────────────────────────────────────────┐
+│  Position Doubt                                       │
+│                                                       │
+│  [ Chessboard — editable ]                            │
+│                                                       │
+│  FEN: r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/...    │
+│  Engine: +0.3 (White slightly better)                 │
+│                                                       │
+│  Ask anything about this position...                  │
+│  ┌────────────────────────────────────────────┐      │
+│  │ Why can't I castle queenside here?          │      │
+│  └────────────────────────────────────────────┘      │
+│                              [Ask]                    │
+│                                                       │
+│  ── Answer ───────────────────────────────────────── │
+│  You can castle queenside, but it's risky. Your      │
+│  c8 bishop hasn't moved yet, but your queen is on    │
+│  d1 blocking. More importantly, after ...Ng4 your    │
+│  king would walk into an open file. Kingside         │
+│  castling is safer here — Stockfish agrees at +0.4.  │
+└──────────────────────────────────────────────────────┘
+```
+
+**Why Phase 1 ships first:**
+- No CV model needed — works for 90% of doubts immediately
+- FEN/PGN paste covers every position from any online game
+- Board editor covers lesson positions and study material
+- All analysis is WASM (zero server cost beyond the Claude API call)
+- Can be live in days, not weeks
+
+---
+
+### Phase 2 — Photo-to-FEN via Piece Detection (Layer on Top)
+
+We have a **YOLOv8 piece detection model** already prototyped. In Phase 2 this becomes an input method alongside FEN paste and the board editor:
+
+1. Player takes a photo of a physical board or screenshots a position
+2. Model detects piece types and squares → generates FEN
+3. A **confidence score** is shown: *"87% confident — check the board before asking"*
+4. Player can manually correct any piece before submitting
+5. Rest of the flow is identical to Phase 1
+
+**Why Phase 2 is separate:**
+- Detection accuracy on off-angle photos, unusual piece sets, and dark boards is imperfect
+- A wrong FEN produces a meaningless answer — worse than no answer
+- Phase 1 builds the Q&A layer and proves the value before adding the CV complexity
+- Phase 2 becomes a "wow" demo moment once the core is solid
+
+**What good looks like at launch of Phase 2:**
+- > 90% piece accuracy on standard Staunton sets under decent lighting
+- Graceful failure: if confidence < 70%, show a warning and let user correct
+- Board orientation detection (is White at the bottom?)
+- Support for both landscape and portrait phone shots
+
+---
+
+### Doubt Feature — Technical Architecture
+
+```
+User input (FEN / board editor / photo)
+        │
+        ▼
+  [Board Editor UI]  ←──── react-chessboard (already in stack)
+        │
+        ▼
+  WASM Stockfish eval  ←──── same engine as Opening Drill / analysis
+  (top 3 lines, depth 15, ~2s)
+        │
+        ▼
+  Claude API call
+  Payload: { fen, engine_lines, question, material_balance, turn }
+  Model: claude-sonnet-5 (fast + capable)
+        │
+        ▼
+  Plain-English answer  →  streamed to UI
+```
+
+**Photo path (Phase 2):**
+```
+User photo
+   │
+   ▼
+YOLOv8 model (our trained weights)
+   │
+   ▼
+Piece grid → FEN string + confidence score
+   │
+   ▼
+User confirms / corrects → same flow as above
+```
+
+---
+
+### Doubt Feature — Build Order
+
+| Step | What | When |
+|---|---|---|
+| 1 | Board editor UI (drag pieces onto blank board) | Phase 1 start |
+| 2 | FEN/PGN paste input | Phase 1 start |
+| 3 | WASM eval on the entered position | Phase 1 (already built) |
+| 4 | Claude Q&A API route with streaming | Phase 1 |
+| 5 | `/doubts` page with board + question box | Phase 1 |
+| 6 | Doubt history (save past Q&As per user) | Phase 1 follow-up |
+| 7 | Photo upload + YOLOv8 API endpoint | Phase 2 |
+| 8 | Confidence overlay + manual correction UI | Phase 2 |
+| 9 | Mobile camera capture (PWA) | Phase 2 follow-up |
+
+---
+
 ## Other High-End Features
 
 ### 1. Academy Analytics Dashboard (Coach View)
@@ -332,29 +492,40 @@ Based on a student's playing style detected from their games (aggressive, positi
 
 ## Build Order — Phase by Phase
 
-### Phase 1 — The Puzzle Section (Current Priority)
-- Own-game puzzle generator (Mode 1) — uses existing analysis data
-- Spaced repetition scheduler
-- Puzzle board UI (react-chessboard already in the app)
-- Basic puzzle stats (streak, accuracy by theme)
-- Time pressure drills (Mode 3)
+### ✅ Phase 0 — Foundation (Shipped)
+- Game fetch, Stockfish analysis, blunder classification, batch caching
+- Report page, training plan, blunder clinic board review
+- Opening Drill: 45 openings, configurable ELO, takeback/hint, WASM post-game analysis, PGN export
+- Puzzle section: own-game puzzles, spaced repetition, themed + time pressure modes
 
-### Phase 2 — Academy Layer
+### Phase 1 — Doubt Feature (Next)
+- Board editor (FEN/PGN paste + drag-to-set-up)
+- WASM position evaluation (reuse existing engine)
+- Claude Q&A streaming API route
+- `/doubts` page: board + question box + answer panel
+- Doubt history per user (Supabase)
+
+### Phase 2 — CV-Powered Position Capture
+- Photo upload endpoint → YOLOv8 inference → FEN output
+- Confidence score + manual correction UI before Q&A
+- Mobile camera capture support (PWA)
+
+### Phase 3 — Academy Layer
 - Coach dashboard: academy-wide weakness overview
 - Parent report generator (PDF + weekly email)
 - Puzzle homework assignment (coach assigns theme, student completes)
 
-### Phase 3 — AI Features
-- AI Game Narrator (LLM integration)
+### Phase 4 — AI Features
+- AI Game Narrator (LLM post-game story)
 - Themed puzzle bank (owned content, not third-party)
-- Coach annotation system
+- Coach annotation system (move-by-move text notes)
 
-### Phase 4 — Competitive Intelligence
-- Tournament preparation module
+### Phase 5 — Competitive Intelligence
+- Tournament preparation module (pull opponent games, generate prep pack)
 - Rival matching within academy
 - Opening repertoire builder
 
-### Phase 5 — Platform Polish
+### Phase 6 — Platform Polish
 - Mobile app (React Native)
 - Offline puzzle mode
 - Video lesson integration
