@@ -320,6 +320,9 @@ class BatchAnalyzer:
                     "time_control": g.get('metadata', {}).get('TimeControl', ''),
                     # Full move-by-move data so consumers don't need to open cache files
                     "move_history": g.get('move_history', []),
+                    # All moves (user + opponent) ordered by ply — lets the frontend
+                    # reconstruct the FEN at any move number using chess.js.
+                    "full_history": g.get('full_history', []),
                 } for g in results
             ],
             # All moves across every game grouped by quality label
