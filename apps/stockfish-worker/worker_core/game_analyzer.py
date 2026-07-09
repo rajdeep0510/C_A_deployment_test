@@ -283,6 +283,7 @@ class GameAnalyzer:
                 analysis_data.append({
                     "move_number": move_num,
                     "san": san_move,
+                    "fen_before": board_before.fen(),
                     "eval_before": user_eval_before,
                     "eval_after": user_eval_after,
                     "eval": user_eval_after,
