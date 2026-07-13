@@ -417,7 +417,12 @@ export const ModelName = {
   puzzle_library: 'puzzle_library',
   puzzle_progress: 'puzzle_progress',
   puzzles: 'puzzles',
-  analysis_jobs: 'analysis_jobs'
+  analysis_jobs: 'analysis_jobs',
+  batch_jobs: 'batch_jobs',
+  app_users: 'app_users',
+  user_sessions: 'user_sessions',
+  email_verification_tokens: 'email_verification_tokens',
+  password_reset_tokens: 'password_reset_tokens'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -433,7 +438,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "audit_log_entries" | "custom_oauth_providers" | "flow_state" | "identities" | "instances" | "mfa_amr_claims" | "mfa_challenges" | "mfa_factors" | "oauth_authorizations" | "oauth_client_states" | "oauth_clients" | "oauth_consents" | "one_time_tokens" | "refresh_tokens" | "saml_providers" | "saml_relay_states" | "schema_migrations" | "sessions" | "sso_domains" | "sso_providers" | "users" | "webauthn_challenges" | "webauthn_credentials" | "academies" | "game_annotations" | "player_puzzle_rating" | "player_rating_history" | "player_theme_rating" | "players" | "profiles" | "puzzle_library" | "puzzle_progress" | "puzzles" | "analysis_jobs"
+    modelProps: "audit_log_entries" | "custom_oauth_providers" | "flow_state" | "identities" | "instances" | "mfa_amr_claims" | "mfa_challenges" | "mfa_factors" | "oauth_authorizations" | "oauth_client_states" | "oauth_clients" | "oauth_consents" | "one_time_tokens" | "refresh_tokens" | "saml_providers" | "saml_relay_states" | "schema_migrations" | "sessions" | "sso_domains" | "sso_providers" | "users" | "webauthn_challenges" | "webauthn_credentials" | "academies" | "game_annotations" | "player_puzzle_rating" | "player_rating_history" | "player_theme_rating" | "players" | "profiles" | "puzzle_library" | "puzzle_progress" | "puzzles" | "analysis_jobs" | "batch_jobs" | "app_users" | "user_sessions" | "email_verification_tokens" | "password_reset_tokens"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -2953,6 +2958,376 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    batch_jobs: {
+      payload: Prisma.$batch_jobsPayload<ExtArgs>
+      fields: Prisma.batch_jobsFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.batch_jobsFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$batch_jobsPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.batch_jobsFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$batch_jobsPayload>
+        }
+        findFirst: {
+          args: Prisma.batch_jobsFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$batch_jobsPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.batch_jobsFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$batch_jobsPayload>
+        }
+        findMany: {
+          args: Prisma.batch_jobsFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$batch_jobsPayload>[]
+        }
+        create: {
+          args: Prisma.batch_jobsCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$batch_jobsPayload>
+        }
+        createMany: {
+          args: Prisma.batch_jobsCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.batch_jobsCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$batch_jobsPayload>[]
+        }
+        delete: {
+          args: Prisma.batch_jobsDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$batch_jobsPayload>
+        }
+        update: {
+          args: Prisma.batch_jobsUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$batch_jobsPayload>
+        }
+        deleteMany: {
+          args: Prisma.batch_jobsDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.batch_jobsUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.batch_jobsUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$batch_jobsPayload>[]
+        }
+        upsert: {
+          args: Prisma.batch_jobsUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$batch_jobsPayload>
+        }
+        aggregate: {
+          args: Prisma.Batch_jobsAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateBatch_jobs>
+        }
+        groupBy: {
+          args: Prisma.batch_jobsGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.Batch_jobsGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.batch_jobsCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.Batch_jobsCountAggregateOutputType> | number
+        }
+      }
+    }
+    app_users: {
+      payload: Prisma.$app_usersPayload<ExtArgs>
+      fields: Prisma.app_usersFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.app_usersFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$app_usersPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.app_usersFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$app_usersPayload>
+        }
+        findFirst: {
+          args: Prisma.app_usersFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$app_usersPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.app_usersFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$app_usersPayload>
+        }
+        findMany: {
+          args: Prisma.app_usersFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$app_usersPayload>[]
+        }
+        create: {
+          args: Prisma.app_usersCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$app_usersPayload>
+        }
+        createMany: {
+          args: Prisma.app_usersCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.app_usersCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$app_usersPayload>[]
+        }
+        delete: {
+          args: Prisma.app_usersDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$app_usersPayload>
+        }
+        update: {
+          args: Prisma.app_usersUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$app_usersPayload>
+        }
+        deleteMany: {
+          args: Prisma.app_usersDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.app_usersUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.app_usersUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$app_usersPayload>[]
+        }
+        upsert: {
+          args: Prisma.app_usersUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$app_usersPayload>
+        }
+        aggregate: {
+          args: Prisma.App_usersAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateApp_users>
+        }
+        groupBy: {
+          args: Prisma.app_usersGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.App_usersGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.app_usersCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.App_usersCountAggregateOutputType> | number
+        }
+      }
+    }
+    user_sessions: {
+      payload: Prisma.$user_sessionsPayload<ExtArgs>
+      fields: Prisma.user_sessionsFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.user_sessionsFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$user_sessionsPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.user_sessionsFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$user_sessionsPayload>
+        }
+        findFirst: {
+          args: Prisma.user_sessionsFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$user_sessionsPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.user_sessionsFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$user_sessionsPayload>
+        }
+        findMany: {
+          args: Prisma.user_sessionsFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$user_sessionsPayload>[]
+        }
+        create: {
+          args: Prisma.user_sessionsCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$user_sessionsPayload>
+        }
+        createMany: {
+          args: Prisma.user_sessionsCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.user_sessionsCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$user_sessionsPayload>[]
+        }
+        delete: {
+          args: Prisma.user_sessionsDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$user_sessionsPayload>
+        }
+        update: {
+          args: Prisma.user_sessionsUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$user_sessionsPayload>
+        }
+        deleteMany: {
+          args: Prisma.user_sessionsDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.user_sessionsUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.user_sessionsUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$user_sessionsPayload>[]
+        }
+        upsert: {
+          args: Prisma.user_sessionsUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$user_sessionsPayload>
+        }
+        aggregate: {
+          args: Prisma.User_sessionsAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateUser_sessions>
+        }
+        groupBy: {
+          args: Prisma.user_sessionsGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.User_sessionsGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.user_sessionsCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.User_sessionsCountAggregateOutputType> | number
+        }
+      }
+    }
+    email_verification_tokens: {
+      payload: Prisma.$email_verification_tokensPayload<ExtArgs>
+      fields: Prisma.email_verification_tokensFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.email_verification_tokensFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$email_verification_tokensPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.email_verification_tokensFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$email_verification_tokensPayload>
+        }
+        findFirst: {
+          args: Prisma.email_verification_tokensFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$email_verification_tokensPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.email_verification_tokensFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$email_verification_tokensPayload>
+        }
+        findMany: {
+          args: Prisma.email_verification_tokensFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$email_verification_tokensPayload>[]
+        }
+        create: {
+          args: Prisma.email_verification_tokensCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$email_verification_tokensPayload>
+        }
+        createMany: {
+          args: Prisma.email_verification_tokensCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.email_verification_tokensCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$email_verification_tokensPayload>[]
+        }
+        delete: {
+          args: Prisma.email_verification_tokensDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$email_verification_tokensPayload>
+        }
+        update: {
+          args: Prisma.email_verification_tokensUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$email_verification_tokensPayload>
+        }
+        deleteMany: {
+          args: Prisma.email_verification_tokensDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.email_verification_tokensUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.email_verification_tokensUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$email_verification_tokensPayload>[]
+        }
+        upsert: {
+          args: Prisma.email_verification_tokensUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$email_verification_tokensPayload>
+        }
+        aggregate: {
+          args: Prisma.Email_verification_tokensAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateEmail_verification_tokens>
+        }
+        groupBy: {
+          args: Prisma.email_verification_tokensGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.Email_verification_tokensGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.email_verification_tokensCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.Email_verification_tokensCountAggregateOutputType> | number
+        }
+      }
+    }
+    password_reset_tokens: {
+      payload: Prisma.$password_reset_tokensPayload<ExtArgs>
+      fields: Prisma.password_reset_tokensFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.password_reset_tokensFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$password_reset_tokensPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.password_reset_tokensFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$password_reset_tokensPayload>
+        }
+        findFirst: {
+          args: Prisma.password_reset_tokensFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$password_reset_tokensPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.password_reset_tokensFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$password_reset_tokensPayload>
+        }
+        findMany: {
+          args: Prisma.password_reset_tokensFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$password_reset_tokensPayload>[]
+        }
+        create: {
+          args: Prisma.password_reset_tokensCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$password_reset_tokensPayload>
+        }
+        createMany: {
+          args: Prisma.password_reset_tokensCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.password_reset_tokensCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$password_reset_tokensPayload>[]
+        }
+        delete: {
+          args: Prisma.password_reset_tokensDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$password_reset_tokensPayload>
+        }
+        update: {
+          args: Prisma.password_reset_tokensUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$password_reset_tokensPayload>
+        }
+        deleteMany: {
+          args: Prisma.password_reset_tokensDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.password_reset_tokensUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.password_reset_tokensUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$password_reset_tokensPayload>[]
+        }
+        upsert: {
+          args: Prisma.password_reset_tokensUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$password_reset_tokensPayload>
+        }
+        aggregate: {
+          args: Prisma.Password_reset_tokensAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePassword_reset_tokens>
+        }
+        groupBy: {
+          args: Prisma.password_reset_tokensGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.Password_reset_tokensGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.password_reset_tokensCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.Password_reset_tokensCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -3441,6 +3816,8 @@ export const PlayersScalarFieldEnum = {
   full_name: 'full_name',
   status: 'status',
   coach_id: 'coach_id',
+  email: 'email',
+  user_id: 'user_id',
   created_at: 'created_at'
 } as const
 
@@ -3454,7 +3831,8 @@ export const ProfilesScalarFieldEnum = {
   created_at: 'created_at',
   role: 'role',
   academy_id: 'academy_id',
-  status: 'status'
+  status: 'status',
+  invite_code: 'invite_code'
 } as const
 
 export type ProfilesScalarFieldEnum = (typeof ProfilesScalarFieldEnum)[keyof typeof ProfilesScalarFieldEnum]
@@ -3516,6 +3894,71 @@ export const Analysis_jobsScalarFieldEnum = {
 } as const
 
 export type Analysis_jobsScalarFieldEnum = (typeof Analysis_jobsScalarFieldEnum)[keyof typeof Analysis_jobsScalarFieldEnum]
+
+
+export const Batch_jobsScalarFieldEnum = {
+  id: 'id',
+  username: 'username',
+  game_urls: 'game_urls',
+  time_class: 'time_class',
+  status: 'status',
+  result: 'result',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+} as const
+
+export type Batch_jobsScalarFieldEnum = (typeof Batch_jobsScalarFieldEnum)[keyof typeof Batch_jobsScalarFieldEnum]
+
+
+export const App_usersScalarFieldEnum = {
+  id: 'id',
+  email: 'email',
+  email_lower: 'email_lower',
+  password_hash: 'password_hash',
+  email_verified: 'email_verified',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+} as const
+
+export type App_usersScalarFieldEnum = (typeof App_usersScalarFieldEnum)[keyof typeof App_usersScalarFieldEnum]
+
+
+export const User_sessionsScalarFieldEnum = {
+  id: 'id',
+  user_id: 'user_id',
+  token_hash: 'token_hash',
+  user_agent: 'user_agent',
+  ip_address: 'ip_address',
+  created_at: 'created_at',
+  expires_at: 'expires_at',
+  last_used_at: 'last_used_at'
+} as const
+
+export type User_sessionsScalarFieldEnum = (typeof User_sessionsScalarFieldEnum)[keyof typeof User_sessionsScalarFieldEnum]
+
+
+export const Email_verification_tokensScalarFieldEnum = {
+  id: 'id',
+  user_id: 'user_id',
+  token_hash: 'token_hash',
+  expires_at: 'expires_at',
+  used_at: 'used_at',
+  created_at: 'created_at'
+} as const
+
+export type Email_verification_tokensScalarFieldEnum = (typeof Email_verification_tokensScalarFieldEnum)[keyof typeof Email_verification_tokensScalarFieldEnum]
+
+
+export const Password_reset_tokensScalarFieldEnum = {
+  id: 'id',
+  user_id: 'user_id',
+  token_hash: 'token_hash',
+  expires_at: 'expires_at',
+  used_at: 'used_at',
+  created_at: 'created_at'
+} as const
+
+export type Password_reset_tokensScalarFieldEnum = (typeof Password_reset_tokensScalarFieldEnum)[keyof typeof Password_reset_tokensScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -3946,6 +4389,11 @@ export type GlobalOmitConfig = {
   puzzle_progress?: Prisma.puzzle_progressOmit
   puzzles?: Prisma.puzzlesOmit
   analysis_jobs?: Prisma.analysis_jobsOmit
+  batch_jobs?: Prisma.batch_jobsOmit
+  app_users?: Prisma.app_usersOmit
+  user_sessions?: Prisma.user_sessionsOmit
+  email_verification_tokens?: Prisma.email_verification_tokensOmit
+  password_reset_tokens?: Prisma.password_reset_tokensOmit
 }
 
 /* Types for Logging */

@@ -84,7 +84,12 @@ export const ModelName = {
   puzzle_library: 'puzzle_library',
   puzzle_progress: 'puzzle_progress',
   puzzles: 'puzzles',
-  analysis_jobs: 'analysis_jobs'
+  analysis_jobs: 'analysis_jobs',
+  batch_jobs: 'batch_jobs',
+  app_users: 'app_users',
+  user_sessions: 'user_sessions',
+  email_verification_tokens: 'email_verification_tokens',
+  password_reset_tokens: 'password_reset_tokens'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -552,6 +557,8 @@ export const PlayersScalarFieldEnum = {
   full_name: 'full_name',
   status: 'status',
   coach_id: 'coach_id',
+  email: 'email',
+  user_id: 'user_id',
   created_at: 'created_at'
 } as const
 
@@ -565,7 +572,8 @@ export const ProfilesScalarFieldEnum = {
   created_at: 'created_at',
   role: 'role',
   academy_id: 'academy_id',
-  status: 'status'
+  status: 'status',
+  invite_code: 'invite_code'
 } as const
 
 export type ProfilesScalarFieldEnum = (typeof ProfilesScalarFieldEnum)[keyof typeof ProfilesScalarFieldEnum]
@@ -627,6 +635,71 @@ export const Analysis_jobsScalarFieldEnum = {
 } as const
 
 export type Analysis_jobsScalarFieldEnum = (typeof Analysis_jobsScalarFieldEnum)[keyof typeof Analysis_jobsScalarFieldEnum]
+
+
+export const Batch_jobsScalarFieldEnum = {
+  id: 'id',
+  username: 'username',
+  game_urls: 'game_urls',
+  time_class: 'time_class',
+  status: 'status',
+  result: 'result',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+} as const
+
+export type Batch_jobsScalarFieldEnum = (typeof Batch_jobsScalarFieldEnum)[keyof typeof Batch_jobsScalarFieldEnum]
+
+
+export const App_usersScalarFieldEnum = {
+  id: 'id',
+  email: 'email',
+  email_lower: 'email_lower',
+  password_hash: 'password_hash',
+  email_verified: 'email_verified',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+} as const
+
+export type App_usersScalarFieldEnum = (typeof App_usersScalarFieldEnum)[keyof typeof App_usersScalarFieldEnum]
+
+
+export const User_sessionsScalarFieldEnum = {
+  id: 'id',
+  user_id: 'user_id',
+  token_hash: 'token_hash',
+  user_agent: 'user_agent',
+  ip_address: 'ip_address',
+  created_at: 'created_at',
+  expires_at: 'expires_at',
+  last_used_at: 'last_used_at'
+} as const
+
+export type User_sessionsScalarFieldEnum = (typeof User_sessionsScalarFieldEnum)[keyof typeof User_sessionsScalarFieldEnum]
+
+
+export const Email_verification_tokensScalarFieldEnum = {
+  id: 'id',
+  user_id: 'user_id',
+  token_hash: 'token_hash',
+  expires_at: 'expires_at',
+  used_at: 'used_at',
+  created_at: 'created_at'
+} as const
+
+export type Email_verification_tokensScalarFieldEnum = (typeof Email_verification_tokensScalarFieldEnum)[keyof typeof Email_verification_tokensScalarFieldEnum]
+
+
+export const Password_reset_tokensScalarFieldEnum = {
+  id: 'id',
+  user_id: 'user_id',
+  token_hash: 'token_hash',
+  expires_at: 'expires_at',
+  used_at: 'used_at',
+  created_at: 'created_at'
+} as const
+
+export type Password_reset_tokensScalarFieldEnum = (typeof Password_reset_tokensScalarFieldEnum)[keyof typeof Password_reset_tokensScalarFieldEnum]
 
 
 export const SortOrder = {

@@ -2,8 +2,7 @@
 import { useState, useEffect, Suspense, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
-import { Crown, User, Lock, Mail, Eye, EyeOff, Loader2, School, UserCheck, Award, Building } from "lucide-react";
+import { Crown, User, Lock, Mail, Eye, EyeOff, Loader2, School, Building, CheckCircle, XCircle } from "lucide-react";
 
 type Tab = "player" | "coach" | "academy";
 
@@ -30,20 +29,9 @@ interface DropdownProps {
   disabled?: boolean;
   icon: React.ReactNode;
   activeColor: string;
-  activeShadow: string;
 }
 
-function CustomDropdown({
-  label,
-  value,
-  onChange,
-  options,
-  placeholder,
-  disabled,
-  icon,
-  activeColor,
-  activeShadow,
-}: DropdownProps) {
+function CustomDropdown({ label, value, onChange, options, placeholder, disabled, icon, activeColor }: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -65,23 +53,9 @@ function CustomDropdown({
     <div ref={containerRef} style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
       <label className="input-label">{label}</label>
       <div style={{ position: "relative" }}>
-        <div
-          style={{
-            position: "absolute",
-            left: "16px",
-            top: "50%",
-            transform: "translateY(-50%)",
-            color: activeColor,
-            opacity: 0.7,
-            pointerEvents: "none",
-            display: "flex",
-            alignItems: "center",
-            zIndex: 2,
-          }}
-        >
+        <div style={{ position: "absolute", left: "16px", top: "50%", transform: "translateY(-50%)", color: activeColor, opacity: 0.7, pointerEvents: "none", display: "flex", alignItems: "center", zIndex: 2 }}>
           {icon}
         </div>
-
         <button
           type="button"
           disabled={disabled}
@@ -101,7 +75,6 @@ function CustomDropdown({
             transition: "all 0.3s ease",
             cursor: disabled ? "not-allowed" : "pointer",
             opacity: disabled ? 0.6 : 1,
-            position: "relative",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -114,38 +87,25 @@ function CustomDropdown({
             style={{
               borderLeft: "5px solid transparent",
               borderRight: "5px solid transparent",
-              borderTop: `5px solid ${isOpen ? "rgba(255, 255, 255, 0.7)" : "var(--text-secondary)"}`,
+              borderTop: `5px solid ${isOpen ? "rgba(255,255,255,0.7)" : "var(--text-secondary)"}`,
               transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
               transition: "transform 0.2s ease, border-top-color 0.2s ease",
               marginLeft: "8px",
             }}
           />
         </button>
-
         {isOpen && (
           <div
             className="glass animate-fade-in"
             style={{
-              position: "absolute",
-              top: "100%",
-              left: 0,
-              width: "100%",
-              maxHeight: "220px",
-              overflowY: "auto",
-              marginTop: "6px",
-              zIndex: 100,
-              padding: "6px",
-              border: "1px solid rgba(255, 255, 255, 0.12)",
-              boxShadow: "0 10px 25px rgba(0, 0, 0, 0.4)",
-              borderRadius: "12px",
-              backdropFilter: "blur(20px)",
-              background: "rgba(10, 10, 10, 0.8)",
+              position: "absolute", top: "100%", left: 0, width: "100%", maxHeight: "220px",
+              overflowY: "auto", marginTop: "6px", zIndex: 100, padding: "6px",
+              border: "1px solid rgba(255,255,255,0.12)", boxShadow: "0 10px 25px rgba(0,0,0,0.4)",
+              borderRadius: "12px", backdropFilter: "blur(20px)", background: "rgba(10,10,10,0.8)",
             }}
           >
             {options.length === 0 ? (
-              <div style={{ padding: "10px 14px", color: "var(--text-secondary)", fontSize: "14px" }}>
-                No options available
-              </div>
+              <div style={{ padding: "10px 14px", color: "var(--text-secondary)", fontSize: "14px" }}>No options available</div>
             ) : (
               options.map((opt) => {
                 const isSelected = opt.value === value;
@@ -153,35 +113,17 @@ function CustomDropdown({
                   <button
                     key={opt.value}
                     type="button"
-                    onClick={() => {
-                      onChange(opt.value);
-                      setIsOpen(false);
-                      setIsFocused(false);
-                    }}
+                    onClick={() => { onChange(opt.value); setIsOpen(false); setIsFocused(false); }}
                     style={{
-                      width: "100%",
-                      textAlign: "left",
-                      padding: "10px 14px",
-                      background: isSelected ? "rgba(255, 255, 255, 0.08)" : "transparent",
+                      width: "100%", textAlign: "left", padding: "10px 14px",
+                      background: isSelected ? "rgba(255,255,255,0.08)" : "transparent",
                       color: isSelected ? "#fff" : "var(--text-primary)",
-                      border: isSelected ? "1px solid rgba(255, 255, 255, 0.6)" : "1px solid transparent",
-                      borderRadius: "8px",
-                      fontSize: "14px",
-                      fontWeight: isSelected ? "600" : "400",
-                      cursor: "pointer",
-                      transition: "all 0.2s ease",
-                      marginBottom: "2px",
+                      border: isSelected ? "1px solid rgba(255,255,255,0.6)" : "1px solid transparent",
+                      borderRadius: "8px", fontSize: "14px", fontWeight: isSelected ? "600" : "400",
+                      cursor: "pointer", transition: "all 0.2s ease", marginBottom: "2px",
                     }}
-                    onMouseEnter={(e) => {
-                      if (!isSelected) {
-                        e.currentTarget.style.background = "rgba(255, 255, 255, 0.05)";
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isSelected) {
-                        e.currentTarget.style.background = "transparent";
-                      }
-                    }}
+                    onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+                    onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.background = "transparent"; }}
                   >
                     {opt.label}
                   </button>
@@ -195,24 +137,86 @@ function CustomDropdown({
   );
 }
 
+function InputField({
+  label, type = "text", placeholder, value, onChange, onFocus, onBlur, icon, focused, activeColor,
+  disabled, required, autoComplete, rightSlot,
+}: {
+  label: string; type?: string; placeholder: string; value: string;
+  onChange: (v: string) => void; onFocus: () => void; onBlur: () => void;
+  icon: React.ReactNode; focused: boolean; activeColor: string;
+  disabled?: boolean; required?: boolean; autoComplete?: string;
+  rightSlot?: React.ReactNode;
+}) {
+  return (
+    <div>
+      <label className="input-label">{label}</label>
+      <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+        <div style={{ position: "absolute", left: "16px", color: activeColor, opacity: 0.7, pointerEvents: "none", display: "flex" }}>
+          {icon}
+        </div>
+        <input
+          className="input-field"
+          type={type}
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onFocus={onFocus}
+          onBlur={onBlur}
+          disabled={disabled}
+          required={required}
+          autoComplete={autoComplete}
+          style={{
+            paddingLeft: "46px",
+            paddingRight: rightSlot ? "46px" : undefined,
+            border: focused ? `1px solid ${activeColor}` : "1px solid var(--input-border)",
+            boxShadow: focused ? `0 0 0 3px ${activeColor}26` : "none",
+            transition: "all 0.3s ease",
+          }}
+        />
+        {rightSlot && <div style={{ position: "absolute", right: "12px" }}>{rightSlot}</div>}
+      </div>
+    </div>
+  );
+}
+
+function PasswordField({ label, value, onChange, onFocus, onBlur, focused, activeColor, disabled, autoComplete }: {
+  label: string; value: string; onChange: (v: string) => void;
+  onFocus: () => void; onBlur: () => void; focused: boolean;
+  activeColor: string; disabled?: boolean; autoComplete?: string;
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <InputField
+      label={label} type={show ? "text" : "password"} placeholder="Min. 8 characters"
+      value={value} onChange={onChange} onFocus={onFocus} onBlur={onBlur}
+      icon={<Lock size={18} />} focused={focused} activeColor={activeColor}
+      disabled={disabled} required autoComplete={autoComplete}
+      rightSlot={
+        <button type="button" onClick={() => setShow(!show)} style={{ background: "none", border: "none", padding: "4px", color: "var(--text-secondary)", display: "flex", cursor: "pointer", borderRadius: "6px" }}>
+          {show ? <EyeOff size={18} /> : <Eye size={18} />}
+        </button>
+      }
+    />
+  );
+}
 
 function RegisterContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialTab = (searchParams.get("tab") as Tab) || "player";
   const [tab, setTab] = useState<Tab>(initialTab);
-
-  // ── UI States ──
   const [focusedField, setFocusedField] = useState<string | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [linkHovered, setLinkHovered] = useState(false);
 
   // ── Player state ──
   const [pFullName, setPFullName] = useState("");
+  const [pEmail, setPEmail] = useState("");
+  const [pPassword, setPPassword] = useState("");
+  const [pConfirm, setPConfirm] = useState("");
   const [pUsername, setPUsername] = useState("");
+  const [pInviteCode, setPInviteCode] = useState("");
   const [pCoachId, setPCoachId] = useState("");
-  const [coaches, setCoaches] = useState<{ id: string; full_name: string }[]>([]);
+  const [codeStatus, setCodeStatus] = useState<"idle" | "checking" | "valid" | "invalid">("idle");
+  const [resolvedCoachName, setResolvedCoachName] = useState("");
   const [pLoading, setPLoading] = useState(false);
   const [pError, setPError] = useState("");
 
@@ -237,89 +241,78 @@ function RegisterContent() {
   const [aLoading, setALoading] = useState(false);
   const [aError, setAError] = useState("");
 
+  const focus = (f: string) => () => setFocusedField(f);
+  const blur = () => setFocusedField(null);
+  const isFocused = (f: string) => focusedField === f;
+
   useEffect(() => {
-    supabase.from("profiles").select("id, full_name").eq("role", "coach").eq("status", "approved").order("full_name")
-      .then(({ data }) => { if (data) setCoaches(data); });
-    supabase.from("academies").select("id, name").eq("status", "approved").order("name")
-      .then(({ data }) => { if (data) setAcademies(data); });
+    fetch("/api/academies/public")
+      .then((r) => r.json())
+      .then((data) => { if (Array.isArray(data)) setAcademies(data); });
   }, []);
 
+  useEffect(() => {
+    const code = pInviteCode.replace("-", "");
+    if (code.length < 8) { setCodeStatus("idle"); setResolvedCoachName(""); setPCoachId(""); return; }
+    const timer = setTimeout(async () => {
+      setCodeStatus("checking");
+      const res = await fetch(`/api/coaches/by-invite-code?code=${encodeURIComponent(pInviteCode.toUpperCase().trim())}`);
+      if (res.ok) {
+        const data = await res.json();
+        setPCoachId(data.coachId);
+        setResolvedCoachName(data.coachName);
+        setCodeStatus("valid");
+      } else {
+        setPCoachId(""); setResolvedCoachName(""); setCodeStatus("invalid");
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [pInviteCode]);
+
+  const redirectToCheckEmail = (email: string) =>
+    router.push(`/verify-email-sent?email=${encodeURIComponent(email)}`);
+
   // ── Player submit ──
-  const handlePlayerSubmit = async (e) => {
+  const handlePlayerSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPError("");
-    if (!pFullName.trim() || !pUsername.trim() || !pCoachId) { setPError("Please fill in all fields."); return; }
+    if (pPassword !== pConfirm) { setPError("Passwords do not match."); return; }
+    if (pPassword.length < 8) { setPError("Password must be at least 8 characters."); return; }
+    if (!pCoachId) { setPError("Please enter a valid invite code."); return; }
     setPLoading(true);
 
-    const { data: existing } = await supabase.from("players").select("id, status").eq("chess_username", pUsername.trim().toLowerCase()).single();
-    if (existing) {
-      setPError(existing.status === "approved"
-        ? "This username is already registered and approved. Go to login."
-        : "This username is already registered and pending approval.");
-      setPLoading(false);
-      return;
-    }
-
-    const { error: insertError } = await supabase.from("players").insert({
-      chess_username: pUsername.trim().toLowerCase(),
-      full_name: pFullName.trim(),
-      coach_id: pCoachId,
-      status: "pending",
+    const res = await fetch("/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "player", email: pEmail, password: pPassword, fullName: pFullName.trim(), chessUsername: pUsername.trim().toLowerCase(), coachId: pCoachId }),
     });
-
-    if (insertError) { setPError(insertError.message); setPLoading(false); return; }
-
-    localStorage.setItem("playerSession", JSON.stringify({
-      chess_username: pUsername.trim().toLowerCase(),
-      full_name: pFullName.trim(),
-      coach_id: pCoachId,
-      status: "pending",
-    }));
-    router.push("/pending");
+    const data = await res.json();
+    setPLoading(false);
+    if (!res.ok) { setPError(data.error ?? "Registration failed."); return; }
+    redirectToCheckEmail(pEmail);
   };
 
   // ── Coach submit ──
-  const handleCoachSubmit = async (e) => {
+  const handleCoachSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setCError("");
     if (cPassword !== cConfirm) { setCError("Passwords do not match."); return; }
     if (cPassword.length < 8) { setCError("Password must be at least 8 characters."); return; }
     setCLoading(true);
 
-    const { data, error: signUpError } = await supabase.auth.signUp({
-      email: cEmail,
-      password: cPassword,
-      options: { data: { full_name: cFullName.trim() } },
+    const res = await fetch("/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "coach", email: cEmail, password: cPassword, fullName: cFullName.trim(), academyId: cAcademyId || undefined }),
     });
-
-    if (signUpError || !data.user) { setCError(signUpError?.message ?? "Sign up failed."); setCLoading(false); return; }
-    if (data.user?.identities?.length === 0) {
-      setCError("This email is already registered. Please log in instead.");
-      setCLoading(false);
-      return;
-    }
-
-    const { error: profileError } = await supabase.from("profiles").upsert({
-      id: data.user.id,
-      email: cEmail.trim(),
-      full_name: cFullName.trim(),
-      role: "coach",
-      academy_id: cAcademyId || null,
-      status: cAcademyId ? "pending" : "approved",
-    });
-
-    if (profileError) {
-      setCError(profileError.message || "Failed to create profile.");
-      setCLoading(false);
-      return;
-    }
-
+    const data = await res.json();
     setCLoading(false);
-    router.push(cAcademyId ? "/coach/pending" : "/login");
+    if (!res.ok) { setCError(data.error ?? "Registration failed."); return; }
+    redirectToCheckEmail(cEmail);
   };
 
   // ── Academy submit ──
-  const handleAcademySubmit = async (e) => {
+  const handleAcademySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAError("");
     if (aPassword !== aConfirm) { setAError("Passwords do not match."); return; }
@@ -327,46 +320,15 @@ function RegisterContent() {
     if (!aName.trim()) { setAError("Academy name is required."); return; }
     setALoading(true);
 
-    const { data, error: signUpError } = await supabase.auth.signUp({
-      email: aEmail,
-      password: aPassword,
-      options: { data: { full_name: aFullName.trim() } },
+    const res = await fetch("/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "academy_owner", email: aEmail, password: aPassword, fullName: aFullName.trim(), academyName: aName.trim(), academyCity: aCity.trim() || undefined, academyDescription: aDesc.trim() || undefined }),
     });
-
-    if (signUpError || !data.user) { setAError(signUpError?.message ?? "Sign up failed."); setALoading(false); return; }
-    if (data.user?.identities?.length === 0) {
-      setAError("This email is already registered. Please log in instead.");
-      setALoading(false);
-      return;
-    }
-
-    const { data: academy, error: academyError } = await supabase.from("academies").insert({
-      name: aName.trim(),
-      city: aCity.trim() || null,
-      description: aDesc.trim() || null,
-      owner_id: data.user.id,
-      status: "pending",
-    }).select().single();
-
-    if (academyError || !academy) { setAError(academyError?.message ?? "Failed to create academy."); setALoading(false); return; }
-
-    const { error: profileError } = await supabase.from("profiles").upsert({
-      id: data.user.id,
-      email: aEmail.trim(),
-      full_name: aFullName.trim(),
-      role: "academy_owner",
-      academy_id: academy.id,
-      status: "pending",
-    });
-
-    if (profileError) {
-      setAError(profileError.message || "Failed to create profile.");
-      setALoading(false);
-      return;
-    }
-
+    const data = await res.json();
     setALoading(false);
-    router.push("/academy/pending");
+    if (!res.ok) { setAError(data.error ?? "Registration failed."); return; }
+    redirectToCheckEmail(aEmail);
   };
 
   const meta = TAB_META[tab];
@@ -391,893 +353,165 @@ function RegisterContent() {
         className="glass animate-fade-in"
         style={{
           width: "100%",
-          maxWidth: "500px",
+          maxWidth: "440px",
           padding: "40px 32px",
           borderRadius: "24px",
-          border: "1px solid " + (tab === "player" ? "rgba(29, 193, 137, 0.2)" : tab === "coach" ? "rgba(99, 102, 241, 0.2)" : "rgba(245, 158, 11, 0.2)"),
-          boxShadow: tab === "player"
-            ? "0 20px 40px rgba(29, 193, 137, 0.05), var(--glass-shadow)"
-            : tab === "coach"
-            ? "0 20px 40px rgba(99, 102, 241, 0.05), var(--glass-shadow)"
-            : "0 20px 40px rgba(245, 158, 11, 0.05), var(--glass-shadow)",
+          border: `1px solid ${meta.color}33`,
+          boxShadow: `0 20px 40px ${meta.shadow}1a, var(--glass-shadow)`,
           transition: "border-color 0.4s ease, box-shadow 0.4s ease",
         }}
       >
-        {/* Logo + title */}
+        {/* Header */}
         <div style={{ textAlign: "center", marginBottom: "28px" }}>
-          <div
-            style={{
-              width: "72px",
-              height: "72px",
-              borderRadius: "20px",
-              border: "1px solid " + (tab === "player" ? "rgba(29, 193, 137, 0.3)" : tab === "coach" ? "rgba(99, 102, 241, 0.3)" : "rgba(245, 158, 11, 0.3)"),
-              padding: "5px",
-              background: "rgba(255, 255, 255, 0.02)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto 16px",
-              boxShadow: tab === "player"
-                ? "0 8px 24px rgba(29, 193, 137, 0.15)"
-                : tab === "coach"
-                ? "0 8px 24px rgba(99, 102, 241, 0.15)"
-                : "0 8px 24px rgba(245, 158, 11, 0.15)",
-              transition: "all 0.4s ease",
-            }}
-          >
-            <div
-              style={{
-                width: "100%",
-                height: "100%",
-                borderRadius: "14px",
-                background: meta.bg,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.2)",
-              }}
-            >
-              {tab === "player" ? (
-                <User size={28} style={{ color: "#fff" }} />
-              ) : tab === "coach" ? (
-                <Crown size={28} style={{ color: "#fff" }} />
-              ) : (
-                <School size={28} style={{ color: "#fff" }} />
-              )}
+          <div style={{ width: "64px", height: "64px", borderRadius: "18px", border: `1px solid ${meta.color}4d`, padding: "4px", background: "rgba(255,255,255,0.02)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px", boxShadow: `0 8px 24px ${meta.shadow}` }}>
+            <div style={{ width: "100%", height: "100%", borderRadius: "13px", background: meta.bg, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.2)" }}>
+              <Crown size={26} style={{ color: "#fff" }} />
             </div>
           </div>
-          <h1
-            style={{
-              fontSize: "24px",
-              fontWeight: "800",
-              fontFamily: "'Space Grotesk', sans-serif",
-              letterSpacing: "-0.03em",
-              color: "var(--text-primary)",
-              marginBottom: "4px",
-            }}
-          >
+          <h1 style={{ fontSize: "22px", fontWeight: "800", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.03em", color: "var(--text-primary)", marginBottom: "4px" }}>
             Create Account
           </h1>
+          <p style={{ fontSize: "13px", color: "var(--text-secondary)" }}>Join Chess Advisor</p>
         </div>
 
         {/* Tabs */}
-        <div
-          style={{
-            display: "flex",
-            gap: "6px",
-            background: "rgba(0, 0, 0, 0.2)",
-            padding: "6px",
-            borderRadius: "14px",
-            marginBottom: "28px",
-            border: "1px solid var(--border-subtle)",
-            boxShadow: "inset 0 2px 4px rgba(0, 0, 0, 0.2)",
-          }}
-        >
-          {(Object.keys(TAB_META) as Tab[]).map((t) => (
+        <div style={{ display: "flex", gap: "6px", marginBottom: "24px", background: "rgba(255,255,255,0.03)", borderRadius: "12px", padding: "4px" }}>
+          {(["player", "coach", "academy"] as Tab[]).map((t) => (
             <button
               key={t}
+              type="button"
               onClick={() => setTab(t)}
               style={{
                 flex: 1,
-                padding: "10px 6px",
-                borderRadius: "10px",
-                fontSize: "13px",
-                fontWeight: "600",
-                background: tab === t ? meta.bg : "transparent",
+                padding: "8px 4px",
+                fontSize: "12px",
+                fontWeight: tab === t ? "700" : "500",
+                background: tab === t ? TAB_META[t].bg : "transparent",
                 color: tab === t ? "#fff" : "var(--text-secondary)",
                 border: "none",
+                borderRadius: "9px",
                 cursor: "pointer",
-                boxShadow: tab === t ? `0 4px 12px ${TAB_META[t].shadow}` : "none",
-                transform: tab === t ? "scale(1)" : "scale(0.97)",
-                transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                transition: "all 0.3s ease",
+                boxShadow: tab === t ? `0 2px 8px ${TAB_META[t].shadow}` : "none",
               }}
             >
-              {t === "player" ? "♟ Player" : t === "coach" ? "♛ Coach" : "🏫 Academy"}
+              {TAB_META[t].label}
             </button>
           ))}
         </div>
 
-        {/* ── Player Form ── */}
+        {/* Player Form */}
         {tab === "player" && (
-          <form onSubmit={handlePlayerSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          <form onSubmit={handlePlayerSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+            <InputField label="Full Name" placeholder="Your full name" value={pFullName} onChange={setPFullName} onFocus={focus("p-name")} onBlur={blur} icon={<User size={18} />} focused={isFocused("p-name")} activeColor={meta.color} disabled={pLoading} required />
+            <InputField label="Chess.com Username" placeholder="your_username" value={pUsername} onChange={setPUsername} onFocus={focus("p-uname")} onBlur={blur} icon={<User size={18} />} focused={isFocused("p-uname")} activeColor={meta.color} disabled={pLoading} required autoComplete="username" />
+            <InputField label="Email" type="email" placeholder="you@example.com" value={pEmail} onChange={setPEmail} onFocus={focus("p-email")} onBlur={blur} icon={<Mail size={18} />} focused={isFocused("p-email")} activeColor={meta.color} disabled={pLoading} required autoComplete="email" />
+            <PasswordField label="Password" value={pPassword} onChange={setPPassword} onFocus={focus("p-pass")} onBlur={blur} focused={isFocused("p-pass")} activeColor={meta.color} disabled={pLoading} autoComplete="new-password" />
+            <PasswordField label="Confirm Password" value={pConfirm} onChange={setPConfirm} onFocus={focus("p-conf")} onBlur={blur} focused={isFocused("p-conf")} activeColor={meta.color} disabled={pLoading} autoComplete="new-password" />
+
+            {/* Invite code */}
             <div>
-              <label className="input-label">Full Name</label>
-              <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                <User
-                  size={18}
-                  style={{
-                    position: "absolute",
-                    left: "16px",
-                    color: meta.color,
-                    opacity: 0.7,
-                    pointerEvents: "none",
-                  }}
-                />
+              <label className="input-label">Coach Invite Code</label>
+              <div style={{ position: "relative" }}>
                 <input
                   className="input-field"
-                  type="text"
-                  placeholder="Your full name"
-                  value={pFullName}
-                  onChange={(e) => setPFullName(e.target.value)}
+                  placeholder="XXXX-XXXX"
+                  value={pInviteCode}
+                  onChange={(e) => setPInviteCode(e.target.value)}
                   disabled={pLoading}
                   required
                   style={{
-                    paddingLeft: "46px",
-                    border:
-                      focusedField === "pFullName" ? `1px solid ${meta.color}` : "1px solid var(--input-border)",
-                    boxShadow: focusedField === "pFullName" ? `0 0 0 3px ${meta.shadow}` : "none",
+                    paddingRight: "36px",
+                    border: codeStatus === "valid" ? "1px solid #10b981" : codeStatus === "invalid" ? "1px solid var(--danger)" : "1px solid var(--input-border)",
+                    boxShadow: codeStatus === "valid" ? "0 0 0 3px rgba(16,185,129,0.15)" : codeStatus === "invalid" ? "0 0 0 3px rgba(239,68,68,0.15)" : "none",
                     transition: "all 0.3s ease",
                   }}
-                  onFocus={() => setFocusedField("pFullName")}
-                  onBlur={() => setFocusedField(null)}
                 />
+                <div style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)" }}>
+                  {codeStatus === "checking" && <Loader2 size={16} className="animate-spin" style={{ color: "var(--text-secondary)" }} />}
+                  {codeStatus === "valid" && <CheckCircle size={16} style={{ color: "#10b981" }} />}
+                  {codeStatus === "invalid" && <XCircle size={16} style={{ color: "var(--danger)" }} />}
+                </div>
               </div>
+              {codeStatus === "valid" && <p style={{ fontSize: "12px", color: "#10b981", marginTop: "4px" }}>Coach: {resolvedCoachName}</p>}
+              {codeStatus === "invalid" && <p style={{ fontSize: "12px", color: "var(--danger)", marginTop: "4px" }}>Invalid or inactive invite code</p>}
             </div>
-            <div>
-              <label className="input-label">Chess.com Username</label>
-              <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                <UserCheck
-                  size={18}
-                  style={{
-                    position: "absolute",
-                    left: "16px",
-                    color: meta.color,
-                    opacity: 0.7,
-                    pointerEvents: "none",
-                  }}
-                />
-                <input
-                  className="input-field"
-                  type="text"
-                  placeholder="Your Chess.com username"
-                  value={pUsername}
-                  onChange={(e) => setPUsername(e.target.value)}
-                  disabled={pLoading}
-                  required
-                  style={{
-                    paddingLeft: "46px",
-                    border:
-                      focusedField === "pUsername" ? `1px solid ${meta.color}` : "1px solid var(--input-border)",
-                    boxShadow: focusedField === "pUsername" ? `0 0 0 3px ${meta.shadow}` : "none",
-                    transition: "all 0.3s ease",
-                  }}
-                  onFocus={() => setFocusedField("pUsername")}
-                  onBlur={() => setFocusedField(null)}
-                />
-              </div>
-            </div>
-            <CustomDropdown
-              label="Select Your Coach"
-              value={pCoachId}
-              onChange={setPCoachId}
-              options={coaches.map((c) => ({ value: c.id, label: c.full_name }))}
-              placeholder={coaches.length === 0 ? "Loading coaches..." : "— Select a coach —"}
-              disabled={pLoading || coaches.length === 0}
-              icon={<Award size={18} />}
-              activeColor={meta.color}
-              activeShadow={meta.shadow}
-            />
+
             {pError && <ErrorBox message={pError} />}
-            <button
-              type="submit"
-              style={{
-                width: "100%",
-                padding: "14px",
-                fontSize: "15px",
-                fontWeight: "600",
-                background: meta.bg,
-                color: "#fff",
-                borderRadius: "12px",
-                border: "none",
-                boxShadow: `0 4px 14px ${meta.shadow}`,
-                transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "8px",
-                cursor: pLoading ? "not-allowed" : "pointer",
-                opacity: pLoading ? 0.8 : 1,
-              }}
-              disabled={pLoading}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-1px)";
-                e.currentTarget.style.boxShadow = `0 6px 20px ${meta.shadow}`;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = `0 4px 14px ${meta.shadow}`;
-              }}
-              onMouseDown={(e) => {
-                e.currentTarget.style.transform = "translateY(1px) scale(0.98)";
-              }}
-              onMouseUp={(e) => {
-                e.currentTarget.style.transform = "translateY(0) scale(1)";
-              }}
-            >
-              {pLoading ? (
-                <Loader2 size={18} className="animate-spin" />
-              ) : (
-                <>
-                  Register & Request Approval
-                  <span style={{ fontSize: "16px" }}>→</span>
-                </>
-              )}
-            </button>
+            <SubmitButton loading={pLoading} color={meta.bg} shadow={meta.shadow} label="Create Player Account" />
           </form>
         )}
 
-        {/* ── Coach Form ── */}
+        {/* Coach Form */}
         {tab === "coach" && (
-          <form onSubmit={handleCoachSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <div>
-              <label className="input-label">Full Name</label>
-              <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                <User
-                  size={18}
-                  style={{
-                    position: "absolute",
-                    left: "16px",
-                    color: meta.color,
-                    opacity: 0.7,
-                    pointerEvents: "none",
-                  }}
-                />
-                <input
-                  className="input-field"
-                  type="text"
-                  placeholder="Your full name"
-                  value={cFullName}
-                  onChange={(e) => setCFullName(e.target.value)}
-                  disabled={cLoading}
-                  required
-                  style={{
-                    paddingLeft: "46px",
-                    border:
-                      focusedField === "cFullName" ? `1px solid ${meta.color}` : "1px solid var(--input-border)",
-                    boxShadow: focusedField === "cFullName" ? `0 0 0 3px ${meta.shadow}` : "none",
-                    transition: "all 0.3s ease",
-                  }}
-                  onFocus={() => setFocusedField("cFullName")}
-                  onBlur={() => setFocusedField(null)}
-                />
-              </div>
-            </div>
-            <div>
-              <label className="input-label">Email Address</label>
-              <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                <Mail
-                  size={18}
-                  style={{
-                    position: "absolute",
-                    left: "16px",
-                    color: meta.color,
-                    opacity: 0.7,
-                    pointerEvents: "none",
-                  }}
-                />
-                <input
-                  className="input-field"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={cEmail}
-                  onChange={(e) => setCEmail(e.target.value)}
-                  disabled={cLoading}
-                  required
-                  style={{
-                    paddingLeft: "46px",
-                    border:
-                      focusedField === "cEmail" ? `1px solid ${meta.color}` : "1px solid var(--input-border)",
-                    boxShadow: focusedField === "cEmail" ? `0 0 0 3px ${meta.shadow}` : "none",
-                    transition: "all 0.3s ease",
-                  }}
-                  onFocus={() => setFocusedField("cEmail")}
-                  onBlur={() => setFocusedField(null)}
-                />
-              </div>
-            </div>
-            <div>
-              <label className="input-label">Password</label>
-              <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                <Lock
-                  size={18}
-                  style={{
-                    position: "absolute",
-                    left: "16px",
-                    color: meta.color,
-                    opacity: 0.7,
-                    pointerEvents: "none",
-                  }}
-                />
-                <input
-                  className="input-field"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="At least 8 characters"
-                  value={cPassword}
-                  onChange={(e) => setCPassword(e.target.value)}
-                  disabled={cLoading}
-                  required
-                  style={{
-                    paddingLeft: "46px",
-                    paddingRight: "46px",
-                    border:
-                      focusedField === "cPassword" ? `1px solid ${meta.color}` : "1px solid var(--input-border)",
-                    boxShadow: focusedField === "cPassword" ? `0 0 0 3px ${meta.shadow}` : "none",
-                    transition: "all 0.3s ease",
-                  }}
-                  onFocus={() => setFocusedField("cPassword")}
-                  onBlur={() => setFocusedField(null)}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  style={{
-                    position: "absolute",
-                    right: "12px",
-                    background: "none",
-                    border: "none",
-                    padding: "4px",
-                    color: "var(--text-secondary)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                    borderRadius: "6px",
-                  }}
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-            <div>
-              <label className="input-label">Confirm Password</label>
-              <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                <Lock
-                  size={18}
-                  style={{
-                    position: "absolute",
-                    left: "16px",
-                    color: meta.color,
-                    opacity: 0.7,
-                    pointerEvents: "none",
-                  }}
-                />
-                <input
-                  className="input-field"
-                  type={showConfirmPassword ? "text" : "password"}
-                  placeholder="Repeat your password"
-                  value={cConfirm}
-                  onChange={(e) => setCConfirm(e.target.value)}
-                  disabled={cLoading}
-                  required
-                  style={{
-                    paddingLeft: "46px",
-                    paddingRight: "46px",
-                    border:
-                      focusedField === "cConfirm" ? `1px solid ${meta.color}` : "1px solid var(--input-border)",
-                    boxShadow: focusedField === "cConfirm" ? `0 0 0 3px ${meta.shadow}` : "none",
-                    transition: "all 0.3s ease",
-                  }}
-                  onFocus={() => setFocusedField("cConfirm")}
-                  onBlur={() => setFocusedField(null)}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  style={{
-                    position: "absolute",
-                    right: "12px",
-                    background: "none",
-                    border: "none",
-                    padding: "4px",
-                    color: "var(--text-secondary)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                    borderRadius: "6px",
-                  }}
-                >
-                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-            <div>
+          <form onSubmit={handleCoachSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+            <InputField label="Full Name" placeholder="Your full name" value={cFullName} onChange={setCFullName} onFocus={focus("c-name")} onBlur={blur} icon={<User size={18} />} focused={isFocused("c-name")} activeColor={meta.color} disabled={cLoading} required />
+            <InputField label="Email" type="email" placeholder="you@example.com" value={cEmail} onChange={setCEmail} onFocus={focus("c-email")} onBlur={blur} icon={<Mail size={18} />} focused={isFocused("c-email")} activeColor={meta.color} disabled={cLoading} required autoComplete="email" />
+            <PasswordField label="Password" value={cPassword} onChange={setCPassword} onFocus={focus("c-pass")} onBlur={blur} focused={isFocused("c-pass")} activeColor={meta.color} disabled={cLoading} autoComplete="new-password" />
+            <PasswordField label="Confirm Password" value={cConfirm} onChange={setCConfirm} onFocus={focus("c-conf")} onBlur={blur} focused={isFocused("c-conf")} activeColor={meta.color} disabled={cLoading} autoComplete="new-password" />
             <CustomDropdown
-              label="Join an Academy (optional)"
+              label="Academy (optional)"
               value={cAcademyId}
               onChange={setCAcademyId}
-              options={[
-                { value: "", label: "— Independent Coach (no academy) —" },
-                ...academies.map((a) => ({ value: a.id, label: a.name })),
-              ]}
-              placeholder="— Independent Coach (no academy) —"
+              options={academies.map((a) => ({ value: a.id, label: a.name }))}
+              placeholder="Independent coach"
               disabled={cLoading}
-              icon={<Building size={18} />}
+              icon={<School size={18} />}
               activeColor={meta.color}
-              activeShadow={meta.shadow}
             />
-              {cAcademyId && (
-                <p style={{ fontSize: "12px", color: "var(--warning)", marginTop: "6px" }}>
-                  Your account will be pending until the academy approves you.
-                </p>
-              )}
-            </div>
             {cError && <ErrorBox message={cError} />}
-            <button
-              type="submit"
-              style={{
-                width: "100%",
-                padding: "14px",
-                fontSize: "15px",
-                fontWeight: "600",
-                background: meta.bg,
-                color: "#fff",
-                borderRadius: "12px",
-                border: "none",
-                boxShadow: `0 4px 14px ${meta.shadow}`,
-                transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "8px",
-                cursor: cLoading ? "not-allowed" : "pointer",
-                opacity: cLoading ? 0.8 : 1,
-              }}
-              disabled={cLoading}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-1px)";
-                e.currentTarget.style.boxShadow = `0 6px 20px ${meta.shadow}`;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = `0 4px 14px ${meta.shadow}`;
-              }}
-              onMouseDown={(e) => {
-                e.currentTarget.style.transform = "translateY(1px) scale(0.98)";
-              }}
-              onMouseUp={(e) => {
-                e.currentTarget.style.transform = "translateY(0) scale(1)";
-              }}
-            >
-              {cLoading ? (
-                <Loader2 size={18} className="animate-spin" />
-              ) : (
-                <>
-                  Create Coach Account
-                  <span style={{ fontSize: "16px" }}>→</span>
-                </>
-              )}
-            </button>
+            <SubmitButton loading={cLoading} color={meta.bg} shadow={meta.shadow} label="Create Coach Account" />
           </form>
         )}
 
-        {/* ── Academy Form ── */}
+        {/* Academy Form */}
         {tab === "academy" && (
           <form onSubmit={handleAcademySubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-            {/* Academy details section */}
-            <div
-              style={{
-                padding: "16px",
-                borderRadius: "16px",
-                background: "rgba(0, 0, 0, 0.2)",
-                border: "1px solid var(--border-subtle)",
-              }}
-            >
-              <p
-                style={{
-                  fontSize: "11px",
-                  fontWeight: "700",
-                  color: "var(--text-secondary)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.8px",
-                  marginBottom: "14px",
-                }}
-              >
-                Academy Details
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                <div>
-                  <label className="input-label">Academy Name *</label>
-                  <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                    <School
-                      size={18}
-                      style={{
-                        position: "absolute",
-                        left: "16px",
-                        color: meta.color,
-                        opacity: 0.7,
-                        pointerEvents: "none",
-                      }}
-                    />
-                    <input
-                      className="input-field"
-                      type="text"
-                      placeholder="e.g. Grand Chess Academy"
-                      value={aName}
-                      onChange={(e) => setAName(e.target.value)}
-                      disabled={aLoading}
-                      required
-                      style={{
-                        paddingLeft: "46px",
-                        border:
-                          focusedField === "aName" ? `1px solid ${meta.color}` : "1px solid var(--input-border)",
-                        boxShadow: focusedField === "aName" ? `0 0 0 3px ${meta.shadow}` : "none",
-                        transition: "all 0.3s ease",
-                      }}
-                      onFocus={() => setFocusedField("aName")}
-                      onBlur={() => setFocusedField(null)}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="input-label">City (optional)</label>
-                  <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                    <Building
-                      size={18}
-                      style={{
-                        position: "absolute",
-                        left: "16px",
-                        color: meta.color,
-                        opacity: 0.7,
-                        pointerEvents: "none",
-                      }}
-                    />
-                    <input
-                      className="input-field"
-                      type="text"
-                      placeholder="e.g. Mumbai"
-                      value={aCity}
-                      onChange={(e) => setACity(e.target.value)}
-                      disabled={aLoading}
-                      style={{
-                        paddingLeft: "46px",
-                        border:
-                          focusedField === "aCity" ? `1px solid ${meta.color}` : "1px solid var(--input-border)",
-                        boxShadow: focusedField === "aCity" ? `0 0 0 3px ${meta.shadow}` : "none",
-                        transition: "all 0.3s ease",
-                      }}
-                      onFocus={() => setFocusedField("aCity")}
-                      onBlur={() => setFocusedField(null)}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="input-label">Description (optional)</label>
-                  <div style={{ position: "relative", display: "flex" }}>
-                    <Award
-                      size={18}
-                      style={{
-                        position: "absolute",
-                        left: "16px",
-                        top: "14px",
-                        color: meta.color,
-                        opacity: 0.7,
-                        pointerEvents: "none",
-                      }}
-                    />
-                    <textarea
-                      className="input-field"
-                      placeholder="Brief description..."
-                      value={aDesc}
-                      onChange={(e) => setADesc(e.target.value)}
-                      disabled={aLoading}
-                      rows={2}
-                      style={{
-                        resize: "vertical",
-                        paddingLeft: "46px",
-                        border:
-                          focusedField === "aDesc" ? `1px solid ${meta.color}` : "1px solid var(--input-border)",
-                        boxShadow: focusedField === "aDesc" ? `0 0 0 3px ${meta.shadow}` : "none",
-                        transition: "all 0.3s ease",
-                      }}
-                      onFocus={() => setFocusedField("aDesc")}
-                      onBlur={() => setFocusedField(null)}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Owner account section */}
-            <div
-              style={{
-                padding: "16px",
-                borderRadius: "16px",
-                background: "rgba(0, 0, 0, 0.2)",
-                border: "1px solid var(--border-subtle)",
-              }}
-            >
-              <p
-                style={{
-                  fontSize: "11px",
-                  fontWeight: "700",
-                  color: "var(--text-secondary)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.8px",
-                  marginBottom: "14px",
-                }}
-              >
-                Owner Account
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                <div>
-                  <label className="input-label">Your Full Name *</label>
-                  <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                    <User
-                      size={18}
-                      style={{
-                        position: "absolute",
-                        left: "16px",
-                        color: meta.color,
-                        opacity: 0.7,
-                        pointerEvents: "none",
-                      }}
-                    />
-                    <input
-                      className="input-field"
-                      type="text"
-                      placeholder="Your full name"
-                      value={aFullName}
-                      onChange={(e) => setAFullName(e.target.value)}
-                      disabled={aLoading}
-                      required
-                      style={{
-                        paddingLeft: "46px",
-                        border:
-                          focusedField === "aFullName" ? `1px solid ${meta.color}` : "1px solid var(--input-border)",
-                        boxShadow: focusedField === "aFullName" ? `0 0 0 3px ${meta.shadow}` : "none",
-                        transition: "all 0.3s ease",
-                      }}
-                      onFocus={() => setFocusedField("aFullName")}
-                      onBlur={() => setFocusedField(null)}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="input-label">Email Address *</label>
-                  <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                    <Mail
-                      size={18}
-                      style={{
-                        position: "absolute",
-                        left: "16px",
-                        color: meta.color,
-                        opacity: 0.7,
-                        pointerEvents: "none",
-                      }}
-                    />
-                    <input
-                      className="input-field"
-                      type="email"
-                      placeholder="you@example.com"
-                      value={aEmail}
-                      onChange={(e) => setAEmail(e.target.value)}
-                      disabled={aLoading}
-                      required
-                      style={{
-                        paddingLeft: "46px",
-                        border:
-                          focusedField === "aEmail" ? `1px solid ${meta.color}` : "1px solid var(--input-border)",
-                        boxShadow: focusedField === "aEmail" ? `0 0 0 3px ${meta.shadow}` : "none",
-                        transition: "all 0.3s ease",
-                      }}
-                      onFocus={() => setFocusedField("aEmail")}
-                      onBlur={() => setFocusedField(null)}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="input-label">Password *</label>
-                  <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                    <Lock
-                      size={18}
-                      style={{
-                        position: "absolute",
-                        left: "16px",
-                        color: meta.color,
-                        opacity: 0.7,
-                        pointerEvents: "none",
-                      }}
-                    />
-                    <input
-                      className="input-field"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="At least 8 characters"
-                      value={aPassword}
-                      onChange={(e) => setAPassword(e.target.value)}
-                      disabled={aLoading}
-                      required
-                      style={{
-                        paddingLeft: "46px",
-                        paddingRight: "46px",
-                        border:
-                          focusedField === "aPassword" ? `1px solid ${meta.color}` : "1px solid var(--input-border)",
-                        boxShadow: focusedField === "aPassword" ? `0 0 0 3px ${meta.shadow}` : "none",
-                        transition: "all 0.3s ease",
-                      }}
-                      onFocus={() => setFocusedField("aPassword")}
-                      onBlur={() => setFocusedField(null)}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      style={{
-                        position: "absolute",
-                        right: "12px",
-                        background: "none",
-                        border: "none",
-                        padding: "4px",
-                        color: "var(--text-secondary)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        cursor: "pointer",
-                        borderRadius: "6px",
-                      }}
-                    >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <label className="input-label">Confirm Password *</label>
-                  <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                    <Lock
-                      size={18}
-                      style={{
-                        position: "absolute",
-                        left: "16px",
-                        color: meta.color,
-                        opacity: 0.7,
-                        pointerEvents: "none",
-                      }}
-                    />
-                    <input
-                      className="input-field"
-                      type={showConfirmPassword ? "text" : "password"}
-                      placeholder="Repeat your password"
-                      value={aConfirm}
-                      onChange={(e) => setAConfirm(e.target.value)}
-                      disabled={aLoading}
-                      required
-                      style={{
-                        paddingLeft: "46px",
-                        paddingRight: "46px",
-                        border:
-                          focusedField === "aConfirm" ? `1px solid ${meta.color}` : "1px solid var(--input-border)",
-                        boxShadow: focusedField === "aConfirm" ? `0 0 0 3px ${meta.shadow}` : "none",
-                        transition: "all 0.3s ease",
-                      }}
-                      onFocus={() => setFocusedField("aConfirm")}
-                      onBlur={() => setFocusedField(null)}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      style={{
-                        position: "absolute",
-                        right: "12px",
-                        background: "none",
-                        border: "none",
-                        padding: "4px",
-                        color: "var(--text-secondary)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        cursor: "pointer",
-                        borderRadius: "6px",
-                      }}
-                    >
-                      {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <InputField label="Your Full Name" placeholder="Owner's full name" value={aFullName} onChange={setAFullName} onFocus={focus("a-name")} onBlur={blur} icon={<User size={18} />} focused={isFocused("a-name")} activeColor={meta.color} disabled={aLoading} required />
+            <InputField label="Email" type="email" placeholder="you@example.com" value={aEmail} onChange={setAEmail} onFocus={focus("a-email")} onBlur={blur} icon={<Mail size={18} />} focused={isFocused("a-email")} activeColor={meta.color} disabled={aLoading} required autoComplete="email" />
+            <PasswordField label="Password" value={aPassword} onChange={setAPassword} onFocus={focus("a-pass")} onBlur={blur} focused={isFocused("a-pass")} activeColor={meta.color} disabled={aLoading} autoComplete="new-password" />
+            <PasswordField label="Confirm Password" value={aConfirm} onChange={setAConfirm} onFocus={focus("a-conf")} onBlur={blur} focused={isFocused("a-conf")} activeColor={meta.color} disabled={aLoading} autoComplete="new-password" />
+            <InputField label="Academy Name" placeholder="e.g. King's Chess Academy" value={aName} onChange={setAName} onFocus={focus("a-aname")} onBlur={blur} icon={<Building size={18} />} focused={isFocused("a-aname")} activeColor={meta.color} disabled={aLoading} required />
+            <InputField label="City (optional)" placeholder="e.g. Mumbai" value={aCity} onChange={setACity} onFocus={focus("a-city")} onBlur={blur} icon={<Building size={18} />} focused={isFocused("a-city")} activeColor={meta.color} disabled={aLoading} />
             {aError && <ErrorBox message={aError} />}
-            <button
-              type="submit"
-              style={{
-                width: "100%",
-                padding: "14px",
-                fontSize: "15px",
-                fontWeight: "600",
-                background: meta.bg,
-                color: "#fff",
-                borderRadius: "12px",
-                border: "none",
-                boxShadow: `0 4px 14px ${meta.shadow}`,
-                transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "8px",
-                cursor: aLoading ? "not-allowed" : "pointer",
-                opacity: aLoading ? 0.8 : 1,
-              }}
-              disabled={aLoading}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-1px)";
-                e.currentTarget.style.boxShadow = `0 6px 20px ${meta.shadow}`;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = `0 4px 14px ${meta.shadow}`;
-              }}
-              onMouseDown={(e) => {
-                e.currentTarget.style.transform = "translateY(1px) scale(0.98)";
-              }}
-              onMouseUp={(e) => {
-                e.currentTarget.style.transform = "translateY(0) scale(1)";
-              }}
-            >
-              {aLoading ? (
-                <Loader2 size={18} className="animate-spin" />
-              ) : (
-                <>
-                  Register Academy
-                  <span style={{ fontSize: "16px" }}>→</span>
-                </>
-              )}
-            </button>
+            <SubmitButton loading={aLoading} color={meta.bg} shadow={meta.shadow} label="Create Academy Account" />
           </form>
         )}
 
-        <p style={{ textAlign: "center", marginTop: "24px", fontSize: "13px", color: "var(--text-secondary)" }}>
-          Already registered?{" "}
-          <Link
-            href="/login"
-            style={{
-              color: meta.color,
-              fontWeight: "600",
-              position: "relative",
-              transition: "color 0.3s ease",
-            }}
-            onMouseEnter={() => setLinkHovered(true)}
-            onMouseLeave={() => setLinkHovered(false)}
-          >
-            Log in
-            <span
-              style={{
-                position: "absolute",
-                bottom: "-2px",
-                left: "0",
-                width: linkHovered ? "100%" : "0%",
-                height: "1px",
-                backgroundColor: meta.color,
-                transition: "width 0.3s ease",
-              }}
-            />
-          </Link>
+        <p style={{ textAlign: "center", fontSize: "13px", color: "var(--text-secondary)", marginTop: "20px" }}>
+          Already have an account?{" "}
+          <Link href="/login" style={{ color: meta.color, fontWeight: "600" }}>Sign in</Link>
         </p>
       </div>
     </div>
   );
 }
 
+function SubmitButton({ loading, color, shadow, label }: { loading: boolean; color: string; shadow: string; label: string }) {
+  return (
+    <button
+      type="submit"
+      disabled={loading}
+      style={{
+        width: "100%", padding: "13px", fontSize: "15px", fontWeight: "600",
+        background: color, color: "#fff", borderRadius: "12px", border: "none",
+        cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.8 : 1,
+        boxShadow: `0 4px 14px ${shadow}`, transition: "all 0.3s cubic-bezier(0.4,0,0.2,1)",
+        display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = `0 6px 20px ${shadow}`; }}
+      onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = `0 4px 14px ${shadow}`; }}
+      onMouseDown={(e) => { e.currentTarget.style.transform = "translateY(1px) scale(0.98)"; }}
+      onMouseUp={(e) => { e.currentTarget.style.transform = "translateY(0) scale(1)"; }}
+    >
+      {loading ? <Loader2 size={18} className="animate-spin" /> : <>{label} <span style={{ fontSize: "16px" }}>→</span></>}
+    </button>
+  );
+}
+
 export default function RegisterPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense>
       <RegisterContent />
     </Suspense>
   );

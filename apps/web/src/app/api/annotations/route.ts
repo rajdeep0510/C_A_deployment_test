@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { prisma } from "@/lib/prisma";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -11,15 +11,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Missing params" }, { status: 400 });
   }
 
-  const { data, error } = await supabase
-    .from("game_annotations")
-    .select("*")
-    .eq("coach_id", coach_id)
-    .eq("player_username", player_username)
-    .eq("filename", filename);
+  const rows = await prisma.game_annotations.findMany({
+    where: { coach_id, player_username, filename },
+  });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+  return NextResponse.json(rows);
 }
 
 export async function PUT(req: NextRequest) {
@@ -30,22 +26,11 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
 
-  const { data, error } = await supabase
-    .from("game_annotations")
-    .upsert(
-      {
-        coach_id,
-        player_username,
-        filename,
-        move_index,
-        note,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "coach_id,player_username,filename,move_index" },
-    )
-    .select()
-    .single();
+  const row = await prisma.game_annotations.upsert({
+    where: { coach_id_player_username_filename_move_index: { coach_id, player_username, filename, move_index } },
+    update: { note, updated_at: new Date() },
+    create: { coach_id, player_username, filename, move_index, note },
+  });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+  return NextResponse.json(row);
 }
