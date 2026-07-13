@@ -1,6 +1,5 @@
 "use client";
 import { createContext, useContext, useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
 
 type CoachProfile = {
   id: string;
@@ -10,10 +9,17 @@ type CoachProfile = {
   role: "admin" | "academy_owner" | "coach";
   academy_id: string | null;
   status: "pending" | "approved" | "rejected";
+  invite_code: string | null;
+};
+
+type AuthUser = {
+  id: string;
+  email: string;
+  emailVerified: boolean;
 };
 
 type AuthContextType = {
-  user: any;
+  user: AuthUser | null;
   coachProfile: CoachProfile | null;
   loading: boolean;
   signOut: () => Promise<void>;
@@ -29,20 +35,37 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [coachProfile, setCoachProfile] = useState<CoachProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  async function fetchProfile(userId: string) {
+  async function fetchMe() {
     try {
-      const { data } = await supabase
-        .from("profiles")
-        .select("id, email, full_name, created_at, role, academy_id, status")
-        .eq("id", userId)
-        .single();
-      setCoachProfile(data ?? null);
-    } catch (error) {
-      console.error("Error fetching profile:", error);
+      const res = await fetch("/api/auth/me");
+      if (!res.ok) {
+        setUser(null);
+        setCoachProfile(null);
+        return;
+      }
+      const data = await res.json();
+      if (data.userType !== "staff") {
+        setUser(null);
+        setCoachProfile(null);
+        return;
+      }
+      setUser({ id: data.id, email: data.email, emailVerified: data.emailVerified });
+      setCoachProfile({
+        id: data.id,
+        email: data.email,
+        full_name: data.fullName,
+        created_at: "",
+        role: data.role,
+        academy_id: data.academyId,
+        status: data.status,
+        invite_code: data.inviteCode,
+      });
+    } catch {
+      setUser(null);
       setCoachProfile(null);
     } finally {
       setLoading(false);
@@ -50,38 +73,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
-    // Hydrate from existing session immediately
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id);
-      } else {
-        setLoading(false);
-      }
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id);
-      } else {
-        setCoachProfile(null);
-        setLoading(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    fetchMe();
   }, []);
 
   const refreshProfile = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) await fetchProfile(session.user.id);
+    await fetchMe();
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    await fetch("/api/auth/logout", { method: "POST" });
     setUser(null);
     setCoachProfile(null);
     window.location.href = "/";

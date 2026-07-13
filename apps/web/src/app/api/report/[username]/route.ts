@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase-admin";
+import { prisma } from "@/lib/prisma";
 
 const CHESS_COM_HEADERS = { "User-Agent": "ChessAdvisor/1.0" };
 
-// ---------------------------------------------------------------------------
-// Chess.com game fetcher
-// ---------------------------------------------------------------------------
 async function fetchRecentChessComGames(username: string, limit: number) {
   try {
     const archivesRes = await fetch(
@@ -30,9 +27,6 @@ async function fetchRecentChessComGames(username: string, limit: number) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Build report from completed analysis_jobs (Python worker / WASM results)
-// ---------------------------------------------------------------------------
 function buildReportFromJobs(username: string, jobs: any[]) {
   const completed = jobs.filter((j) => j.status === "completed" && j.result);
   if (completed.length === 0) return null;
@@ -95,7 +89,7 @@ function buildReportFromJobs(username: string, jobs: any[]) {
   const momentum = avgAcc >= 70 ? "Improving" : avgAcc >= 55 ? "Stable" : "Needs Work";
 
   const accuracyTimeline = [...completed].reverse().map((job, i) => ({
-    label: `G${i + 1}`,
+    label:    `G${i + 1}`,
     accuracy: parseFloat(job.result?.game_accuracy || 0),
   }));
 
@@ -103,9 +97,9 @@ function buildReportFromJobs(username: string, jobs: any[]) {
     report: {
       title: `Progress Report — ${username}`,
       period_summary: {
-        games_analyzed: n,
+        games_analyzed:       n,
         overall_avg_accuracy: avgAcc.toFixed(1),
-        current_momentum: momentum,
+        current_momentum:     momentum,
       },
       strengths_weaknesses: { strengths, weaknesses },
       repertoire_snapshot: {
@@ -121,41 +115,38 @@ function buildReportFromJobs(username: string, jobs: any[]) {
     visuals: {
       phase_radar: {
         labels: ["Opening", "Middlegame", "Endgame"],
-        data: [Math.round(phaseAvg.opening), Math.round(phaseAvg.middlegame), Math.round(phaseAvg.endgame)],
+        data:   [Math.round(phaseAvg.opening), Math.round(phaseAvg.middlegame), Math.round(phaseAvg.endgame)],
       },
       accuracy_over_time: {
         labels: accuracyTimeline.map((p) => p.label),
-        data: accuracyTimeline.map((p) => p.accuracy),
+        data:   accuracyTimeline.map((p) => p.accuracy),
       },
       mistake_distribution: {
         labels: Object.keys(qualityCounts),
-        data: Object.values(qualityCounts),
+        data:   Object.values(qualityCounts),
       },
     },
     move_breakdown: qualityCounts,
     openings: {
-      performance: openingPerf,
-      mistakes: openingPerf.filter((o) => o.losses > o.wins).slice(0, 3),
+      performance:     openingPerf,
+      mistakes:        openingPerf.filter((o) => o.losses > o.wins).slice(0, 3),
       recommendations: openingPerf
         .filter((o) => o.losses > o.wins)
         .slice(0, 3)
         .map((o) => ({
-          type: "Study",
+          type:    "Study",
           message: `Study the ${o.opening_name} — ${o.losses} losses vs ${o.wins} wins`,
         })),
     },
     mistake_frequency: {
-      blunders_per_game: (blunders / n).toFixed(2),
-      mistakes_per_game: (mistakes / n).toFixed(2),
+      blunders_per_game:     (blunders / n).toFixed(2),
+      mistakes_per_game:     (mistakes / n).toFixed(2),
       inaccuracies_per_game: (inaccuracies / n).toFixed(2),
-      errors_per_10_moves: (((blunders + mistakes) / n) / 3).toFixed(2),
+      errors_per_10_moves:   (((blunders + mistakes) / n) / 3).toFixed(2),
     },
   };
 }
 
-// ---------------------------------------------------------------------------
-// Build a lightweight report from raw Chess.com games (no analysis needed)
-// ---------------------------------------------------------------------------
 function buildBasicReport(username: string, games: any[]) {
   let wins = 0, losses = 0, draws = 0;
   const openingMap: Record<string, { wins: number; losses: number; draws: number }> = {};
@@ -164,8 +155,7 @@ function buildBasicReport(username: string, games: any[]) {
 
   for (const game of games) {
     const isWhite = game.white?.username?.toLowerCase() === username.toLowerCase();
-    const result = isWhite ? game.white?.result : game.black?.result;
-    // Chess.com API has eco_url (e.g. ".../Sicilian-Defense") not an opening field
+    const result  = isWhite ? game.white?.result : game.black?.result;
     const ecoUrl: string = game.eco_url || "";
     const opening = ecoUrl
       ? decodeURIComponent(ecoUrl.split("/").pop() || "").replace(/-/g, " ")
@@ -187,11 +177,11 @@ function buildBasicReport(username: string, games: any[]) {
     }
   }
 
-  const total = wins + losses + draws;
+  const total   = wins + losses + draws;
   const winRate = total > 0 ? Math.round((wins / total) * 100) : 0;
   const momentum = winRate >= 55 ? "Improving" : winRate >= 40 ? "Stable" : "Needs Work";
 
-  const strengths: string[] = [];
+  const strengths: string[]  = [];
   const weaknesses: string[] = [];
   if (winRate >= 55) strengths.push(`Strong win rate of ${winRate}% across recent games`);
   else weaknesses.push(`Win rate of ${winRate}% — focus on converting advantages`);
@@ -201,7 +191,7 @@ function buildBasicReport(username: string, games: any[]) {
     .slice(0, 5);
 
   for (const [name, rec] of topOpenings) {
-    const t = rec.wins + rec.losses + rec.draws;
+    const t  = rec.wins + rec.losses + rec.draws;
     const wr = t > 0 ? Math.round((rec.wins / t) * 100) : 0;
     if (wr >= 60 && t >= 2) strengths.push(`Performing well in ${name} (${wr}% win rate)`);
     else if (wr <= 30 && t >= 2) weaknesses.push(`Struggling in ${name} (${wr}% win rate)`);
@@ -214,9 +204,9 @@ function buildBasicReport(username: string, games: any[]) {
     report: {
       title: `Progress Report — ${username}`,
       period_summary: {
-        games_analyzed: total,
+        games_analyzed:       total,
         overall_avg_accuracy: "N/A (run Batch Analysis for accuracy data)",
-        current_momentum: momentum,
+        current_momentum:     momentum,
       },
       strengths_weaknesses: { strengths, weaknesses },
       repertoire_snapshot: {
@@ -230,19 +220,15 @@ function buildBasicReport(username: string, games: any[]) {
       ],
     },
     visuals: {
-      phase_radar: { labels: ["Opening", "Middlegame", "Endgame"], data: [0, 0, 0] },
+      phase_radar:        { labels: ["Opening", "Middlegame", "Endgame"], data: [0, 0, 0] },
       accuracy_over_time: { labels: [], data: [] },
     },
     move_breakdown: {},
   };
 }
 
-// ---------------------------------------------------------------------------
-// Classify a game by time control for filtering
-// ---------------------------------------------------------------------------
 function classifyGame(g: any): string {
-  if (g.time_class) return g.time_class; // Chess.com header: "rapid"/"blitz"/"bullet"/"daily"
-  // Derive from TimeControl header (e.g. "600+3") — base seconds only
+  if (g.time_class) return g.time_class;
   const base = parseInt((g.time_control || "").split("+")[0], 10);
   if (isNaN(base) || base <= 0) return "unknown";
   if (base < 180) return "bullet";
@@ -251,31 +237,20 @@ function classifyGame(g: any): string {
   return "daily";
 }
 
-// Filter a batch result to only games matching the given time control,
-// re-aggregating all metrics that can be derived from individual_games.
-// Returns { _tc_no_data: true, _tc_reason } when no matching games exist.
 function filterBatchByTc(br: any, tc: string): any {
   const all: any[] = br.individual_games || [];
-  const hasTimeClassData = all.some(g => g.time_class);
-  const filtered = all.filter(g => classifyGame(g) === tc);
+  const hasTimeClassData = all.some((g) => g.time_class);
+  const filtered = all.filter((g) => classifyGame(g) === tc);
   if (filtered.length === 0) {
-    return {
-      _tc_no_data: true,
-      _tc_reason: hasTimeClassData ? "no_games" : "needs_rerun",
-    };
+    return { _tc_no_data: true, _tc_reason: hasTimeClassData ? "no_games" : "needs_rerun" };
   }
 
-  const n = filtered.length;
-  const avgAcc = n > 0
-    ? filtered.reduce((s, g) => s + parseFloat(g.accuracy ?? 0), 0) / n
-    : 0;
+  const n      = filtered.length;
+  const avgAcc = n > 0 ? filtered.reduce((s, g) => s + parseFloat(g.accuracy ?? 0), 0) / n : 0;
 
-  // Re-aggregate move quality + phase accuracy from move_history
   const qd: Record<string, number> = {};
   const phaseAcc: Record<string, { sum: number; count: number }> = {
-    opening: { sum: 0, count: 0 },
-    middlegame: { sum: 0, count: 0 },
-    endgame: { sum: 0, count: 0 },
+    opening: { sum: 0, count: 0 }, middlegame: { sum: 0, count: 0 }, endgame: { sum: 0, count: 0 },
   };
   for (const g of filtered) {
     for (const m of (g.move_history || [])) {
@@ -291,7 +266,6 @@ function filterBatchByTc(br: any, tc: string): any {
     phasePerf[phase] = count > 0 ? Math.round((sum / count) * 100) / 100 : 0;
   }
 
-  // Re-aggregate opening performance from filtered games
   const openingAcc: Record<string, { games: number; wins: number; losses: number; draws: number; accSum: number }> = {};
   for (const g of filtered) {
     const name: string = g.opening || "Unknown";
@@ -306,10 +280,8 @@ function filterBatchByTc(br: any, tc: string): any {
     .map(([opening, s]) => ({
       opening,
       games_played: s.games,
-      wins: s.wins,
-      losses: s.losses,
-      draws: s.draws,
-      win_rate: s.games > 0 ? Math.round((s.wins / s.games) * 1000) / 10 : 0,
+      wins: s.wins, losses: s.losses, draws: s.draws,
+      win_rate:     s.games > 0 ? Math.round((s.wins / s.games) * 1000) / 10 : 0,
       avg_accuracy: s.games > 0 ? Math.round((s.accSum / s.games) * 100) / 100 : 0,
     }))
     .sort((a, b) => b.games_played - a.games_played)
@@ -317,51 +289,44 @@ function filterBatchByTc(br: any, tc: string): any {
 
   return {
     ...br,
-    total_analyzed: n,
-    average_accuracy: Math.round(avgAcc * 100) / 100,
+    total_analyzed:           n,
+    average_accuracy:         Math.round(avgAcc * 100) / 100,
     move_quality_distribution: qd,
-    phase_performance: phasePerf,
-    individual_games: filtered,
+    phase_performance:        phasePerf,
+    individual_games:         filtered,
     openings: { ...br.openings, performance: { by_opening: byOpening } },
   };
 }
 
-// ---------------------------------------------------------------------------
-// Map a batch_jobs result (from BatchAnalyzer._aggregate_results) into the
-// shape the report page expects.
-// ---------------------------------------------------------------------------
 function buildReportFromBatch(username: string, br: any) {
-  const n = br.total_analyzed || 0;
+  const n      = br.total_analyzed || 0;
   const avgAcc: number = br.average_accuracy || 0;
   const qd: Record<string, number> = br.move_quality_distribution || {};
   const phasePerf: Record<string, number> = br.phase_performance || {};
 
-  // Strengths / weaknesses from phase accuracy
-  const strengths: string[] = [];
+  const strengths: string[]  = [];
   const weaknesses: string[] = [];
   for (const [phase, acc] of Object.entries(phasePerf)) {
     const v = acc as number;
     if (v >= 75) strengths.push(`Strong ${phase} play (${v.toFixed(1)}% accuracy)`);
     else if (v > 0 && v < 60) weaknesses.push(`${phase.charAt(0).toUpperCase() + phase.slice(1)} accuracy needs work (${v.toFixed(1)}%)`);
   }
-  const blunders = qd.Blunder || 0;
-  const mistakes  = qd.Mistake || 0;
+  const blunders    = qd.Blunder || 0;
+  const mistakes    = qd.Mistake || 0;
   const inaccuracies = qd.Inaccuracy || 0;
   if (n > 0 && blunders / n > 1) weaknesses.push(`High blunder rate (${(blunders / n).toFixed(1)} per game)`);
   if ((qd.Best || 0) > blunders * 3) strengths.push("Finding strong moves consistently");
   if (!strengths.length) strengths.push(`Average accuracy of ${avgAcc.toFixed(1)}% across ${n} analyzed games`);
   if (!weaknesses.length) weaknesses.push("Keep analyzing to find specific improvement areas");
 
-  const momentum = avgAcc >= 70 ? "Improving" : avgAcc >= 55 ? "Stable" : "Needs Work";
+  const momentum  = avgAcc >= 70 ? "Improving" : avgAcc >= 55 ? "Stable" : "Needs Work";
   const worstPhase = Object.entries(phasePerf)
     .filter(([, v]) => (v as number) > 0)
     .sort((a, b) => (a[1] as number) - (b[1] as number))[0]?.[0] ?? "endgame";
 
-  // Accuracy timeline — oldest game first (left → right = past → present)
   const games: any[] = br.individual_games || [];
   const chronological = [...games].reverse();
   const accuracyTimeline = chronological.map((g: any, i: number) => {
-    // Parse PGN date "YYYY.MM.DD" into a readable string for the tooltip
     let date: string | undefined;
     const raw = String(g.date || "");
     if (raw && !raw.includes("?")) {
@@ -374,14 +339,13 @@ function buildReportFromBatch(username: string, br: any) {
       }
     }
     return {
-      label: `G${i + 1}`,      // unique X-axis key — no two points share a label
+      label:    `G${i + 1}`,
       accuracy: Math.round(parseFloat(g.accuracy ?? 0) * 10) / 10,
-      opening: g.opening || undefined,
+      opening:  g.opening || undefined,
       date,
     };
   });
 
-  // Repertoire snapshot
   const rep = br.openings?.repertoire || {};
   const extractNames = (arr: any[]) =>
     (arr || []).slice(0, 3).map((o: any) =>
@@ -390,7 +354,6 @@ function buildReportFromBatch(username: string, br: any) {
   const whiteOpenings = extractNames(rep.white_openings || rep.as_white || []);
   const blackOpenings = extractNames(rep.black_openings || rep.as_black || []);
 
-  // time_analysis: map batch aggregate fields to what the report page renders
   const bta = br.time_analysis;
   const mappedTimeAnalysis = bta && bta.games_with_time_data > 0
     ? {
@@ -399,13 +362,12 @@ function buildReportFromBatch(username: string, br: any) {
               .filter((v) => v != null)
               .reduce((sum, v, _, arr) => sum + v / arr.length, 0)
           : null,
-        phase_time_breakdown: bta.phase_avg_time ?? null,
-        time_pressure_risk: (bta.time_pressure_pct ?? 0) > 40,
-        think_move_count: null,
-        // Keep the batch-specific fields for completeness
-        games_with_time_data: bta.games_with_time_data,
-        games_with_time_pressure: bta.games_with_time_pressure,
-        time_pressure_pct: bta.time_pressure_pct,
+        phase_time_breakdown:            bta.phase_avg_time ?? null,
+        time_pressure_risk:              (bta.time_pressure_pct ?? 0) > 40,
+        think_move_count:                null,
+        games_with_time_data:            bta.games_with_time_data,
+        games_with_time_pressure:        bta.games_with_time_pressure,
+        time_pressure_pct:               bta.time_pressure_pct,
         avg_time_pressure_moves_per_game: bta.avg_time_pressure_moves_per_game,
       }
     : null;
@@ -416,9 +378,9 @@ function buildReportFromBatch(username: string, br: any) {
     report: {
       title: `Progress Report — ${username}`,
       period_summary: {
-        games_analyzed: n,
+        games_analyzed:       n,
         overall_avg_accuracy: avgAcc.toFixed(1),
-        current_momentum: momentum,
+        current_momentum:     momentum,
       },
       strengths_weaknesses: { strengths, weaknesses },
       repertoire_snapshot: { user_as_white: whiteOpenings, user_as_black: blackOpenings },
@@ -433,7 +395,7 @@ function buildReportFromBatch(username: string, br: any) {
     visuals: {
       phase_radar: {
         labels: ["Opening", "Middlegame", "Endgame"],
-        data: [
+        data:   [
           Math.round(phasePerf.opening || 0),
           Math.round(phasePerf.middlegame || 0),
           Math.round(phasePerf.endgame || 0),
@@ -447,27 +409,24 @@ function buildReportFromBatch(username: string, br: any) {
       },
       mistake_distribution: {
         labels: Object.keys(qd),
-        data: Object.values(qd),
+        data:   Object.values(qd),
       },
     },
     move_breakdown: qd,
     openings: br.openings
       ? (() => {
-          // Build W/L/D per opening from individual_games (works even on old cached data)
           const wldMap: Record<string, { wins: number; losses: number; draws: number }> = {};
           for (const g of (br.individual_games || [])) {
             const name: string = g.opening || "Unknown";
             if (!wldMap[name]) wldMap[name] = { wins: 0, losses: 0, draws: 0 };
-            if (g.user_result === "win") wldMap[name].wins++;
+            if (g.user_result === "win")       wldMap[name].wins++;
             else if (g.user_result === "loss") wldMap[name].losses++;
-            else wldMap[name].draws++;
+            else                               wldMap[name].draws++;
           }
-          // Build mistake_rate lookup from opening_mistakes
           const mistakeMap: Record<string, number> = {};
           for (const o of (br.openings.mistakes?.worst_openings || [])) {
             mistakeMap[o.opening] = o.error_rate;
           }
-          // Enrich each performance row with W/L/D and mistake_rate
           const perfRows = (br.openings.performance?.by_opening ?? []).map((o: any) => ({
             ...o,
             wins:         wldMap[o.opening]?.wins   ?? o.wins   ?? 0,
@@ -483,14 +442,14 @@ function buildReportFromBatch(username: string, br: any) {
           };
         })()
       : undefined,
-    patterns: br.patterns,
-    time_analysis: mappedTimeAnalysis,
+    patterns:         br.patterns,
+    time_analysis:    mappedTimeAnalysis,
     mistake_frequency: n > 0
       ? {
-          blunders_per_game: (blunders / n).toFixed(2),
-          mistakes_per_game: (mistakes / n).toFixed(2),
+          blunders_per_game:     (blunders / n).toFixed(2),
+          mistakes_per_game:     (mistakes / n).toFixed(2),
           inaccuracies_per_game: (inaccuracies / n).toFixed(2),
-          errors_per_10_moves: totalMoves > 0
+          errors_per_10_moves:   totalMoves > 0
             ? (((blunders + mistakes) / totalMoves) * 10).toFixed(2)
             : "0.00",
         }
@@ -498,31 +457,20 @@ function buildReportFromBatch(username: string, br: any) {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Merge individual WASM analysis accuracies into a batch result snapshot.
-// Individual analysis runs at deeper engine depth → more accurate numbers.
-// The batch snapshot is frozen at run time; this patches it before use.
-//
-// Two match strategies (in priority order):
-//   1. Exact filename (URL) match — works for new batch data (Python now writes it)
-//   2. "white|black|result" composite — fallback for old stored data with null filenames
-// ---------------------------------------------------------------------------
 function applyIndividualAccuracies(
   br: any,
-  byFilename: Map<string, number>,   // game URL → accuracy
-  byGameKey:  Map<string, number>,   // "white|black|result" → accuracy
+  byFilename: Map<string, number>,
+  byGameKey:  Map<string, number>,
 ): any {
   if (byFilename.size === 0 && byGameKey.size === 0) return br;
 
   const games: any[] = br.individual_games || [];
   let anyPatched = false;
   const updatedGames = games.map((g: any) => {
-    // Strategy 1: exact URL match (new batch data)
     if (g.filename) {
       const acc = byFilename.get(g.filename);
       if (acc != null) { anyPatched = true; return { ...g, accuracy: acc }; }
     }
-    // Strategy 2: composite identity match (old batch data with null filenames)
     const gameKey = [g.white, g.black, g.result]
       .map((v: any) => (v ?? "").toLowerCase())
       .join("|");
@@ -535,7 +483,6 @@ function applyIndividualAccuracies(
 
   if (!anyPatched) return br;
 
-  // Recompute aggregate average accuracy from the patched per-game values
   const accs = updatedGames
     .map((g: any) => parseFloat(g.accuracy ?? 0))
     .filter((a: number) => a > 0);
@@ -544,9 +491,6 @@ function applyIndividualAccuracies(
       ? accs.reduce((s: number, a: number) => s + a, 0) / accs.length
       : br.average_accuracy;
 
-  // Re-derive opening performance (avg_accuracy per opening) from patched games.
-  // The pre-aggregated br.openings.performance.by_opening is a frozen snapshot
-  // that doesn't reflect the updated per-game accuracies.
   let patchedOpenings = br.openings;
   if (br.openings?.performance) {
     const openingAcc: Record<string, {
@@ -583,13 +527,10 @@ function applyIndividualAccuracies(
     ...br,
     individual_games: updatedGames,
     average_accuracy: Math.round(newAvg * 100) / 100,
-    openings: patchedOpenings,
+    openings:         patchedOpenings,
   };
 }
 
-// ---------------------------------------------------------------------------
-// Route handler
-// ---------------------------------------------------------------------------
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ username: string }> }
@@ -601,63 +542,47 @@ export async function GET(
   try {
     const tc = searchParams.get("tc");
 
-    // Hoist individual analysis_jobs fetch so we can:
-    //   (a) patch batch snapshots with higher-quality WASM accuracies
-    //   (b) reuse the same data for the fallback path (no double-query)
-    const { data: indJobs } = await supabaseAdmin
-      .from("analysis_jobs")
-      .select("*")
-      .eq("username", username)
-      .eq("status", "completed")
-      .order("created_at", { ascending: false })
-      .limit(limit);
+    const indJobs = await prisma.analysis_jobs.findMany({
+      where:   { username, status: "completed" },
+      orderBy: { created_at: "desc" },
+      take:    limit,
+    });
 
-    // Build two match maps for merging individual WASM accuracies into batch data:
-    //   byFilename — exact URL match (new batch data where Python now writes filename)
-    //   byGameKey  — "white|black|result" composite (old stored data with null filenames)
     const byFilename = new Map<string, number>();
     const byGameKey  = new Map<string, number>();
-    for (const j of indJobs ?? []) {
-      const acc = j.result?.game_accuracy;
+    for (const j of indJobs) {
+      const r   = j.result as any;
+      const acc = r?.game_accuracy;
       if (acc == null) continue;
       const parsed = parseFloat(acc);
       if (j.filename) byFilename.set(j.filename, parsed);
-      const r = j.result;
       const key = [r?.white_player, r?.black_player, r?.result]
         .map((v: any) => (v ?? "").toLowerCase())
         .join("|");
       if (key.replace(/\|/g, "")) byGameKey.set(key, parsed);
     }
 
-    // 1a. When tc is set, first look for a dedicated tc-specific batch job
     if (tc && tc !== "all") {
-      const { data: tcJobs } = await supabaseAdmin
-        .from("batch_jobs")
-        .select("result, created_at")
-        .eq("username", username)
-        .eq("status", "completed")
-        .eq("time_class", tc)
-        .order("created_at", { ascending: false })
-        .limit(1);
+      const tcJob = await prisma.batch_jobs.findFirst({
+        where:   { username, status: "completed", time_class: tc },
+        select:  { result: true, created_at: true },
+        orderBy: { created_at: "desc" },
+      });
 
-      if (tcJobs && tcJobs.length > 0 && tcJobs[0].result) {
-        const merged = applyIndividualAccuracies(tcJobs[0].result, byFilename, byGameKey);
+      if (tcJob?.result) {
+        const merged = applyIndividualAccuracies(tcJob.result, byFilename, byGameKey);
         return NextResponse.json(buildReportFromBatch(username, merged));
       }
     }
 
-    // 1b. Most recent completed all-games batch job
-    const { data: batchJobs } = await supabaseAdmin
-      .from("batch_jobs")
-      .select("result, created_at")
-      .eq("username", username)
-      .eq("status", "completed")
-      .is("time_class", null)
-      .order("created_at", { ascending: false })
-      .limit(1);
+    const batchJob = await prisma.batch_jobs.findFirst({
+      where:   { username, status: "completed", time_class: null },
+      select:  { result: true, created_at: true },
+      orderBy: { created_at: "desc" },
+    });
 
-    if (batchJobs && batchJobs.length > 0 && batchJobs[0].result) {
-      const merged = applyIndividualAccuracies(batchJobs[0].result, byFilename, byGameKey);
+    if (batchJob?.result) {
+      const merged = applyIndividualAccuracies(batchJob.result, byFilename, byGameKey);
       if (tc && tc !== "all") {
         const filterResult = filterBatchByTc(merged, tc);
         if (filterResult._tc_no_data) {
@@ -668,13 +593,11 @@ export async function GET(
       return NextResponse.json(buildReportFromBatch(username, merged));
     }
 
-    // 2. Individual analysis jobs fallback (reuse hoisted fetch — no batch exists)
-    if (indJobs && indJobs.length > 0) {
+    if (indJobs.length > 0) {
       const report = buildReportFromJobs(username, indJobs);
       if (report) return NextResponse.json(report);
     }
 
-    // 3. Fallback: basic report from Chess.com game history (no analysis)
     const games = await fetchRecentChessComGames(username, 20);
     if (games.length > 0) {
       return NextResponse.json(buildBasicReport(username, games));

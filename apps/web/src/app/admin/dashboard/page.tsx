@@ -2,7 +2,6 @@
 import { useEffect, useState } from "react";
 import CoachHeader from "@/components/CoachHeader";
 import Loader from "@/components/Loader";
-import { supabase } from "@/lib/supabase";
 import { CheckCircle, XCircle, Shield } from "lucide-react";
 
 type Academy = {
@@ -14,8 +13,6 @@ type Academy = {
   owner_id: string;
   ownerName?: string;
   ownerEmail?: string;
-  coachCount?: number;
-  playerCount?: number;
 };
 
 type Coach = {
@@ -42,16 +39,16 @@ type Player = {
 
 const TABS = [
   { key: "pending_academies", label: "Pending Academies" },
-  { key: "academies", label: "All Academies" },
-  { key: "coaches", label: "All Coaches" },
-  { key: "players", label: "All Players" },
+  { key: "academies",         label: "All Academies" },
+  { key: "coaches",           label: "All Coaches" },
+  { key: "players",           label: "All Players" },
 ];
 
 function StatusBadge({ status }: { status: string }) {
   const colors: Record<string, { bg: string; color: string }> = {
     approved: { bg: "rgba(16,185,129,0.12)", color: "var(--success)" },
-    pending: { bg: "rgba(245,158,11,0.12)", color: "var(--warning)" },
-    rejected: { bg: "rgba(239,68,68,0.1)", color: "var(--danger)" },
+    pending:  { bg: "rgba(245,158,11,0.12)", color: "var(--warning)" },
+    rejected: { bg: "rgba(239,68,68,0.1)",  color: "var(--danger)" },
   };
   const c = colors[status] ?? colors.pending;
   return (
@@ -74,60 +71,59 @@ export default function AdminDashboard() {
 
   async function loadData() {
     setLoading(true);
+    try {
+      const res = await fetch("/api/admin/data");
+      if (!res.ok) throw new Error("Failed to load data");
+      const { academies, coaches: coachesData, players: playersData, ownerProfiles } = await res.json();
 
-    const [
-      { data: academiesData },
-      { data: coachesData },
-      { data: playersData },
-      { data: profilesData },
-    ] = await Promise.all([
-      supabase.from("academies").select("*").order("created_at", { ascending: false }),
-      supabase.from("profiles").select("*").eq("role", "coach").order("created_at", { ascending: false }),
-      supabase.from("players").select("*").order("created_at", { ascending: false }),
-      supabase.from("profiles").select("id, full_name, email").in("role", ["academy_owner", "coach"]),
-    ]);
+      const profileMap: Record<string, { full_name: string; email: string }> = {};
+      (ownerProfiles ?? []).forEach((p: any) => { profileMap[p.id] = { full_name: p.full_name, email: p.email }; });
 
-    const profileMap: Record<string, { full_name: string; email: string }> = {};
-    (profilesData ?? []).forEach((p) => { profileMap[p.id] = { full_name: p.full_name, email: p.email }; });
+      const academyNameMap: Record<string, string> = {};
+      (academies ?? []).forEach((a: any) => { academyNameMap[a.id] = a.name; });
 
-    const academyNameMap: Record<string, string> = {};
-    (academiesData ?? []).forEach((a) => { academyNameMap[a.id] = a.name; });
+      const enrichedAcademies: Academy[] = (academies ?? []).map((a: any) => ({
+        ...a,
+        ownerName:  profileMap[a.owner_id]?.full_name ?? "—",
+        ownerEmail: profileMap[a.owner_id]?.email ?? "—",
+      }));
 
-    const enrichedAcademies: Academy[] = (academiesData ?? []).map((a) => ({
-      ...a,
-      ownerName: profileMap[a.owner_id]?.full_name ?? "—",
-      ownerEmail: profileMap[a.owner_id]?.email ?? "—",
-    }));
+      const coachIdMap: Record<string, string> = {};
+      (coachesData ?? []).forEach((c: any) => { coachIdMap[c.id] = c.full_name; });
 
-    const coachIdMap: Record<string, string> = {};
-    (coachesData ?? []).forEach((c) => { coachIdMap[c.id] = c.full_name; });
+      const enrichedCoaches: Coach[] = (coachesData ?? []).map((c: any) => ({
+        ...c,
+        academyName: c.academy_id ? (academyNameMap[c.academy_id] ?? "—") : "Independent",
+        playerCount: (playersData ?? []).filter((p: any) => p.coach_id === c.id && p.status === "approved").length,
+      }));
 
-    const enrichedCoaches: Coach[] = (coachesData ?? []).map((c) => ({
-      ...c,
-      academyName: c.academy_id ? (academyNameMap[c.academy_id] ?? "—") : "Independent",
-      playerCount: (playersData ?? []).filter((p) => p.coach_id === c.id && p.status === "approved").length,
-    }));
+      const enrichedPlayers: Player[] = (playersData ?? []).map((p: any) => {
+        const coach = (coachesData ?? []).find((c: any) => c.id === p.coach_id);
+        return {
+          ...p,
+          coachName:   coach?.full_name ?? "—",
+          academyName: coach?.academy_id ? (academyNameMap[coach.academy_id] ?? "—") : "Independent",
+        };
+      });
 
-    const enrichedPlayers: Player[] = (playersData ?? []).map((p) => {
-      const coach = (coachesData ?? []).find((c) => c.id === p.coach_id);
-      return {
-        ...p,
-        coachName: coach?.full_name ?? "—",
-        academyName: coach?.academy_id ? (academyNameMap[coach.academy_id] ?? "—") : "Independent",
-      };
-    });
-
-    setPendingAcademies(enrichedAcademies.filter((a) => a.status === "pending"));
-    setAllAcademies(enrichedAcademies.filter((a) => a.status !== "pending"));
-    setCoaches(enrichedCoaches);
-    setPlayers(enrichedPlayers);
-    setLoading(false);
+      setPendingAcademies(enrichedAcademies.filter((a) => a.status === "pending"));
+      setAllAcademies(enrichedAcademies.filter((a) => a.status !== "pending"));
+      setCoaches(enrichedCoaches);
+      setPlayers(enrichedPlayers);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleAcademyAction(academy: Academy, action: "approved" | "rejected") {
     setActionLoading(academy.id);
-    await supabase.from("academies").update({ status: action }).eq("id", academy.id);
-    await supabase.from("profiles").update({ status: action }).eq("id", academy.owner_id);
+    await fetch("/api/admin/data", {
+      method:  "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ academyId: academy.id, ownerId: academy.owner_id, status: action }),
+    });
     setActionLoading(null);
     loadData();
   }
@@ -136,11 +132,7 @@ export default function AdminDashboard() {
     if (!confirm("Are you sure you want to remove this academy and all its coaches? This cannot be undone.")) return;
     setActionLoading(academyId);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      await fetch(`/api/auth/admin/academies/${academyId}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${session?.access_token}` },
-      });
+      await fetch(`/api/auth/admin/academies/${academyId}`, { method: "DELETE" });
     } catch (e) {
       console.error(e);
       alert("Failed to remove academy.");
@@ -153,11 +145,7 @@ export default function AdminDashboard() {
     if (!confirm("Are you sure you want to remove this coach?")) return;
     setActionLoading(coachId);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      await fetch(`/api/auth/admin/users/${coachId}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${session?.access_token}` },
-      });
+      await fetch(`/api/auth/admin/users/${coachId}`, { method: "DELETE" });
     } catch (e) {
       console.error(e);
       alert("Failed to remove coach.");
@@ -167,21 +155,15 @@ export default function AdminDashboard() {
   }
 
   const thStyle: React.CSSProperties = {
-    padding: "10px 16px",
-    fontSize: "11px",
-    fontWeight: "700",
-    textTransform: "uppercase",
-    letterSpacing: "0.5px",
-    color: "var(--text-secondary)",
-    textAlign: "left",
-    whiteSpace: "nowrap",
+    padding: "10px 16px", fontSize: "11px", fontWeight: "700",
+    textTransform: "uppercase", letterSpacing: "0.5px",
+    color: "var(--text-secondary)", textAlign: "left", whiteSpace: "nowrap",
   };
   const tdStyle: React.CSSProperties = { padding: "12px 16px", fontSize: "13px", borderTop: "1px solid var(--border-subtle)" };
 
   return (
     <>
       <CoachHeader />
-      {/* Purple identity strip */}
       <div style={{ height: "4px", background: "linear-gradient(90deg, #6366f1, #a78bfa, #6366f1)" }} />
       <main className="container animate-fade-in page-content-mobile" style={{ paddingTop: "40px", paddingBottom: "60px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "32px" }}>
@@ -194,13 +176,12 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Stats strip */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "16px", marginBottom: "28px" }}>
           {[
             { label: "Pending Academies", value: pendingAcademies.length, color: "var(--warning)" },
-            { label: "Total Academies", value: allAcademies.length, color: "var(--accent-color)" },
-            { label: "Total Coaches", value: coaches.length, color: "#818cf8" },
-            { label: "Total Players", value: players.length, color: "var(--success)" },
+            { label: "Total Academies",   value: allAcademies.length,     color: "var(--accent-color)" },
+            { label: "Total Coaches",     value: coaches.length,           color: "#818cf8" },
+            { label: "Total Players",     value: players.length,           color: "var(--success)" },
           ].map((s) => (
             <div key={s.label} className="glass-card" style={{ padding: "16px 20px" }}>
               <div style={{ fontSize: "28px", fontWeight: "800", color: s.color }}>{s.value}</div>
@@ -209,22 +190,16 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        {/* Tabs */}
         <div className="glass-card" style={{ display: "inline-flex", gap: "4px", padding: "4px", borderRadius: "12px", marginBottom: "24px", flexWrap: "wrap" }}>
           {TABS.map((t) => (
             <button
               key={t.key}
               onClick={() => setActiveTab(t.key)}
               style={{
-                padding: "8px 18px",
-                borderRadius: "9px",
-                fontSize: "14px",
-                fontWeight: "600",
+                padding: "8px 18px", borderRadius: "9px", fontSize: "14px", fontWeight: "600",
                 background: activeTab === t.key ? "rgba(255,255,255,0.9)" : "transparent",
                 color: activeTab === t.key ? "#111" : "var(--text-secondary)",
-                border: "none",
-                cursor: "pointer",
-                transition: "all 0.2s",
+                border: "none", cursor: "pointer", transition: "all 0.2s",
               }}
             >
               {t.label}
@@ -241,7 +216,6 @@ export default function AdminDashboard() {
           <Loader message="Loading platform data..." />
         ) : (
           <>
-            {/* ── Pending Academies ── */}
             {activeTab === "pending_academies" && (
               <div>
                 {pendingAcademies.length === 0 ? (
@@ -251,11 +225,9 @@ export default function AdminDashboard() {
                     {pendingAcademies.map((a) => (
                       <div key={a.id} className="glass-card" style={{ padding: "20px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
                         <div>
-                          <div style={{ fontWeight: "700", fontSize: "16px", marginBottom: "4px" }}>🏫 {a.name}{a.city ? ` — ${a.city}` : ""}</div>
+                          <div style={{ fontWeight: "700", fontSize: "16px", marginBottom: "4px" }}>{a.name}{a.city ? ` — ${a.city}` : ""}</div>
                           <div style={{ color: "var(--text-secondary)", fontSize: "13px" }}>Owner: {a.ownerName} ({a.ownerEmail})</div>
-                          <div style={{ color: "var(--text-secondary)", fontSize: "12px", marginTop: "4px" }}>
-                            Requested {new Date(a.created_at).toLocaleDateString()}
-                          </div>
+                          <div style={{ color: "var(--text-secondary)", fontSize: "12px", marginTop: "4px" }}>Requested {new Date(a.created_at).toLocaleDateString()}</div>
                         </div>
                         <div style={{ display: "flex", gap: "10px" }}>
                           <button
@@ -280,7 +252,6 @@ export default function AdminDashboard() {
               </div>
             )}
 
-            {/* ── All Academies ── */}
             {activeTab === "academies" && (
               <div>
                 {allAcademies.length === 0 ? (
@@ -289,11 +260,7 @@ export default function AdminDashboard() {
                   <div className="glass-card" style={{ overflow: "auto" }}>
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
                       <thead>
-                        <tr>
-                          {["Academy", "City", "Owner", "Status", "Joined", "Actions"].map((h) => (
-                            <th key={h} style={thStyle}>{h}</th>
-                          ))}
-                        </tr>
+                        <tr>{["Academy", "City", "Owner", "Status", "Joined", "Actions"].map((h) => <th key={h} style={thStyle}>{h}</th>)}</tr>
                       </thead>
                       <tbody>
                         {allAcademies.map((a) => (
@@ -307,16 +274,7 @@ export default function AdminDashboard() {
                               <button
                                 onClick={() => handleRemoveAcademy(a.id)}
                                 disabled={actionLoading === a.id}
-                                style={{
-                                  background: "rgba(239,68,68,0.1)",
-                                  color: "var(--danger)",
-                                  border: "none",
-                                  padding: "6px 12px",
-                                  borderRadius: "6px",
-                                  cursor: "pointer",
-                                  fontSize: "12px",
-                                  fontWeight: "bold",
-                                }}
+                                style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)", border: "none", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "12px", fontWeight: "bold" }}
                               >
                                 {actionLoading === a.id ? "Removing..." : "Remove"}
                               </button>
@@ -330,16 +288,11 @@ export default function AdminDashboard() {
               </div>
             )}
 
-            {/* ── All Coaches ── */}
             {activeTab === "coaches" && (
               <div className="glass-card" style={{ overflow: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
-                    <tr>
-                      {["Coach", "Email", "Academy", "Players", "Status", "Joined", "Actions"].map((h) => (
-                        <th key={h} style={thStyle}>{h}</th>
-                      ))}
-                    </tr>
+                    <tr>{["Coach", "Email", "Academy", "Players", "Status", "Joined", "Actions"].map((h) => <th key={h} style={thStyle}>{h}</th>)}</tr>
                   </thead>
                   <tbody>
                     {coaches.length === 0 ? (
@@ -356,16 +309,7 @@ export default function AdminDashboard() {
                           <button
                             onClick={() => handleRemoveCoach(c.id)}
                             disabled={actionLoading === c.id}
-                            style={{
-                              background: "rgba(239,68,68,0.1)",
-                              color: "var(--danger)",
-                              border: "none",
-                              padding: "6px 12px",
-                              borderRadius: "6px",
-                              cursor: "pointer",
-                              fontSize: "12px",
-                              fontWeight: "bold",
-                            }}
+                            style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)", border: "none", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "12px", fontWeight: "bold" }}
                           >
                             {actionLoading === c.id ? "Removing..." : "Remove"}
                           </button>
@@ -377,16 +321,11 @@ export default function AdminDashboard() {
               </div>
             )}
 
-            {/* ── All Players ── */}
             {activeTab === "players" && (
               <div className="glass-card" style={{ overflow: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
-                    <tr>
-                      {["Player", "Chess Username", "Coach", "Academy", "Status", "Joined"].map((h) => (
-                        <th key={h} style={thStyle}>{h}</th>
-                      ))}
-                    </tr>
+                    <tr>{["Player", "Chess Username", "Coach", "Academy", "Status", "Joined"].map((h) => <th key={h} style={thStyle}>{h}</th>)}</tr>
                   </thead>
                   <tbody>
                     {players.length === 0 ? (

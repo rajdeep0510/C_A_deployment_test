@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase-admin";
+import { prisma } from "@/lib/prisma";
 
 export async function GET(
   req: NextRequest,
@@ -10,32 +10,39 @@ export async function GET(
   const limit = Math.min(parseInt(searchParams.get("limit") ?? "20"), 50);
   const phase = searchParams.get("phase");
 
-  let q = supabaseAdmin
-    .from("puzzles")
-    .select("puzzle_id, fen, best_move, theme, difficulty, phase, puzzle_rating, game_filename, move_number")
-    .eq("username", username)
-    .eq("source", "own_game")
-    .order("created_at", { ascending: false })
-    .limit(200);
+  const allPuzzles = await prisma.puzzles.findMany({
+    where: {
+      username,
+      source: "own_game",
+      ...(phase ? { phase } : {}),
+    },
+    select: {
+      puzzle_id:     true,
+      fen:           true,
+      best_move:     true,
+      theme:         true,
+      difficulty:    true,
+      phase:         true,
+      puzzle_rating: true,
+      game_filename: true,
+      move_number:   true,
+    },
+    orderBy: { created_at: "desc" },
+    take:    200,
+  });
 
-  if (phase) q = q.eq("phase", phase);
-
-  const { data: allPuzzles, error } = await q;
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  if (!allPuzzles?.length) return NextResponse.json({ queue: [] });
+  if (!allPuzzles.length) return NextResponse.json({ queue: [] });
 
   const ids = allPuzzles.map((p) => p.puzzle_id);
 
-  const { data: progress } = await supabaseAdmin
-    .from("puzzle_progress")
-    .select("puzzle_id, attempts, next_review, last_solved")
-    .eq("username", username)
-    .in("puzzle_id", ids);
+  const progress = await prisma.puzzle_progress.findMany({
+    where:  { username, puzzle_id: { in: ids } },
+    select: { puzzle_id: true, attempts: true, next_review: true, last_solved: true },
+  });
 
-  const progressMap = new Map((progress ?? []).map((p) => [p.puzzle_id, p]));
+  const progressMap = new Map(progress.map((p) => [p.puzzle_id, p]));
   const today = new Date().toISOString().split("T")[0];
 
-  // Priority: due for review > unseen > already solved and not due
   const due: any[]    = [];
   const unseen: any[] = [];
   const rest: any[]   = [];
@@ -43,7 +50,8 @@ export async function GET(
   for (const p of allPuzzles) {
     const pp = progressMap.get(p.puzzle_id);
     if (!pp || pp.attempts === 0) { unseen.push(p); continue; }
-    if (pp.next_review <= today)  { due.push(p);    continue; }
+    const nextReviewStr = pp.next_review?.toISOString().split("T")[0] ?? "9999-99-99";
+    if (nextReviewStr <= today) { due.push(p); continue; }
     rest.push(p);
   }
 

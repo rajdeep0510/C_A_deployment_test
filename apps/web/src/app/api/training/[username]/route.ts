@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase-admin";
+import { prisma } from "@/lib/prisma";
 
 const ERROR_QUALITIES = new Set(["Blunder", "Mistake", "Inaccuracy"]);
 
@@ -10,27 +10,22 @@ export async function GET(
   const { username } = await params;
 
   try {
-    // Fetch latest completed all-games batch job
-    const { data: batchJobs } = await supabaseAdmin
-      .from("batch_jobs")
-      .select("result, created_at")
-      .eq("username", username)
-      .eq("status", "completed")
-      .is("time_class", null)
-      .order("created_at", { ascending: false })
-      .limit(1);
+    const batchJob = await prisma.batch_jobs.findFirst({
+      where:   { username, status: "completed", time_class: null },
+      select:  { result: true, created_at: true },
+      orderBy: { created_at: "desc" },
+    });
 
-    if (!batchJobs?.[0]?.result) {
+    if (!batchJob?.result) {
       return NextResponse.json(
         { error: "No batch analysis found. Run Batch Analysis first." },
         { status: 404 },
       );
     }
 
-    const br = batchJobs[0].result;
+    const br = batchJob.result as any;
     const rawGames: any[] = br.individual_games || [];
 
-    // Summary counters
     const summary: {
       blunders: number;
       mistakes: number;
@@ -45,10 +40,9 @@ export async function GET(
       by_phase: {},
     };
 
-    // Build per-game objects containing only error moves
     const games: any[] = [];
-    let anyFen         = false;   // at least one move has fen_before
-    let anyFullHistory = false;   // at least one game has full_history for client-side reconstruction
+    let anyFen         = false;
+    let anyFullHistory = false;
 
     for (const g of rawGames) {
       const errors: any[] = [];
@@ -106,8 +100,7 @@ export async function GET(
     return NextResponse.json({
       total_games:  rawGames.length,
       total_errors: totalErrors,
-      // boards are renderable when fen_before (direct) OR full_history (client reconstruction) is available
-      has_boards: anyFen || anyFullHistory,
+      has_boards:   anyFen || anyFullHistory,
       summary,
       games,
     });
