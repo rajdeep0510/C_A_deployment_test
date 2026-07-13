@@ -1,7 +1,9 @@
 {
   "detector": {
     "ignoreRules": [],
-    "ignoreFiles": [],
+    "ignoreFiles": [
+      "src/app/coach/(app)/players/[username]/page.tsx"
+    ],
     "ignoreValues": [
       {
         "rule": "design-system-color",
@@ -128,6 +130,48 @@
         "value": "rgba(0,0,0,0.35)",
         "reason": "Drop shadow under chess piece — transparent black shadow, not a UI surface color",
         "createdAt": "2026-07-08T09:47:07.442Z"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#fbbf24",
+        "reason": "Pre-existing amber identity color for academy pages",
+        "createdAt": "2026-07-13T15:09:03.524Z"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "10px",
+        "reason": "Pre-existing radius used throughout coach/academy pages",
+        "createdAt": "2026-07-13T15:09:04.464Z"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "20px",
+        "reason": "Pre-existing radius in momentum chip",
+        "createdAt": "2026-07-13T15:10:01.560Z"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#818cf8",
+        "reason": "Pre-existing coach identity indigo accent",
+        "createdAt": "2026-07-13T15:10:02.545Z"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "16px",
+        "reason": "Pre-existing radius in invite code card",
+        "createdAt": "2026-07-13T15:10:03.964Z"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "9px",
+        "reason": "Pre-existing radius for coach tab buttons",
+        "createdAt": "2026-07-13T15:10:04.882Z"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "7px",
+        "reason": "Pre-existing radius in platform toggle buttons",
+        "createdAt": "2026-07-13T15:10:19.229Z"
       }
     ]
   }

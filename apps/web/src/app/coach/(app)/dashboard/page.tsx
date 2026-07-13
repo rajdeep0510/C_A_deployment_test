@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/lib/supabase";
 import CoachHeader from "@/components/CoachHeader";
 import Loader from "@/components/Loader";
 import { getStats } from "@/services/api";
@@ -165,7 +164,6 @@ export default function CoachDashboardPage() {
   const { coachProfile } = useAuth();
   const [tab, setTab] = useState<Tab>("players");
   const [academyName, setAcademyName] = useState<string | null>(null);
-  const [academyLoading, setAcademyLoading] = useState(false);
   const [approvedPlayers, setApprovedPlayers] = useState<Player[]>([]);
   const [pendingPlayers, setPendingPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
@@ -199,34 +197,24 @@ export default function CoachDashboardPage() {
     }
     setLoading(true);
     try {
-      const [approvedRes, pendingRes] = await Promise.all([
-        supabase
-          .from("players")
-          .select("*")
-          .eq("coach_id", coachProfile.id)
-          .eq("status", "approved")
-          .order("full_name"),
-        supabase
-          .from("players")
-          .select("*")
-          .eq("coach_id", coachProfile.id)
-          .eq("status", "pending")
-          .order("created_at"),
-      ]);
-      const approved = approvedRes.data ?? [];
-      setApprovedPlayers(approved);
-      setPendingPlayers(pendingRes.data ?? []);
+      const res = await fetch("/api/coach/dashboard");
+      if (!res.ok) return;
+      const { approvedPlayers: approved, pendingPlayers: pending, inviteCode: code, academyName: name } = await res.json();
+      const approvedList: Player[] = approved ?? [];
+      setApprovedPlayers(approvedList);
+      setPendingPlayers(pending ?? []);
+      setInviteCode(code ?? null);
+      setAcademyName(name ?? null);
 
-      // Fetch stats for all approved players in parallel (non-blocking)
-      if (approved.length > 0) {
+      if (approvedList.length > 0) {
         setStatsLoading(true);
         const results = await Promise.allSettled(
-          approved.map((p) => getStats(p.chess_username)),
+          approvedList.map((p) => getStats(p.chess_username)),
         );
         const statsMap: Record<string, PlayerStats> = {};
         results.forEach((r, i) => {
           if (r.status === "fulfilled")
-            statsMap[approved[i].chess_username] = r.value;
+            statsMap[approvedList[i].chess_username] = r.value;
         });
         setPlayerStats(statsMap);
         setStatsLoading(false);
@@ -240,57 +228,27 @@ export default function CoachDashboardPage() {
 
   useEffect(() => {
     if (!coachProfile) {
-      // If auth loading is done but no profile, stop dashboard loading
       setLoading(false);
       return;
     }
     fetchPlayers();
-    supabase.from("profiles").select("invite_code").eq("id", coachProfile.id).single()
-      .then(({ data }) => { if (data) setInviteCode(data.invite_code); });
-    if (coachProfile.academy_id) {
-      setAcademyLoading(true);
-      const fetchAcademy = async () => {
-        const { data } = await supabase
-          .from("academies")
-          .select("name")
-          .eq("id", coachProfile.academy_id)
-          .single();
-        setAcademyName(data?.name ?? null);
-        setAcademyLoading(false);
-      };
-      fetchAcademy();
-    }
-    const channel = supabase
-      .channel("coach-players-realtime")
-      .on(
-        "postgres_changes",
-        { event: "DELETE", schema: "public", table: "players", filter: `coach_id=eq.${coachProfile.id}` },
-        (payload) => {
-          const deletedId = (payload.old as { id: string }).id;
-          setApprovedPlayers((prev) => prev.filter((p) => p.id !== deletedId));
-          setPendingPlayers((prev) => prev.filter((p) => p.id !== deletedId));
-        }
-      )
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [coachProfile]);
 
   const approvePlayer = async (player: Player) => {
     setActionLoading(player.id);
-    const { error } = await supabase
-      .from("players")
-      .update({ status: "approved" })
-      .eq("id", player.id);
-    if (!error) {
+    const res = await fetch("/api/coach/dashboard", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ playerId: player.id, status: "approved" }),
+    });
+    if (res.ok) {
       setPendingPlayers((prev) => prev.filter((p) => p.id !== player.id));
       setApprovedPlayers((prev) =>
         [...prev, { ...player, status: "approved" }].sort((a, b) =>
           a.full_name.localeCompare(b.full_name),
         ),
       );
-      // Fetch stats for the newly approved player
       getStats(player.chess_username)
         .then((s) =>
           setPlayerStats((prev) => ({ ...prev, [player.chess_username]: s })),
@@ -302,11 +260,12 @@ export default function CoachDashboardPage() {
 
   const rejectPlayer = async (player: Player) => {
     setActionLoading(player.id);
-    const { error } = await supabase
-      .from("players")
-      .update({ status: "rejected" })
-      .eq("id", player.id);
-    if (!error)
+    const res = await fetch("/api/coach/dashboard", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ playerId: player.id, status: "rejected" }),
+    });
+    if (res.ok)
       setPendingPlayers((prev) => prev.filter((p) => p.id !== player.id));
     setActionLoading(null);
   };
@@ -407,9 +366,7 @@ export default function CoachDashboardPage() {
               <span style={{ fontSize: "13px", color: "var(--text-secondary)", fontWeight: "500" }}>
                 Academy:
               </span>
-              {academyLoading ? (
-                <span style={{ fontSize: "13px", color: "var(--text-secondary)" }}>Loading…</span>
-              ) : academyName ? (
+              {academyName ? (
                 <span style={{
                   fontSize: "13px", fontWeight: "700", color: "#f59e0b",
                   background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)",

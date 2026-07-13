@@ -1,13 +1,6 @@
 "use client";
 import { createContext, useContext, useEffect, useState } from "react";
 
-type PlayerSession = {
-  chess_username: string;
-  full_name: string;
-  coach_id: string;
-  status: "pending" | "approved" | "rejected";
-};
-
 type PlayerContextType = {
   chessUsername: string | null;
   fullName: string | null;
@@ -15,8 +8,8 @@ type PlayerContextType = {
   status: string | null;
   isApproved: boolean;
   loading: boolean;
-  logout: () => void;
-  refreshSession: (session: PlayerSession) => void;
+  logout: () => Promise<void>;
+  refreshSession: () => Promise<void>;
 };
 
 const PlayerContext = createContext<PlayerContextType>({
@@ -26,55 +19,69 @@ const PlayerContext = createContext<PlayerContextType>({
   status: null,
   isApproved: false,
   loading: true,
-  logout: () => {},
-  refreshSession: () => {},
+  logout: async () => {},
+  refreshSession: async () => {},
 });
 
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<PlayerSession | null>(null);
+  const [chessUsername, setChessUsername] = useState<string | null>(null);
+  const [fullName, setFullName] = useState<string | null>(null);
+  const [coachId, setCoachId] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Migrate old chessUsername key if it exists
-    const oldKey = localStorage.getItem("chessUsername");
-    const newKey = localStorage.getItem("playerSession");
-    if (oldKey && !newKey) {
-      localStorage.removeItem("chessUsername");
-    }
-
-    const raw = localStorage.getItem("playerSession");
-    if (raw) {
-      try {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setSession(JSON.parse(raw));
-      } catch {
-        localStorage.removeItem("playerSession");
+  async function fetchMe() {
+    try {
+      const res = await fetch("/api/auth/me");
+      if (!res.ok) {
+        clearState();
+        return;
       }
+      const data = await res.json();
+      if (data.userType !== "player") {
+        clearState();
+        return;
+      }
+      setChessUsername(data.chessUsername);
+      setFullName(data.fullName);
+      setCoachId(data.coachId);
+      setStatus(data.status);
+    } catch {
+      clearState();
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
+  }
+
+  function clearState() {
+    setChessUsername(null);
+    setFullName(null);
+    setCoachId(null);
+    setStatus(null);
+  }
+
+  useEffect(() => {
+    fetchMe();
   }, []);
 
-  const logout = () => {
-    localStorage.removeItem("playerSession");
-    localStorage.removeItem("recentGames");
-    localStorage.removeItem("chessUsername");
-    setSession(null);
+  const logout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    clearState();
     window.location.href = "/login";
   };
 
-  const refreshSession = (newSession: PlayerSession) => {
-    localStorage.setItem("playerSession", JSON.stringify(newSession));
-    setSession(newSession);
+  const refreshSession = async () => {
+    await fetchMe();
   };
 
   return (
     <PlayerContext.Provider
       value={{
-        chessUsername: session?.chess_username ?? null,
-        fullName: session?.full_name ?? null,
-        coachId: session?.coach_id ?? null,
-        status: session?.status ?? null,
-        isApproved: session?.status === "approved",
+        chessUsername,
+        fullName,
+        coachId,
+        status,
+        isApproved: status === "approved",
         loading,
         logout,
         refreshSession,

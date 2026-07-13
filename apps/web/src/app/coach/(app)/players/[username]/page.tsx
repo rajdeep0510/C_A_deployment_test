@@ -3,7 +3,6 @@ import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Clock } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/lib/supabase";
 import CoachHeader from "@/components/CoachHeader";
 import Loader from "@/components/Loader";
 import ChartRadar from "@/components/ChartRadar";
@@ -155,16 +154,12 @@ export default function CoachPlayerView({
   useEffect(() => {
     if (!coachProfile || !username) return;
     async function load() {
-      const { data: playerData } = await supabase
-        .from("players")
-        .select("*")
-        .eq("chess_username", username)
-        .eq("coach_id", coachProfile.id)
-        .single();
-      if (!playerData) {
+      const res = await fetch(`/api/coach/players/${encodeURIComponent(username)}`);
+      if (!res.ok) {
         router.push("/coach/dashboard");
         return;
       }
+      const playerData = await res.json();
       setPlayer(playerData);
       const [reportRes, planRes, statsRes, openingsRes, puzzleRes] =
         await Promise.allSettled([

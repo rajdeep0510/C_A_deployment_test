@@ -33,6 +33,7 @@ export type ProfilesMinAggregateOutputType = {
   role: string | null
   academy_id: string | null
   status: string | null
+  invite_code: string | null
 }
 
 export type ProfilesMaxAggregateOutputType = {
@@ -43,6 +44,7 @@ export type ProfilesMaxAggregateOutputType = {
   role: string | null
   academy_id: string | null
   status: string | null
+  invite_code: string | null
 }
 
 export type ProfilesCountAggregateOutputType = {
@@ -53,6 +55,7 @@ export type ProfilesCountAggregateOutputType = {
   role: number
   academy_id: number
   status: number
+  invite_code: number
   _all: number
 }
 
@@ -65,6 +68,7 @@ export type ProfilesMinAggregateInputType = {
   role?: true
   academy_id?: true
   status?: true
+  invite_code?: true
 }
 
 export type ProfilesMaxAggregateInputType = {
@@ -75,6 +79,7 @@ export type ProfilesMaxAggregateInputType = {
   role?: true
   academy_id?: true
   status?: true
+  invite_code?: true
 }
 
 export type ProfilesCountAggregateInputType = {
@@ -85,6 +90,7 @@ export type ProfilesCountAggregateInputType = {
   role?: true
   academy_id?: true
   status?: true
+  invite_code?: true
   _all?: true
 }
 
@@ -168,6 +174,7 @@ export type ProfilesGroupByOutputType = {
   role: string | null
   academy_id: string | null
   status: string | null
+  invite_code: string | null
   _count: ProfilesCountAggregateOutputType | null
   _min: ProfilesMinAggregateOutputType | null
   _max: ProfilesMaxAggregateOutputType | null
@@ -199,9 +206,10 @@ export type profilesWhereInput = {
   role?: Prisma.StringNullableFilter<"profiles"> | string | null
   academy_id?: Prisma.UuidNullableFilter<"profiles"> | string | null
   status?: Prisma.StringNullableFilter<"profiles"> | string | null
+  invite_code?: Prisma.StringNullableFilter<"profiles"> | string | null
   players?: Prisma.PlayersListRelationFilter
   academies?: Prisma.XOR<Prisma.AcademiesNullableScalarRelationFilter, Prisma.academiesWhereInput> | null
-  users?: Prisma.XOR<Prisma.UsersScalarRelationFilter, Prisma.usersWhereInput>
+  app_user?: Prisma.XOR<Prisma.App_usersScalarRelationFilter, Prisma.app_usersWhereInput>
 }
 
 export type profilesOrderByWithRelationInput = {
@@ -212,13 +220,15 @@ export type profilesOrderByWithRelationInput = {
   role?: Prisma.SortOrderInput | Prisma.SortOrder
   academy_id?: Prisma.SortOrderInput | Prisma.SortOrder
   status?: Prisma.SortOrderInput | Prisma.SortOrder
+  invite_code?: Prisma.SortOrderInput | Prisma.SortOrder
   players?: Prisma.playersOrderByRelationAggregateInput
   academies?: Prisma.academiesOrderByWithRelationInput
-  users?: Prisma.usersOrderByWithRelationInput
+  app_user?: Prisma.app_usersOrderByWithRelationInput
 }
 
 export type profilesWhereUniqueInput = Prisma.AtLeast<{
   id?: string
+  invite_code?: string
   AND?: Prisma.profilesWhereInput | Prisma.profilesWhereInput[]
   OR?: Prisma.profilesWhereInput[]
   NOT?: Prisma.profilesWhereInput | Prisma.profilesWhereInput[]
@@ -230,8 +240,8 @@ export type profilesWhereUniqueInput = Prisma.AtLeast<{
   status?: Prisma.StringNullableFilter<"profiles"> | string | null
   players?: Prisma.PlayersListRelationFilter
   academies?: Prisma.XOR<Prisma.AcademiesNullableScalarRelationFilter, Prisma.academiesWhereInput> | null
-  users?: Prisma.XOR<Prisma.UsersScalarRelationFilter, Prisma.usersWhereInput>
-}, "id">
+  app_user?: Prisma.XOR<Prisma.App_usersScalarRelationFilter, Prisma.app_usersWhereInput>
+}, "id" | "invite_code">
 
 export type profilesOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
@@ -241,6 +251,7 @@ export type profilesOrderByWithAggregationInput = {
   role?: Prisma.SortOrderInput | Prisma.SortOrder
   academy_id?: Prisma.SortOrderInput | Prisma.SortOrder
   status?: Prisma.SortOrderInput | Prisma.SortOrder
+  invite_code?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.profilesCountOrderByAggregateInput
   _max?: Prisma.profilesMaxOrderByAggregateInput
   _min?: Prisma.profilesMinOrderByAggregateInput
@@ -257,6 +268,7 @@ export type profilesScalarWhereWithAggregatesInput = {
   role?: Prisma.StringNullableWithAggregatesFilter<"profiles"> | string | null
   academy_id?: Prisma.UuidNullableWithAggregatesFilter<"profiles"> | string | null
   status?: Prisma.StringNullableWithAggregatesFilter<"profiles"> | string | null
+  invite_code?: Prisma.StringNullableWithAggregatesFilter<"profiles"> | string | null
 }
 
 export type profilesCreateInput = {
@@ -265,9 +277,10 @@ export type profilesCreateInput = {
   created_at?: Date | string | null
   role?: string | null
   status?: string | null
+  invite_code?: string | null
   players?: Prisma.playersCreateNestedManyWithoutProfilesInput
   academies?: Prisma.academiesCreateNestedOneWithoutProfilesInput
-  users: Prisma.usersCreateNestedOneWithoutProfilesInput
+  app_user: Prisma.app_usersCreateNestedOneWithoutProfileInput
 }
 
 export type profilesUncheckedCreateInput = {
@@ -278,6 +291,7 @@ export type profilesUncheckedCreateInput = {
   role?: string | null
   academy_id?: string | null
   status?: string | null
+  invite_code?: string | null
   players?: Prisma.playersUncheckedCreateNestedManyWithoutProfilesInput
 }
 
@@ -287,9 +301,10 @@ export type profilesUpdateInput = {
   created_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  invite_code?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   players?: Prisma.playersUpdateManyWithoutProfilesNestedInput
   academies?: Prisma.academiesUpdateOneWithoutProfilesNestedInput
-  users?: Prisma.usersUpdateOneRequiredWithoutProfilesNestedInput
+  app_user?: Prisma.app_usersUpdateOneRequiredWithoutProfileNestedInput
 }
 
 export type profilesUncheckedUpdateInput = {
@@ -300,6 +315,7 @@ export type profilesUncheckedUpdateInput = {
   role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   academy_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  invite_code?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   players?: Prisma.playersUncheckedUpdateManyWithoutProfilesNestedInput
 }
 
@@ -311,6 +327,7 @@ export type profilesCreateManyInput = {
   role?: string | null
   academy_id?: string | null
   status?: string | null
+  invite_code?: string | null
 }
 
 export type profilesUpdateManyMutationInput = {
@@ -319,6 +336,7 @@ export type profilesUpdateManyMutationInput = {
   created_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  invite_code?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type profilesUncheckedUpdateManyInput = {
@@ -329,11 +347,7 @@ export type profilesUncheckedUpdateManyInput = {
   role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   academy_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-}
-
-export type ProfilesNullableScalarRelationFilter = {
-  is?: Prisma.profilesWhereInput | null
-  isNot?: Prisma.profilesWhereInput | null
+  invite_code?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ProfilesListRelationFilter = {
@@ -346,6 +360,11 @@ export type profilesOrderByRelationAggregateInput = {
   _count?: Prisma.SortOrder
 }
 
+export type ProfilesNullableScalarRelationFilter = {
+  is?: Prisma.profilesWhereInput | null
+  isNot?: Prisma.profilesWhereInput | null
+}
+
 export type profilesCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   email?: Prisma.SortOrder
@@ -354,6 +373,7 @@ export type profilesCountOrderByAggregateInput = {
   role?: Prisma.SortOrder
   academy_id?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  invite_code?: Prisma.SortOrder
 }
 
 export type profilesMaxOrderByAggregateInput = {
@@ -364,6 +384,7 @@ export type profilesMaxOrderByAggregateInput = {
   role?: Prisma.SortOrder
   academy_id?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  invite_code?: Prisma.SortOrder
 }
 
 export type profilesMinOrderByAggregateInput = {
@@ -374,38 +395,7 @@ export type profilesMinOrderByAggregateInput = {
   role?: Prisma.SortOrder
   academy_id?: Prisma.SortOrder
   status?: Prisma.SortOrder
-}
-
-export type profilesCreateNestedOneWithoutUsersInput = {
-  create?: Prisma.XOR<Prisma.profilesCreateWithoutUsersInput, Prisma.profilesUncheckedCreateWithoutUsersInput>
-  connectOrCreate?: Prisma.profilesCreateOrConnectWithoutUsersInput
-  connect?: Prisma.profilesWhereUniqueInput
-}
-
-export type profilesUncheckedCreateNestedOneWithoutUsersInput = {
-  create?: Prisma.XOR<Prisma.profilesCreateWithoutUsersInput, Prisma.profilesUncheckedCreateWithoutUsersInput>
-  connectOrCreate?: Prisma.profilesCreateOrConnectWithoutUsersInput
-  connect?: Prisma.profilesWhereUniqueInput
-}
-
-export type profilesUpdateOneWithoutUsersNestedInput = {
-  create?: Prisma.XOR<Prisma.profilesCreateWithoutUsersInput, Prisma.profilesUncheckedCreateWithoutUsersInput>
-  connectOrCreate?: Prisma.profilesCreateOrConnectWithoutUsersInput
-  upsert?: Prisma.profilesUpsertWithoutUsersInput
-  disconnect?: Prisma.profilesWhereInput | boolean
-  delete?: Prisma.profilesWhereInput | boolean
-  connect?: Prisma.profilesWhereUniqueInput
-  update?: Prisma.XOR<Prisma.XOR<Prisma.profilesUpdateToOneWithWhereWithoutUsersInput, Prisma.profilesUpdateWithoutUsersInput>, Prisma.profilesUncheckedUpdateWithoutUsersInput>
-}
-
-export type profilesUncheckedUpdateOneWithoutUsersNestedInput = {
-  create?: Prisma.XOR<Prisma.profilesCreateWithoutUsersInput, Prisma.profilesUncheckedCreateWithoutUsersInput>
-  connectOrCreate?: Prisma.profilesCreateOrConnectWithoutUsersInput
-  upsert?: Prisma.profilesUpsertWithoutUsersInput
-  disconnect?: Prisma.profilesWhereInput | boolean
-  delete?: Prisma.profilesWhereInput | boolean
-  connect?: Prisma.profilesWhereUniqueInput
-  update?: Prisma.XOR<Prisma.XOR<Prisma.profilesUpdateToOneWithWhereWithoutUsersInput, Prisma.profilesUpdateWithoutUsersInput>, Prisma.profilesUncheckedUpdateWithoutUsersInput>
+  invite_code?: Prisma.SortOrder
 }
 
 export type profilesCreateNestedManyWithoutAcademiesInput = {
@@ -466,60 +456,36 @@ export type profilesUpdateOneWithoutPlayersNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.profilesUpdateToOneWithWhereWithoutPlayersInput, Prisma.profilesUpdateWithoutPlayersInput>, Prisma.profilesUncheckedUpdateWithoutPlayersInput>
 }
 
-export type profilesCreateWithoutUsersInput = {
-  email: string
-  full_name: string
-  created_at?: Date | string | null
-  role?: string | null
-  status?: string | null
-  players?: Prisma.playersCreateNestedManyWithoutProfilesInput
-  academies?: Prisma.academiesCreateNestedOneWithoutProfilesInput
+export type profilesCreateNestedOneWithoutApp_userInput = {
+  create?: Prisma.XOR<Prisma.profilesCreateWithoutApp_userInput, Prisma.profilesUncheckedCreateWithoutApp_userInput>
+  connectOrCreate?: Prisma.profilesCreateOrConnectWithoutApp_userInput
+  connect?: Prisma.profilesWhereUniqueInput
 }
 
-export type profilesUncheckedCreateWithoutUsersInput = {
-  email: string
-  full_name: string
-  created_at?: Date | string | null
-  role?: string | null
-  academy_id?: string | null
-  status?: string | null
-  players?: Prisma.playersUncheckedCreateNestedManyWithoutProfilesInput
+export type profilesUncheckedCreateNestedOneWithoutApp_userInput = {
+  create?: Prisma.XOR<Prisma.profilesCreateWithoutApp_userInput, Prisma.profilesUncheckedCreateWithoutApp_userInput>
+  connectOrCreate?: Prisma.profilesCreateOrConnectWithoutApp_userInput
+  connect?: Prisma.profilesWhereUniqueInput
 }
 
-export type profilesCreateOrConnectWithoutUsersInput = {
-  where: Prisma.profilesWhereUniqueInput
-  create: Prisma.XOR<Prisma.profilesCreateWithoutUsersInput, Prisma.profilesUncheckedCreateWithoutUsersInput>
+export type profilesUpdateOneWithoutApp_userNestedInput = {
+  create?: Prisma.XOR<Prisma.profilesCreateWithoutApp_userInput, Prisma.profilesUncheckedCreateWithoutApp_userInput>
+  connectOrCreate?: Prisma.profilesCreateOrConnectWithoutApp_userInput
+  upsert?: Prisma.profilesUpsertWithoutApp_userInput
+  disconnect?: Prisma.profilesWhereInput | boolean
+  delete?: Prisma.profilesWhereInput | boolean
+  connect?: Prisma.profilesWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.profilesUpdateToOneWithWhereWithoutApp_userInput, Prisma.profilesUpdateWithoutApp_userInput>, Prisma.profilesUncheckedUpdateWithoutApp_userInput>
 }
 
-export type profilesUpsertWithoutUsersInput = {
-  update: Prisma.XOR<Prisma.profilesUpdateWithoutUsersInput, Prisma.profilesUncheckedUpdateWithoutUsersInput>
-  create: Prisma.XOR<Prisma.profilesCreateWithoutUsersInput, Prisma.profilesUncheckedCreateWithoutUsersInput>
-  where?: Prisma.profilesWhereInput
-}
-
-export type profilesUpdateToOneWithWhereWithoutUsersInput = {
-  where?: Prisma.profilesWhereInput
-  data: Prisma.XOR<Prisma.profilesUpdateWithoutUsersInput, Prisma.profilesUncheckedUpdateWithoutUsersInput>
-}
-
-export type profilesUpdateWithoutUsersInput = {
-  email?: Prisma.StringFieldUpdateOperationsInput | string
-  full_name?: Prisma.StringFieldUpdateOperationsInput | string
-  created_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  status?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  players?: Prisma.playersUpdateManyWithoutProfilesNestedInput
-  academies?: Prisma.academiesUpdateOneWithoutProfilesNestedInput
-}
-
-export type profilesUncheckedUpdateWithoutUsersInput = {
-  email?: Prisma.StringFieldUpdateOperationsInput | string
-  full_name?: Prisma.StringFieldUpdateOperationsInput | string
-  created_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  academy_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  status?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  players?: Prisma.playersUncheckedUpdateManyWithoutProfilesNestedInput
+export type profilesUncheckedUpdateOneWithoutApp_userNestedInput = {
+  create?: Prisma.XOR<Prisma.profilesCreateWithoutApp_userInput, Prisma.profilesUncheckedCreateWithoutApp_userInput>
+  connectOrCreate?: Prisma.profilesCreateOrConnectWithoutApp_userInput
+  upsert?: Prisma.profilesUpsertWithoutApp_userInput
+  disconnect?: Prisma.profilesWhereInput | boolean
+  delete?: Prisma.profilesWhereInput | boolean
+  connect?: Prisma.profilesWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.profilesUpdateToOneWithWhereWithoutApp_userInput, Prisma.profilesUpdateWithoutApp_userInput>, Prisma.profilesUncheckedUpdateWithoutApp_userInput>
 }
 
 export type profilesCreateWithoutAcademiesInput = {
@@ -528,8 +494,9 @@ export type profilesCreateWithoutAcademiesInput = {
   created_at?: Date | string | null
   role?: string | null
   status?: string | null
+  invite_code?: string | null
   players?: Prisma.playersCreateNestedManyWithoutProfilesInput
-  users: Prisma.usersCreateNestedOneWithoutProfilesInput
+  app_user: Prisma.app_usersCreateNestedOneWithoutProfileInput
 }
 
 export type profilesUncheckedCreateWithoutAcademiesInput = {
@@ -539,6 +506,7 @@ export type profilesUncheckedCreateWithoutAcademiesInput = {
   created_at?: Date | string | null
   role?: string | null
   status?: string | null
+  invite_code?: string | null
   players?: Prisma.playersUncheckedCreateNestedManyWithoutProfilesInput
 }
 
@@ -579,6 +547,7 @@ export type profilesScalarWhereInput = {
   role?: Prisma.StringNullableFilter<"profiles"> | string | null
   academy_id?: Prisma.UuidNullableFilter<"profiles"> | string | null
   status?: Prisma.StringNullableFilter<"profiles"> | string | null
+  invite_code?: Prisma.StringNullableFilter<"profiles"> | string | null
 }
 
 export type profilesCreateWithoutPlayersInput = {
@@ -587,8 +556,9 @@ export type profilesCreateWithoutPlayersInput = {
   created_at?: Date | string | null
   role?: string | null
   status?: string | null
+  invite_code?: string | null
   academies?: Prisma.academiesCreateNestedOneWithoutProfilesInput
-  users: Prisma.usersCreateNestedOneWithoutProfilesInput
+  app_user: Prisma.app_usersCreateNestedOneWithoutProfileInput
 }
 
 export type profilesUncheckedCreateWithoutPlayersInput = {
@@ -599,6 +569,7 @@ export type profilesUncheckedCreateWithoutPlayersInput = {
   role?: string | null
   academy_id?: string | null
   status?: string | null
+  invite_code?: string | null
 }
 
 export type profilesCreateOrConnectWithoutPlayersInput = {
@@ -623,8 +594,9 @@ export type profilesUpdateWithoutPlayersInput = {
   created_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  invite_code?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   academies?: Prisma.academiesUpdateOneWithoutProfilesNestedInput
-  users?: Prisma.usersUpdateOneRequiredWithoutProfilesNestedInput
+  app_user?: Prisma.app_usersUpdateOneRequiredWithoutProfileNestedInput
 }
 
 export type profilesUncheckedUpdateWithoutPlayersInput = {
@@ -635,6 +607,67 @@ export type profilesUncheckedUpdateWithoutPlayersInput = {
   role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   academy_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  invite_code?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+}
+
+export type profilesCreateWithoutApp_userInput = {
+  email: string
+  full_name: string
+  created_at?: Date | string | null
+  role?: string | null
+  status?: string | null
+  invite_code?: string | null
+  players?: Prisma.playersCreateNestedManyWithoutProfilesInput
+  academies?: Prisma.academiesCreateNestedOneWithoutProfilesInput
+}
+
+export type profilesUncheckedCreateWithoutApp_userInput = {
+  email: string
+  full_name: string
+  created_at?: Date | string | null
+  role?: string | null
+  academy_id?: string | null
+  status?: string | null
+  invite_code?: string | null
+  players?: Prisma.playersUncheckedCreateNestedManyWithoutProfilesInput
+}
+
+export type profilesCreateOrConnectWithoutApp_userInput = {
+  where: Prisma.profilesWhereUniqueInput
+  create: Prisma.XOR<Prisma.profilesCreateWithoutApp_userInput, Prisma.profilesUncheckedCreateWithoutApp_userInput>
+}
+
+export type profilesUpsertWithoutApp_userInput = {
+  update: Prisma.XOR<Prisma.profilesUpdateWithoutApp_userInput, Prisma.profilesUncheckedUpdateWithoutApp_userInput>
+  create: Prisma.XOR<Prisma.profilesCreateWithoutApp_userInput, Prisma.profilesUncheckedCreateWithoutApp_userInput>
+  where?: Prisma.profilesWhereInput
+}
+
+export type profilesUpdateToOneWithWhereWithoutApp_userInput = {
+  where?: Prisma.profilesWhereInput
+  data: Prisma.XOR<Prisma.profilesUpdateWithoutApp_userInput, Prisma.profilesUncheckedUpdateWithoutApp_userInput>
+}
+
+export type profilesUpdateWithoutApp_userInput = {
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  full_name?: Prisma.StringFieldUpdateOperationsInput | string
+  created_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  invite_code?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  players?: Prisma.playersUpdateManyWithoutProfilesNestedInput
+  academies?: Prisma.academiesUpdateOneWithoutProfilesNestedInput
+}
+
+export type profilesUncheckedUpdateWithoutApp_userInput = {
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  full_name?: Prisma.StringFieldUpdateOperationsInput | string
+  created_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  academy_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  invite_code?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  players?: Prisma.playersUncheckedUpdateManyWithoutProfilesNestedInput
 }
 
 export type profilesCreateManyAcademiesInput = {
@@ -644,6 +677,7 @@ export type profilesCreateManyAcademiesInput = {
   created_at?: Date | string | null
   role?: string | null
   status?: string | null
+  invite_code?: string | null
 }
 
 export type profilesUpdateWithoutAcademiesInput = {
@@ -652,8 +686,9 @@ export type profilesUpdateWithoutAcademiesInput = {
   created_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  invite_code?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   players?: Prisma.playersUpdateManyWithoutProfilesNestedInput
-  users?: Prisma.usersUpdateOneRequiredWithoutProfilesNestedInput
+  app_user?: Prisma.app_usersUpdateOneRequiredWithoutProfileNestedInput
 }
 
 export type profilesUncheckedUpdateWithoutAcademiesInput = {
@@ -663,6 +698,7 @@ export type profilesUncheckedUpdateWithoutAcademiesInput = {
   created_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  invite_code?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   players?: Prisma.playersUncheckedUpdateManyWithoutProfilesNestedInput
 }
 
@@ -673,6 +709,7 @@ export type profilesUncheckedUpdateManyWithoutAcademiesInput = {
   created_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  invite_code?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 
@@ -714,9 +751,10 @@ export type profilesSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   role?: boolean
   academy_id?: boolean
   status?: boolean
+  invite_code?: boolean
   players?: boolean | Prisma.profiles$playersArgs<ExtArgs>
   academies?: boolean | Prisma.profiles$academiesArgs<ExtArgs>
-  users?: boolean | Prisma.usersDefaultArgs<ExtArgs>
+  app_user?: boolean | Prisma.app_usersDefaultArgs<ExtArgs>
   _count?: boolean | Prisma.ProfilesCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["profiles"]>
 
@@ -728,8 +766,9 @@ export type profilesSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exte
   role?: boolean
   academy_id?: boolean
   status?: boolean
+  invite_code?: boolean
   academies?: boolean | Prisma.profiles$academiesArgs<ExtArgs>
-  users?: boolean | Prisma.usersDefaultArgs<ExtArgs>
+  app_user?: boolean | Prisma.app_usersDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["profiles"]>
 
 export type profilesSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -740,8 +779,9 @@ export type profilesSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exte
   role?: boolean
   academy_id?: boolean
   status?: boolean
+  invite_code?: boolean
   academies?: boolean | Prisma.profiles$academiesArgs<ExtArgs>
-  users?: boolean | Prisma.usersDefaultArgs<ExtArgs>
+  app_user?: boolean | Prisma.app_usersDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["profiles"]>
 
 export type profilesSelectScalar = {
@@ -752,22 +792,23 @@ export type profilesSelectScalar = {
   role?: boolean
   academy_id?: boolean
   status?: boolean
+  invite_code?: boolean
 }
 
-export type profilesOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "email" | "full_name" | "created_at" | "role" | "academy_id" | "status", ExtArgs["result"]["profiles"]>
+export type profilesOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "email" | "full_name" | "created_at" | "role" | "academy_id" | "status" | "invite_code", ExtArgs["result"]["profiles"]>
 export type profilesInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   players?: boolean | Prisma.profiles$playersArgs<ExtArgs>
   academies?: boolean | Prisma.profiles$academiesArgs<ExtArgs>
-  users?: boolean | Prisma.usersDefaultArgs<ExtArgs>
+  app_user?: boolean | Prisma.app_usersDefaultArgs<ExtArgs>
   _count?: boolean | Prisma.ProfilesCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type profilesIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   academies?: boolean | Prisma.profiles$academiesArgs<ExtArgs>
-  users?: boolean | Prisma.usersDefaultArgs<ExtArgs>
+  app_user?: boolean | Prisma.app_usersDefaultArgs<ExtArgs>
 }
 export type profilesIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   academies?: boolean | Prisma.profiles$academiesArgs<ExtArgs>
-  users?: boolean | Prisma.usersDefaultArgs<ExtArgs>
+  app_user?: boolean | Prisma.app_usersDefaultArgs<ExtArgs>
 }
 
 export type $profilesPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -775,7 +816,7 @@ export type $profilesPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
   objects: {
     players: Prisma.$playersPayload<ExtArgs>[]
     academies: Prisma.$academiesPayload<ExtArgs> | null
-    users: Prisma.$usersPayload<ExtArgs>
+    app_user: Prisma.$app_usersPayload<ExtArgs>
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -785,6 +826,7 @@ export type $profilesPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     role: string | null
     academy_id: string | null
     status: string | null
+    invite_code: string | null
   }, ExtArgs["result"]["profiles"]>
   composites: {}
 }
@@ -1181,7 +1223,7 @@ export interface Prisma__profilesClient<T, Null = never, ExtArgs extends runtime
   readonly [Symbol.toStringTag]: "PrismaPromise"
   players<T extends Prisma.profiles$playersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.profiles$playersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$playersPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   academies<T extends Prisma.profiles$academiesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.profiles$academiesArgs<ExtArgs>>): Prisma.Prisma__academiesClient<runtime.Types.Result.GetResult<Prisma.$academiesPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
-  users<T extends Prisma.usersDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.usersDefaultArgs<ExtArgs>>): Prisma.Prisma__usersClient<runtime.Types.Result.GetResult<Prisma.$usersPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+  app_user<T extends Prisma.app_usersDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.app_usersDefaultArgs<ExtArgs>>): Prisma.Prisma__app_usersClient<runtime.Types.Result.GetResult<Prisma.$app_usersPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1218,6 +1260,7 @@ export interface profilesFieldRefs {
   readonly role: Prisma.FieldRef<"profiles", 'String'>
   readonly academy_id: Prisma.FieldRef<"profiles", 'String'>
   readonly status: Prisma.FieldRef<"profiles", 'String'>
+  readonly invite_code: Prisma.FieldRef<"profiles", 'String'>
 }
     
 

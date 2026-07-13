@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Users, LogOut, Shield, GraduationCap, UserMinus, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/lib/supabase";
 import ThemeToggle from "./ThemeToggle";
 import SettingsPanel from "./SettingsPanel";
 import "./Header.css";
@@ -26,11 +25,7 @@ export default function CoachHeader() {
   async function handleRemoveAccount() {
     if (!confirm("Are you sure you want to remove your account entirely? This action cannot be undone.")) return;
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      await fetch(`/api/auth/account`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${session?.access_token}` },
-      });
+      await fetch("/api/auth/account", { method: "DELETE" });
       await signOut();
     } catch (e) {
       console.error(e);
