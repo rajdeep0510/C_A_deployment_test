@@ -127,9 +127,7 @@ export async function POST(request: Request) {
 
   } catch (err) {
     console.error("[/api/auth/login] Unhandled error:", err);
-    return NextResponse.json(
-      { error: "Internal server error", detail: err instanceof Error ? err.message : String(err) },
-      { status: 500 }
-    );
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
