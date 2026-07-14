@@ -169,7 +169,7 @@ export async function verifyEmailToken(rawToken: string) {
 
   const token = await prisma.email_verification_tokens.findUnique({
     where: { token_hash: tokenHash },
-    include: { app_user: true },
+    include: { app_user: { include: { player: true } } },
   });
 
   if (!token || token.used_at || token.expires_at < new Date()) return null;
@@ -279,7 +279,6 @@ export async function registerStaffUser(data: {
 
 export async function registerPlayerUser(data: {
   email: string;
-  password: string;
   fullName: string;
   chessUsername: string;
   coachId: string;
@@ -295,7 +294,10 @@ export async function registerPlayerUser(data: {
   if (existingEmail) throw new Error("EMAIL_TAKEN");
   if (existingUsername && existingUsername.user_id) throw new Error("USERNAME_TAKEN");
 
-  const passwordHash = await hashPassword(data.password);
+  // Players have no password — store an unusable placeholder that bcrypt.compare always rejects
+  const passwordHash = `*${crypto.randomBytes(32).toString("hex")}`;
+
+  const preApproved = existingUsername?.status === "approved";
 
   const user = await prisma.$transaction(async (tx) => {
     const newUser = await tx.app_users.create({
@@ -303,10 +305,15 @@ export async function registerPlayerUser(data: {
     });
 
     if (existingUsername) {
-      // Claim existing unclaimed player record
+      // Claim existing unclaimed player record; set coach_id from invite code if not already assigned
       await tx.players.update({
         where: { id: existingUsername.id },
-        data: { user_id: newUser.id, email: data.email, full_name: data.fullName },
+        data: {
+          user_id: newUser.id,
+          email: data.email,
+          full_name: data.fullName,
+          ...(existingUsername.coach_id == null ? { coach_id: data.coachId } : {}),
+        },
       });
     } else {
       await tx.players.create({
@@ -324,8 +331,15 @@ export async function registerPlayerUser(data: {
     return newUser;
   });
 
-  const rawVerificationToken = await createEmailVerificationToken(user.id);
-  return { user, rawVerificationToken };
+  if (preApproved) {
+    await prisma.app_users.update({
+      where: { id: user.id },
+      data: { email_verified: true },
+    });
+    return { user, preApproved: true };
+  }
+
+  return { user, preApproved: false };
 }
 
 // ── Delete user (cascades to sessions, tokens, profile, player) ───────────────

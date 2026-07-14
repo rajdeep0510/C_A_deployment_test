@@ -40,6 +40,31 @@ export async function sendVerificationEmail(email: string, rawToken: string, ful
   }
 }
 
+export async function sendPlayerApprovalEmail(email: string, rawToken: string, fullName: string) {
+  const link = `${APP_URL}/verify-email?token=${rawToken}`;
+  try {
+    await createTransport().sendMail({
+      from: FROM,
+      to: email,
+      subject: "Your Chess Advisor account has been approved!",
+      html: `
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
+          <h2 style="color:#10b981">Chess Advisor</h2>
+          <p>Hi ${fullName},</p>
+          <p>Great news! Your coach has approved your registration. Click the button below to verify your email and access your account:</p>
+          <a href="${link}" style="display:inline-block;margin:16px 0;padding:12px 24px;background:#10b981;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">
+            Access Chess Advisor
+          </a>
+          <p style="color:#666;font-size:13px">This link expires in 24 hours.</p>
+          <p style="color:#999;font-size:12px">Or copy this URL: ${link}</p>
+        </div>
+      `,
+    });
+  } catch (err) {
+    console.warn("[email] Failed to send player approval email to", email, err);
+  }
+}
+
 export async function sendPasswordResetEmail(email: string, rawToken: string, fullName: string) {
   const link = `${APP_URL}/reset-password?token=${rawToken}`;
   try {

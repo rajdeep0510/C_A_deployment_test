@@ -100,7 +100,9 @@ export default function Dashboard() {
       return;
     }
 
-    const storedGames = localStorage.getItem("recentGames");
+    localStorage.removeItem("recentGames"); // remove unnamespaced key that could leak across players
+    const gamesKey = `recentGames_${chessUsername}`;
+    const storedGames = localStorage.getItem(gamesKey);
     if (storedGames) setGames(JSON.parse(storedGames));
 
     const STATS_CACHE_VERSION = "v2";
@@ -171,7 +173,7 @@ export default function Dashboard() {
           const existingUrls = new Set(prev.map((g: any) => g.filename));
           merged = [...prev, ...newGames.filter((g: any) => !existingUrls.has(g.filename))];
         }
-        localStorage.setItem("recentGames", JSON.stringify(merged));
+        localStorage.setItem(`recentGames_${chessUsername}`, JSON.stringify(merged));
         return merged;
       });
       setShowFetchPanel(false);

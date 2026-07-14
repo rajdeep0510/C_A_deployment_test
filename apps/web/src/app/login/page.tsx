@@ -2,31 +2,41 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Crown, Lock, Mail, Eye, EyeOff, Loader2, CheckCircle } from "lucide-react";
+import { Crown, Lock, Mail, User, Eye, EyeOff, Loader2, CheckCircle } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { usePlayer } from "@/contexts/PlayerContext";
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { refreshProfile } = useAuth();
+  const { refreshSession } = usePlayer();
 
-  const [email, setEmail] = useState("");
+  const [id, setId] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [unverified, setUnverified] = useState(false);
   const [needsReset, setNeedsReset] = useState(false);
+  const [pendingApproval, setPendingApproval] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendDone, setResendDone] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [justVerified, setJustVerified] = useState(false);
+  const [justRegistered, setJustRegistered] = useState(false);
+
+  const isStaff = id.includes("@");
 
   useEffect(() => {
     if (searchParams.get("verified") === "1") setJustVerified(true);
+    if (searchParams.get("ready") === "1") setJustRegistered(true);
   }, [searchParams]);
 
   const clearAlerts = () => {
     setError("");
     setUnverified(false);
     setNeedsReset(false);
+    setPendingApproval(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -35,10 +45,13 @@ function LoginForm() {
     setLoading(true);
 
     try {
+      const body: Record<string, string> = { id: id.trim() };
+      if (isStaff) body.password = password;
+
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password }),
+        body: JSON.stringify(body),
       });
 
       const data = await res.json();
@@ -55,12 +68,20 @@ function LoginForm() {
         return;
       }
 
+      if (res.status === 403 && data.error === "PENDING_APPROVAL") {
+        setPendingApproval(true);
+        setLoading(false);
+        return;
+      }
+
+
       if (!res.ok) {
         setError(data.error ?? "Login failed. Please try again.");
         setLoading(false);
         return;
       }
 
+      await Promise.all([refreshProfile(), refreshSession()]);
       router.push(data.redirectTo);
     } catch {
       setError("Something went wrong. Please try again.");
@@ -73,7 +94,7 @@ function LoginForm() {
     await fetch("/api/auth/resend-verification", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: email.trim() }),
+      body: JSON.stringify({ email: id.trim() }),
     });
     setResendLoading(false);
     setResendDone(true);
@@ -140,9 +161,7 @@ function LoginForm() {
           >
             Chess Advisor
           </h1>
-          <p style={{ fontSize: "14px", color: "#a1a1aa" }}>
-            Sign in to your account
-          </p>
+          <p style={{ fontSize: "14px", color: "#a1a1aa" }}>Sign in to your account</p>
         </div>
 
         {justVerified && (
@@ -165,62 +184,99 @@ function LoginForm() {
           </div>
         )}
 
+        {justRegistered && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              color: "#1dc189",
+              fontSize: "13px",
+              background: "#161616",
+              padding: "10px 14px",
+              borderRadius: "8px",
+              border: "1px solid #2a2a2a",
+              marginBottom: "16px",
+            }}
+          >
+            <CheckCircle size={16} />
+            Account ready! Enter your chess username to sign in.
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          {/* ID field */}
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
             <label style={{ fontSize: "13px", fontWeight: "500", color: "#a1a1aa", letterSpacing: "0.02em" }}>
-              Email
+              Chess ID or Email
             </label>
             <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-              <Mail size={16} style={{ position: "absolute", left: "14px", color: "#a1a1aa", pointerEvents: "none" }} />
+              {isStaff
+                ? <Mail size={16} style={{ position: "absolute", left: "14px", color: "#a1a1aa", pointerEvents: "none" }} />
+                : <User size={16} style={{ position: "absolute", left: "14px", color: "#a1a1aa", pointerEvents: "none" }} />
+              }
               <input
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => { setEmail(e.target.value); clearAlerts(); }}
+                type="text"
+                placeholder="username or email@example.com"
+                value={id}
+                onChange={(e) => { setId(e.target.value); clearAlerts(); }}
                 disabled={loading}
-                autoComplete="email"
+                autoComplete="username"
                 required
                 style={{ ...inputStyle, paddingLeft: "42px" }}
               />
             </div>
+            <p style={{ fontSize: "11px", color: "#52525b", margin: 0 }}>
+              {isStaff ? "Coach / Academy / Admin login" : "Players: enter your chess.com username"}
+            </p>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <label style={{ fontSize: "13px", fontWeight: "500", color: "#a1a1aa", letterSpacing: "0.02em" }}>
-                Password
-              </label>
-              <Link href="/forgot-password" style={{ fontSize: "12px", color: "#1dc189", fontWeight: "500" }}>
-                Forgot password?
-              </Link>
+          {/* Password — only for staff (email contains @) */}
+          {isStaff && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <label style={{ fontSize: "13px", fontWeight: "500", color: "#a1a1aa", letterSpacing: "0.02em" }}>
+                  Password
+                </label>
+                <Link href="/forgot-password" style={{ fontSize: "12px", color: "#1dc189", fontWeight: "500" }}>
+                  Forgot password?
+                </Link>
+              </div>
+              <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                <Lock size={16} style={{ position: "absolute", left: "14px", color: "#a1a1aa", pointerEvents: "none" }} />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={loading}
+                  autoComplete="current-password"
+                  required
+                  style={{ ...inputStyle, paddingLeft: "42px", paddingRight: "42px" }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{ position: "absolute", right: "12px", background: "none", border: "none", padding: "4px", color: "#a1a1aa", display: "flex", alignItems: "center", cursor: "pointer", borderRadius: "6px" }}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
-            <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-              <Lock size={16} style={{ position: "absolute", left: "14px", color: "#a1a1aa", pointerEvents: "none" }} />
-              <input
-                type={showPassword ? "text" : "password"}
-                placeholder="Your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={loading}
-                autoComplete="current-password"
-                required
-                style={{ ...inputStyle, paddingLeft: "42px", paddingRight: "42px" }}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                style={{ position: "absolute", right: "12px", background: "none", border: "none", padding: "4px", color: "#a1a1aa", display: "flex", alignItems: "center", cursor: "pointer", borderRadius: "6px" }}
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-          </div>
+          )}
 
           {error && (
             <div style={{ color: "#ef4444", fontSize: "13px", background: "#1f1f1f", padding: "10px 14px", borderRadius: "8px", border: "1px solid #2a2a2a" }}>
               {error}
             </div>
           )}
+
+          {pendingApproval && (
+            <div style={{ fontSize: "13px", background: "#1f1f1f", padding: "12px 14px", borderRadius: "8px", border: "1px solid #2a2a2a" }}>
+              <span style={{ color: "#f59e0b" }}>Your account is pending approval from your coach. You'll receive an email once approved.</span>
+            </div>
+          )}
+
 
           {unverified && (
             <div style={{ fontSize: "13px", background: "#1f1f1f", padding: "12px 14px", borderRadius: "8px", border: "1px solid #2a2a2a", display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -245,7 +301,7 @@ function LoginForm() {
             <div style={{ fontSize: "13px", background: "#1f1f1f", padding: "12px 14px", borderRadius: "8px", border: "1px solid #2a2a2a", display: "flex", flexDirection: "column", gap: "8px" }}>
               <span style={{ color: "#f59e0b" }}>Your account was migrated. Please set a new password to continue.</span>
               <Link
-                href={`/forgot-password`}
+                href="/forgot-password"
                 style={{ alignSelf: "flex-start", fontSize: "12px", fontWeight: "600", color: "#1dc189", border: "1px solid #2a2a2a", borderRadius: "6px", padding: "4px 10px" }}
               >
                 Set new password →

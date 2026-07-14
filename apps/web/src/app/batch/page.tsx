@@ -45,7 +45,7 @@ function BatchPageInner() {
     if (playerLoading) return;
     if (!chessUsername || !isApproved) { router.push("/login"); return; }
 
-    const stored = localStorage.getItem("recentGames");
+    const stored = localStorage.getItem(`recentGames_${chessUsername}`);
     if (stored) {
       try {
         const parsed = JSON.parse(stored);

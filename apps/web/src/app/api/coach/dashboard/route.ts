@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/auth";
+import { requireRole, createEmailVerificationToken } from "@/lib/auth";
+import { sendPlayerApprovalEmail } from "@/lib/email";
 
 export async function GET(request: NextRequest) {
   const session = await requireRole(request, "coach");
@@ -58,5 +59,11 @@ export async function PATCH(request: NextRequest) {
   }
 
   const updated = await prisma.players.update({ where: { id: playerId }, data: { status } });
+
+  if (status === "approved" && updated.user_id && updated.email) {
+    const rawToken = await createEmailVerificationToken(updated.user_id);
+    await sendPlayerApprovalEmail(updated.email, rawToken, updated.full_name ?? "");
+  }
+
   return NextResponse.json(updated);
 }

@@ -8,6 +8,7 @@
 
   --accent-color: #1dc189;
   --accent-hover: #15a373;
+  --accent-text: #1dc189;
   --success: #10b981;
   --danger: #ef4444;
   --warning: #f59e0b;
@@ -61,6 +62,8 @@
   --input-bg-focus: #f8fafc;
   --input-border: #e2e8f0;
 
+  --accent-text: #0d7a56;
+
   color-scheme: light;
 }
 
@@ -106,8 +109,8 @@ body {
 
 [data-theme="light"] body {
   background:
-    linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+    linear-gradient(rgba(0, 0, 0, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.06) 1px, transparent 1px),
     var(--bg-color);
   background-size:
     48px 48px,
@@ -148,6 +151,11 @@ button {
 ::selection {
   background: #f5f5f5;
   color: #050505;
+}
+
+[data-theme="light"] ::selection {
+  background: rgba(29, 193, 137, 0.25);
+  color: #0f172a;
 }
 
 /* ─── Surface Utilities (Studio Dark) ──────────────────────────────────── */
@@ -235,6 +243,34 @@ button {
   box-shadow: 0 12px 36px rgba(255, 255, 255, 0.2);
 }
 
+[data-theme="light"] .btn-primary {
+  background: #0f172a;
+  color: #f8fafc;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .btn-primary:hover {
+  background: #1e293b;
+  color: #ffffff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+/* ─── Light mode interactive chrome ────────────────────────────────────── */
+[data-theme="light"] .theme-toggle,
+[data-theme="light"] .btn-logout,
+[data-theme="light"] .hamburger-btn {
+  background: var(--surface-2);
+}
+
+/* ─── Light mode elevation shadows ─────────────────────────────────────── */
+[data-theme="light"] .glass-card {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07), 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .header-glass {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
 .btn-secondary {
   background: var(--surface-1);
   color: var(--text-secondary);
@@ -265,6 +301,11 @@ button {
   border-color: rgba(255, 255, 255, 0.52);
   background: var(--input-bg-focus);
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="light"] .input-field:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(29, 193, 137, 0.18);
 }
 
 .input-label {
@@ -371,6 +412,13 @@ button {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.4);
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.18);
+}
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.32);
 }
 
 /* ─── Responsive Layout Classes ─────────────────────────────────────────── */
@@ -591,7 +639,7 @@ button {
     margin-bottom: -1px;
   }
   .puzzle-mobile-tab.active {
-    color: var(--accent-color);
+    color: var(--accent-text);
     border-bottom-color: var(--accent-color);
   }
 
