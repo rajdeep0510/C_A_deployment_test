@@ -12,7 +12,14 @@ export async function GET(request: NextRequest) {
       where:   { role: "coach" },
       orderBy: { created_at: "desc" },
     }),
-    prisma.players.findMany({ orderBy: { created_at: "desc" } }),
+    prisma.players.findMany({
+      orderBy: { created_at: "desc" },
+      include: {
+        profiles: {
+          select: { full_name: true, academies: { select: { id: true, name: true } } },
+        },
+      },
+    }),
   ]);
 
   const ownerIds = academies.map((a) => a.owner_id).filter(Boolean) as string[];

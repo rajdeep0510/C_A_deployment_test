@@ -210,8 +210,6 @@ function RegisterContent() {
   // ── Player state ──
   const [pFullName, setPFullName] = useState("");
   const [pEmail, setPEmail] = useState("");
-  const [pPassword, setPPassword] = useState("");
-  const [pConfirm, setPConfirm] = useState("");
   const [pUsername, setPUsername] = useState("");
   const [pInviteCode, setPInviteCode] = useState("");
   const [pCoachId, setPCoachId] = useState("");
@@ -219,6 +217,7 @@ function RegisterContent() {
   const [resolvedCoachName, setResolvedCoachName] = useState("");
   const [pLoading, setPLoading] = useState(false);
   const [pError, setPError] = useState("");
+  const [pSuccess, setPSuccess] = useState(false);
 
   // ── Coach state ──
   const [cFullName, setCFullName] = useState("");
@@ -276,20 +275,22 @@ function RegisterContent() {
   const handlePlayerSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPError("");
-    if (pPassword !== pConfirm) { setPError("Passwords do not match."); return; }
-    if (pPassword.length < 8) { setPError("Password must be at least 8 characters."); return; }
     if (!pCoachId) { setPError("Please enter a valid invite code."); return; }
     setPLoading(true);
 
     const res = await fetch("/api/auth/signup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "player", email: pEmail, password: pPassword, fullName: pFullName.trim(), chessUsername: pUsername.trim().toLowerCase(), coachId: pCoachId }),
+      body: JSON.stringify({ type: "player", email: pEmail, fullName: pFullName.trim(), chessUsername: pUsername.trim().toLowerCase(), coachId: pCoachId }),
     });
     const data = await res.json();
     setPLoading(false);
     if (!res.ok) { setPError(data.error ?? "Registration failed."); return; }
-    redirectToCheckEmail(pEmail);
+    if (data.preApproved) {
+      router.push("/login?ready=1");
+      return;
+    }
+    setPSuccess(true);
   };
 
   // ── Coach submit ──
@@ -401,13 +402,24 @@ function RegisterContent() {
         </div>
 
         {/* Player Form */}
-        {tab === "player" && (
+        {tab === "player" && pSuccess && (
+          <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: "16px", alignItems: "center" }}>
+            <div style={{ width: "64px", height: "64px", borderRadius: "18px", background: "linear-gradient(135deg,#10b981,#34d399)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 8px 24px rgba(16,185,129,0.3)" }}>
+              <CheckCircle size={30} style={{ color: "#fff" }} />
+            </div>
+            <h2 style={{ fontSize: "18px", fontWeight: "700", color: "var(--text-primary)" }}>Registration Submitted!</h2>
+            <p style={{ fontSize: "14px", color: "var(--text-secondary)", lineHeight: "1.6" }}>
+              Your request has been sent to{" "}
+              <strong style={{ color: "var(--accent-color)" }}>{resolvedCoachName || "your coach"}</strong>.
+              Once approved, you will receive an email to access your account.
+            </p>
+          </div>
+        )}
+        {tab === "player" && !pSuccess && (
           <form onSubmit={handlePlayerSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
             <InputField label="Full Name" placeholder="Your full name" value={pFullName} onChange={setPFullName} onFocus={focus("p-name")} onBlur={blur} icon={<User size={18} />} focused={isFocused("p-name")} activeColor={meta.color} disabled={pLoading} required />
             <InputField label="Chess.com Username" placeholder="your_username" value={pUsername} onChange={setPUsername} onFocus={focus("p-uname")} onBlur={blur} icon={<User size={18} />} focused={isFocused("p-uname")} activeColor={meta.color} disabled={pLoading} required autoComplete="username" />
             <InputField label="Email" type="email" placeholder="you@example.com" value={pEmail} onChange={setPEmail} onFocus={focus("p-email")} onBlur={blur} icon={<Mail size={18} />} focused={isFocused("p-email")} activeColor={meta.color} disabled={pLoading} required autoComplete="email" />
-            <PasswordField label="Password" value={pPassword} onChange={setPPassword} onFocus={focus("p-pass")} onBlur={blur} focused={isFocused("p-pass")} activeColor={meta.color} disabled={pLoading} autoComplete="new-password" />
-            <PasswordField label="Confirm Password" value={pConfirm} onChange={setPConfirm} onFocus={focus("p-conf")} onBlur={blur} focused={isFocused("p-conf")} activeColor={meta.color} disabled={pLoading} autoComplete="new-password" />
 
             {/* Invite code */}
             <div>

@@ -12,12 +12,14 @@ export async function POST(request: Request) {
 
   const { type, email, password, fullName } = body;
 
-  if (!type || !email || !password || !fullName) {
+  if (!type || !email || !fullName) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
-  if (password.length < 8) {
-    return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
+  if (type !== "player") {
+    if (!password || password.length < 8) {
+      return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
+    }
   }
 
   try {
@@ -26,11 +28,11 @@ export async function POST(request: Request) {
       if (!chessUsername || !coachId) {
         return NextResponse.json({ error: "Missing chessUsername or coachId" }, { status: 400 });
       }
-      const { user, rawVerificationToken } = await registerPlayerUser({
-        email, password, fullName, chessUsername, coachId,
-      });
-      await sendVerificationEmail(email, rawVerificationToken, fullName);
-      return NextResponse.json({ message: "Check your email to verify your account" }, { status: 201 });
+      const result = await registerPlayerUser({ email, fullName, chessUsername, coachId });
+      if (result.preApproved) {
+        return NextResponse.json({ preApproved: true, message: "Your account is ready! You can now log in with your chess username." }, { status: 201 });
+      }
+      return NextResponse.json({ message: "Registration submitted. Your coach will review and approve your request." }, { status: 201 });
     }
 
     if (type === "coach" || type === "academy_owner") {

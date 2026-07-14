@@ -25,17 +25,28 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const email = body?.email?.toLowerCase();
-  if (!email) return NextResponse.json({ error: "Email is required" }, { status: 400 });
+  const identifier = body?.email?.trim();
+  if (!identifier) return NextResponse.json({ error: "Email is required" }, { status: 400 });
 
-  if (isRateLimited(email, 3, 10 * 60 * 1000)) {
+  const rateLimitKey = identifier.toLowerCase();
+  if (isRateLimited(rateLimitKey, 3, 10 * 60 * 1000)) {
     return NextResponse.json(
       { message: "If this email exists, a verification link has been sent." },
       { status: 200 }
     );
   }
 
-  const user = await prisma.app_users.findUnique({ where: { email_lower: email } });
+  let user;
+  if (identifier.includes("@")) {
+    user = await prisma.app_users.findUnique({ where: { email_lower: identifier.toLowerCase() } });
+  } else {
+    // Player login — look up by chess username
+    const player = await prisma.players.findUnique({
+      where: { chess_username: identifier.toLowerCase() },
+      include: { app_user: true },
+    });
+    user = player?.app_user ?? null;
+  }
 
   // Always return the same response to prevent email enumeration
   if (user && !user.email_verified) {

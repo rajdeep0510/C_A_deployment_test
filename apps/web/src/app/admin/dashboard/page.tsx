@@ -154,6 +154,19 @@ export default function AdminDashboard() {
     loadData();
   }
 
+  async function handleRemovePlayer(playerId: string) {
+    if (!confirm("Are you sure you want to remove this player? This cannot be undone.")) return;
+    setActionLoading(playerId);
+    try {
+      await fetch(`/api/auth/admin/players/${playerId}`, { method: "DELETE" });
+    } catch (e) {
+      console.error(e);
+      alert("Failed to remove player.");
+    }
+    setActionLoading(null);
+    loadData();
+  }
+
   const thStyle: React.CSSProperties = {
     padding: "10px 16px", fontSize: "11px", fontWeight: "700",
     textTransform: "uppercase", letterSpacing: "0.5px",
@@ -325,11 +338,11 @@ export default function AdminDashboard() {
               <div className="glass-card" style={{ overflow: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
-                    <tr>{["Player", "Chess Username", "Coach", "Academy", "Status", "Joined"].map((h) => <th key={h} style={thStyle}>{h}</th>)}</tr>
+                    <tr>{["Player", "Chess Username", "Coach", "Academy", "Status", "Joined", ""].map((h, i) => <th key={i} style={thStyle}>{h}</th>)}</tr>
                   </thead>
                   <tbody>
                     {players.length === 0 ? (
-                      <tr><td colSpan={6} style={{ ...tdStyle, textAlign: "center", color: "var(--text-secondary)" }}>No players yet.</td></tr>
+                      <tr><td colSpan={7} style={{ ...tdStyle, textAlign: "center", color: "var(--text-secondary)" }}>No players yet.</td></tr>
                     ) : players.map((p) => (
                       <tr key={p.id}>
                         <td style={tdStyle}><strong>{p.full_name}</strong></td>
@@ -338,6 +351,15 @@ export default function AdminDashboard() {
                         <td style={tdStyle}>{p.academyName}</td>
                         <td style={tdStyle}><StatusBadge status={p.status} /></td>
                         <td style={{ ...tdStyle, color: "var(--text-secondary)" }}>{new Date(p.created_at).toLocaleDateString()}</td>
+                        <td style={{ ...tdStyle, textAlign: "right" }}>
+                          <button
+                            onClick={() => handleRemovePlayer(p.id)}
+                            disabled={actionLoading === p.id}
+                            style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)", border: "none", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "12px", fontWeight: "bold" }}
+                          >
+                            {actionLoading === p.id ? "Removing..." : "Remove"}
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>

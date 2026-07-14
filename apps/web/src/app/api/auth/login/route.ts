@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyPassword, createSession, setSessionCookie } from "@/lib/auth";
@@ -10,13 +11,62 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { email, password } = body;
-  if (!email || !password) {
+  const { id, password } = body;
+  if (!id) {
+    return NextResponse.json({ error: "ID is required" }, { status: 400 });
+  }
+
+  const userAgent = request.headers.get("user-agent") ?? undefined;
+  const ipAddress =
+    request.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
+    request.headers.get("x-real-ip") ??
+    undefined;
+
+  // ── Player login (no @ → chess username) ─────────────────────────────────────
+  if (!id.includes("@")) {
+    const player = await prisma.players.findUnique({
+      where: { chess_username: id.toLowerCase().trim() },
+      include: { app_user: true },
+    });
+
+    if (!player) {
+      return NextResponse.json({ error: "Username not found. Please check your chess.com username." }, { status: 401 });
+    }
+
+    if (player.status !== "approved") {
+      return NextResponse.json(
+        { error: "PENDING_APPROVAL", message: "Your account is pending approval from your coach." },
+        { status: 403 }
+      );
+    }
+
+    // Auto-create an app_users account on first login for coach-added players
+    let userId = player.user_id;
+    if (!userId || !player.app_user) {
+      const placeholderEmail = `${player.chess_username}@players.chessadvisor.internal`;
+      const passwordHash = `*${crypto.randomBytes(32).toString("hex")}`;
+      const newUser = await prisma.app_users.create({
+        data: { email: placeholderEmail, password_hash: passwordHash, email_verified: true },
+      });
+      await prisma.players.update({
+        where: { id: player.id },
+        data: { user_id: newUser.id },
+      });
+      userId = newUser.id;
+    }
+
+    const { rawToken } = await createSession(userId, { userAgent, ipAddress });
+    const response = NextResponse.json({ redirectTo: "/dashboard" });
+    return setSessionCookie(response, rawToken);
+  }
+
+  // ── Staff login (has @ → email + password) ────────────────────────────────────
+  if (!password) {
     return NextResponse.json({ error: "Email and password are required" }, { status: 400 });
   }
 
   const user = await prisma.app_users.findUnique({
-    where: { email_lower: email.toLowerCase() },
+    where: { email_lower: id.toLowerCase().trim() },
     include: { profile: true, player: true },
   });
 
@@ -30,7 +80,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
   }
 
-  // Existing staff migrated from Supabase Auth — must reset password before first login
   if (isMigrated) {
     return NextResponse.json(
       { error: "PASSWORD_RESET_REQUIRED", message: "Please reset your password to continue." },
@@ -49,22 +98,13 @@ export async function POST(request: Request) {
     );
   }
 
-  const userAgent = request.headers.get("user-agent") ?? undefined;
-  const ipAddress =
-    request.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
-    request.headers.get("x-real-ip") ??
-    undefined;
-
   const { rawToken } = await createSession(user.id, { userAgent, ipAddress });
 
-  // Determine redirect
-  let userType: "staff" | "player" = "player";
   let redirectTo = "/dashboard";
   const profile = user.profile;
   const player = user.player;
 
   if (profile) {
-    userType = "staff";
     if (profile.role === "admin") redirectTo = "/admin/dashboard";
     else if (profile.role === "academy_owner") {
       redirectTo = profile.status === "pending" ? "/academy/pending" : "/academy/dashboard";
@@ -76,7 +116,6 @@ export async function POST(request: Request) {
   }
 
   const response = NextResponse.json({
-    userType,
     role: profile?.role ?? null,
     status: profile?.status ?? player?.status ?? null,
     redirectTo,

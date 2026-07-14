@@ -28,7 +28,7 @@ export default function OnboardingPage() {
 
     try {
       const games = await fetchGames(platform, username, limit);
-      localStorage.setItem("recentGames", JSON.stringify(games));
+      localStorage.setItem(`recentGames_${username}`, JSON.stringify(games));
       setStatus("success");
       setTimeout(() => {
         router.push("/dashboard");
