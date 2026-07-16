@@ -823,6 +823,55 @@ button {
   }
 }
 
+/* ─── Filter chips ──────────────────────────────────────────────────────── */
+.filter-chip {
+  padding: 5px 14px;
+  border-radius: 99px;
+  font-family: "Inter", sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--glass-border);
+  background: transparent;
+  color: var(--text-secondary);
+  transition: all 0.12s ease;
+}
+
+.filter-chip:hover {
+  background: var(--surface-2);
+  border-color: var(--border-medium);
+  color: var(--text-primary);
+}
+
+.filter-chip:active {
+  transform: scale(0.96);
+}
+
+.filter-chip--active {
+  font-weight: 700;
+  border-color: var(--accent-color);
+  background: var(--accent-color);
+  color: #050505;
+}
+
+.filter-chip--active:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: #050505;
+}
+
+@media (pointer: coarse) {
+  .filter-chip:hover {
+    background: transparent;
+    border-color: var(--glass-border);
+    color: var(--text-secondary);
+  }
+  .filter-chip--active:hover {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+  }
+}
+
 /* ─── Load Games form ───────────────────────────────────────────────────── */
 .load-games-form {
   display: flex;

@@ -9,13 +9,13 @@
       {
         "rule": "overused-font",
         "value": "inter",
-        "reason": "Committed design system choice: Inter chosen for readability in dense data/labels per DESIGN.md",
+        "reason": "Inter is the established body font in DESIGN.md; not introduced by this session",
         "createdAt": "2026-07-09T19:59:00.845Z"
       },
       {
         "rule": "overused-font",
         "value": "space grotesk",
-        "reason": "Committed design system choice: Space Grotesk chosen for geometric technical character in headings per DESIGN.md",
+        "reason": "Space Grotesk is the established heading font in DESIGN.md; not introduced by this session",
         "createdAt": "2026-07-09T19:59:04.321Z"
       }
     ]
