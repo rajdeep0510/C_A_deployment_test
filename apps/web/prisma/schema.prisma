@@ -504,6 +504,7 @@ model academies {
   city        String?
   owner_id    String?    @db.Uuid
   status      String     @default("pending")
+  invite_code String?    @unique
   created_at  DateTime?  @default(now()) @db.Timestamptz(6)
   updated_at  DateTime?  @default(now()) @db.Timestamptz(6)
   profiles    profiles[]

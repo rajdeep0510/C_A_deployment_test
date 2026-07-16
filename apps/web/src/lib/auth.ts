@@ -253,6 +253,7 @@ export async function registerStaffUser(data: {
           description: data.academyDescription ?? null,
           owner_id: newUser.id,
           status: "pending",
+          invite_code: generateInviteCode(),
         },
       });
       resolvedAcademyId = academy.id;

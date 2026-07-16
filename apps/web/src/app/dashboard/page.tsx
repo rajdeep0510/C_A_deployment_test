@@ -7,7 +7,7 @@ import GameCard from "@/components/GameCard";
 import Loader from "@/components/Loader";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { getStats, fetchGames, getBatchJobs } from "@/services/api";
-import { Play, TrendingUp, TrendingDown, Minus, RefreshCw, ChevronDown, ChevronUp, Clock, Zap, Gauge, CalendarDays } from "lucide-react";
+import { ChevronRight, TrendingUp, TrendingDown, Minus, RefreshCw, ChevronDown, ChevronUp, Clock, Zap, Gauge, CalendarDays, Loader2, CheckCircle2 } from "lucide-react";
 
 function MomentumBadge({ momentum }: { momentum: string }) {
   const lower = (momentum || "").toLowerCase();
@@ -238,26 +238,26 @@ export default function Dashboard() {
                 display: "flex",
                 alignItems: "center",
                 gap: "12px",
-                marginBottom: "8px",
+                marginBottom: "6px",
                 flexWrap: "wrap",
               }}
             >
-              <h1 style={{ fontSize: "clamp(22px, 5vw, 32px)", margin: 0 }}>
+              <h1 style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif", fontSize: "clamp(1.8rem, 3.5vw, 2.8rem)", fontWeight: 600, letterSpacing: "-0.02em", lineHeight: 1.15, margin: 0 }}>
                 Welcome, {chessUsername}
               </h1>
               {stats?.momentum && <MomentumBadge momentum={stats.momentum} />}
             </div>
-            <p style={{ color: "var(--text-secondary)" }}>
+            <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.95rem", lineHeight: 1.6, color: "var(--text-secondary)", margin: 0 }}>
               Here&apos;s an overview of your recent performance.
             </p>
           </div>
           <button
             className="btn btn-primary"
             onClick={() => router.push("/batch")}
-            style={{ padding: "12px 24px", fontSize: "15px", flexShrink: 0 }}
+            style={{ padding: "12px 28px", fontSize: "15px", fontWeight: 600, flexShrink: 0 }}
           >
-            <Play size={18} fill="currentColor" />
             Batch Analysis
+            <ChevronRight size={16} />
           </button>
         </div>
 
@@ -273,28 +273,44 @@ export default function Dashboard() {
 
                 {/* LEFT: Overall — tall vertical card */}
                 {summaryTotals != null && (
-                  <div ref={summaryRef} className="glass-card" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                  <div ref={summaryRef} className="glass-card" style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                    {/* Win rate — hero metric, shown first */}
                     <div>
-                      <div style={{ fontSize: "11px", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "10px" }}>Overall</div>
-                      <div style={{ fontSize: "clamp(28px, 8vw, 40px)", fontWeight: "800", lineHeight: 1 }}>{animGames.toLocaleString()}</div>
-                      <div style={{ fontSize: "13px", color: "var(--text-secondary)", marginTop: "4px" }}>games played</div>
+                      <div style={{ fontSize: "clamp(2.2rem, 8vw, 3rem)", fontWeight: 800, lineHeight: 1, color: "var(--success)" }}>{animWinRate}%</div>
+                      <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.8rem", fontWeight: 500, letterSpacing: "0.02em", color: "var(--text-secondary)", marginTop: "4px", textTransform: "uppercase" }}>overall win rate</div>
                     </div>
+                    {/* Games played — secondary metric */}
                     <div>
-                      <div style={{ fontSize: "clamp(32px, 10vw, 48px)", fontWeight: "800", lineHeight: 1, color: "var(--success)" }}>{animWinRate}%</div>
-                      <div style={{ fontSize: "13px", color: "var(--text-secondary)", marginTop: "4px" }}>overall win rate</div>
+                      <div style={{ fontSize: "clamp(1.5rem, 5vw, 2rem)", fontWeight: 700, lineHeight: 1 }}>{animGames.toLocaleString()}</div>
+                      <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: "4px" }}>games played</div>
                     </div>
-                    <div style={{ display: "flex", gap: "24px", paddingTop: "16px", borderTop: "1px solid var(--glass-border)" }}>
-                      <div>
-                        <div style={{ fontSize: "clamp(16px, 5vw, 20px)", fontWeight: "700", color: "var(--success)" }}>{animWins.toLocaleString()}</div>
-                        <div style={{ fontSize: "11px", color: "var(--text-secondary)", marginTop: "2px" }}>Wins</div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: "clamp(16px, 5vw, 20px)", fontWeight: "700", color: "var(--danger)" }}>{animLosses.toLocaleString()}</div>
-                        <div style={{ fontSize: "11px", color: "var(--text-secondary)", marginTop: "2px" }}>Losses</div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: "clamp(16px, 5vw, 20px)", fontWeight: "700", color: "var(--warning)" }}>{animDraws.toLocaleString()}</div>
-                        <div style={{ fontSize: "11px", color: "var(--text-secondary)", marginTop: "2px" }}>Draws</div>
+                    {/* W/L/D breakdown */}
+                    <div style={{ marginTop: "auto", paddingTop: "16px", borderTop: "1px solid var(--glass-border)" }}>
+                      {/* Stacked bar */}
+                      {summaryTotals.total > 0 && (
+                        <div
+                          role="img"
+                          aria-label={`Win/Draw/Loss split`}
+                          style={{ height: "5px", borderRadius: "99px", overflow: "hidden", display: "flex", marginBottom: "14px", background: "var(--border-subtle)" }}
+                        >
+                          <div style={{ width: `${(summaryTotals.wins / summaryTotals.total) * 100}%`, background: "var(--success)" }} />
+                          <div style={{ width: `${(summaryTotals.draws / summaryTotals.total) * 100}%`, background: "var(--warning)" }} />
+                          <div style={{ width: `${(summaryTotals.losses / summaryTotals.total) * 100}%`, background: "var(--danger)" }} />
+                        </div>
+                      )}
+                      <div style={{ display: "flex", gap: "24px" }}>
+                        <div>
+                          <div style={{ fontSize: "clamp(1rem, 4vw, 1.2rem)", fontWeight: 700, color: "var(--success)" }}>{animWins.toLocaleString()}</div>
+                          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "2px" }}>Wins</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: "clamp(1rem, 4vw, 1.2rem)", fontWeight: 700, color: "var(--danger)" }}>{animLosses.toLocaleString()}</div>
+                          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "2px" }}>Losses</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: "clamp(1rem, 4vw, 1.2rem)", fontWeight: 700, color: "var(--warning)" }}>{animDraws.toLocaleString()}</div>
+                          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "2px" }}>Draws</div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -317,7 +333,7 @@ export default function Dashboard() {
                   });
                   const total = games.length;
                   return (
-                    <div className="glass-card" style={{ padding: 0, display: "grid", gridTemplateColumns: "1fr 1fr", overflow: "hidden" }}>
+                    <div className="glass-card bento-color-grid" style={{ padding: 0 }}>
                       {(["white", "black"] as const).map((color, i) => {
                         const { wins, losses, draws } = colorStats[color];
                         const sideTotal = wins + losses + draws;
@@ -327,19 +343,31 @@ export default function Dashboard() {
                             padding: "24px",
                             borderRight: i === 0 ? "1px solid var(--glass-border)" : "none",
                             borderBottom: "1px solid var(--glass-border)",
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "10px",
                           }}>
-                            <div style={{ fontSize: "11px", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "12px" }}>As {color}</div>
-                            <div style={{ fontSize: "clamp(24px, 7vw, 34px)", fontWeight: "800", color: winRateColor(pct), lineHeight: 1, marginBottom: "10px" }} aria-label={`${pct}% win rate as ${color}`}>{pct}%</div>
-                            <div style={{ display: "flex", gap: "10px", fontSize: "12px", marginBottom: "10px" }}>
-                              <span style={{ color: "var(--success)" }} aria-label={`${wins} wins`}>{wins}W</span>
-                              <span style={{ color: "var(--danger)" }} aria-label={`${losses} losses`}>{losses}L</span>
-                              <span style={{ color: "var(--warning)" }} aria-label={`${draws} draws`}>{draws}D</span>
+                            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", fontWeight: 500, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>As {color}</div>
+                            <div style={{ fontSize: "clamp(1.5rem, 5vw, 2.2rem)", fontWeight: 800, color: winRateColor(pct), lineHeight: 1 }} aria-label={`${pct}% win rate as ${color}`}>{pct}%</div>
+                            <div style={{ display: "flex", gap: "10px", fontFamily: "'Inter', sans-serif", fontSize: "12px", alignItems: "center" }}>
+                              <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                                <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "var(--success)", flexShrink: 0, display: "inline-block" }} />
+                                <span style={{ color: "var(--success)" }} aria-label={`${wins} wins`}>{wins}</span>
+                              </span>
+                              <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                                <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "var(--danger)", flexShrink: 0, display: "inline-block" }} />
+                                <span style={{ color: "var(--danger)" }} aria-label={`${losses} losses`}>{losses}</span>
+                              </span>
+                              <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                                <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "var(--warning)", flexShrink: 0, display: "inline-block" }} />
+                                <span style={{ color: "var(--warning)" }} aria-label={`${draws} draws`}>{draws}</span>
+                              </span>
                             </div>
                             {sideTotal > 0 && (
                               <div
                                 role="img"
                                 aria-label={`Win/Draw/Loss: ${Math.round((wins/sideTotal)*100)}% / ${Math.round((draws/sideTotal)*100)}% / ${Math.round((losses/sideTotal)*100)}%`}
-                                style={{ height: "3px", borderRadius: "99px", background: "var(--border-subtle)", overflow: "hidden", display: "flex" }}
+                                style={{ height: "5px", borderRadius: "99px", background: "var(--border-subtle)", overflow: "hidden", display: "flex" }}
                               >
                                 <div style={{ width: `${(wins / sideTotal) * 100}%`, background: "var(--success)" }} />
                                 <div style={{ width: `${(draws / sideTotal) * 100}%`, background: "var(--warning)" }} />
@@ -349,17 +377,17 @@ export default function Dashboard() {
                           </div>
                         );
                       })}
-                      <div style={{ padding: "16px 24px", borderRight: "1px solid var(--glass-border)", display: "flex", alignItems: "center" }}>
-                        <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>{total} game{total !== 1 ? "s" : ""} loaded</span>
+                      <div style={{ padding: "14px 24px", borderRight: "1px solid var(--glass-border)", display: "flex", alignItems: "center" }}>
+                        <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: "var(--text-secondary)" }}>{total} game{total !== 1 ? "s" : ""} loaded</span>
                       </div>
-                      <div style={{ padding: "16px 24px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                      <div style={{ padding: "14px 24px", display: "flex", flexDirection: "column", justifyContent: "center", gap: "3px" }}>
                         {stats?.accuracy != null ? (
                           <>
-                            <div style={{ fontSize: "11px", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "4px" }}>Avg Accuracy</div>
-                            <div style={{ fontSize: "clamp(16px, 5vw, 22px)", fontWeight: "700", color: "var(--accent-color)" }}>{parseFloat(stats.accuracy).toFixed(1)}%</div>
+                            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", fontWeight: 500, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Avg Accuracy</div>
+                            <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--accent-color)" }}>{parseFloat(stats.accuracy).toFixed(1)}%</div>
                           </>
                         ) : (
-                          <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>No analysis yet</span>
+                          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: "var(--text-secondary)" }}>No analysis yet</span>
                         )}
                       </div>
                     </div>
@@ -391,8 +419,9 @@ export default function Dashboard() {
 
               return (
                 <section aria-labelledby="tc-stats-heading">
-                  <h2 id="tc-stats-heading" style={{ fontSize: "16px", fontWeight: "600", marginBottom: "16px", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.8px" }}>
-                    Stats by Time Control (Chess.com)
+                  <h2 id="tc-stats-heading" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif", fontSize: "1.1rem", fontWeight: 600, letterSpacing: "-0.01em", color: "var(--text-primary)", marginBottom: "16px" }}>
+                    Stats by Time Control
+                    <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.88rem", fontWeight: 400, color: "var(--text-secondary)", marginLeft: "8px" }}>Chess.com</span>
                   </h2>
 
                   {/* Per-time-control cards */}
@@ -422,36 +451,49 @@ export default function Dashboard() {
                           className="glass-card tc-nav-card"
                           aria-label={`Browse ${label} games — ${wr}% win rate, ${games.toLocaleString()} games`}
                         >
-                          {/* Header */}
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                              <Icon size={16} aria-hidden="true" style={{ color: "var(--text-secondary)", flexShrink: 0 }} />
-                              <span style={{ fontSize: "14px", fontWeight: "700" }}>{label}</span>
+                          {/* Header: label left, rating right */}
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
+                              <Icon size={15} aria-hidden="true" style={{ color: "var(--text-secondary)", flexShrink: 0 }} />
+                              <span style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif", fontSize: "0.95rem", fontWeight: 600, letterSpacing: "-0.01em" }}>{label}</span>
                             </div>
                             {last?.rating && (
-                              <span style={{ fontSize: "13px", fontWeight: "700", color: "var(--accent-color)" }}>
+                              <span style={{ fontSize: "1rem", fontWeight: 800, color: "var(--accent-color)", letterSpacing: "-0.01em" }}>
                                 {last.rating}
                               </span>
                             )}
                           </div>
 
-                          {/* Stats */}
-                          <div style={{ fontSize: "26px", fontWeight: "800", marginBottom: "4px" }}>
+                          {/* Games count + win rate */}
+                          <div style={{ fontSize: "1.5rem", fontWeight: 800, lineHeight: 1, marginBottom: "3px" }}>
                             {games.toLocaleString()}
-                            <span style={{ fontSize: "13px", fontWeight: "400", color: "var(--text-secondary)", marginLeft: "6px" }}>games</span>
+                            <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.8rem", fontWeight: 400, color: "var(--text-secondary)", marginLeft: "6px" }}>games</span>
                           </div>
-                          <div style={{ fontSize: "13px", color: winRateColor(wr), fontWeight: "600", marginBottom: "8px" }}>
+                          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.88rem", color: winRateColor(wr), fontWeight: 700, marginBottom: "10px" }}>
                             {wr}% win rate
                           </div>
-                          <div style={{ display: "flex", gap: "12px", fontSize: "12px" }}>
-                            <span style={{ color: "var(--success)" }} aria-label={`${record.win} wins`}>{record.win}W</span>
-                            <span style={{ color: "var(--danger)" }} aria-label={`${record.loss} losses`}>{record.loss}L</span>
-                            <span style={{ color: "var(--warning)" }} aria-label={`${record.draw} draws`}>{record.draw}D</span>
+
+                          {/* W/L/D with dots */}
+                          <div style={{ display: "flex", gap: "12px", fontFamily: "'Inter', sans-serif", fontSize: "12px", alignItems: "center", marginBottom: "10px" }}>
+                            <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                              <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "var(--success)", flexShrink: 0, display: "inline-block" }} />
+                              <span style={{ color: "var(--success)" }} aria-label={`${record.win} wins`}>{record.win}</span>
+                            </span>
+                            <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                              <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "var(--danger)", flexShrink: 0, display: "inline-block" }} />
+                              <span style={{ color: "var(--danger)" }} aria-label={`${record.loss} losses`}>{record.loss}</span>
+                            </span>
+                            <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                              <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "var(--warning)", flexShrink: 0, display: "inline-block" }} />
+                              <span style={{ color: "var(--warning)" }} aria-label={`${record.draw} draws`}>{record.draw}</span>
+                            </span>
                           </div>
+
+                          {/* Progress bar */}
                           <div
                             role="img"
                             aria-label={`Win/Draw/Loss: ${games > 0 ? Math.round((record.win/games)*100) : 0}% / ${games > 0 ? Math.round((record.draw/games)*100) : 0}% / ${games > 0 ? Math.round((record.loss/games)*100) : 0}%`}
-                            style={{ marginTop: "10px", marginBottom: "14px", height: "4px", borderRadius: "99px", background: "var(--border-subtle)", overflow: "hidden", display: "flex" }}
+                            style={{ marginBottom: "14px", height: "5px", borderRadius: "99px", background: "var(--border-subtle)", overflow: "hidden", display: "flex" }}
                           >
                             <div style={{ width: `${games > 0 ? (record.win / games) * 100 : 0}%`, background: "var(--success)" }} />
                             <div style={{ width: `${games > 0 ? (record.draw / games) * 100 : 0}%`, background: "var(--warning)" }} />
@@ -459,17 +501,21 @@ export default function Dashboard() {
                           </div>
 
                           {/* Analysis status */}
-                          <div style={{ borderTop: "1px solid var(--glass-border)", paddingTop: "12px", marginTop: "auto", display: "flex", alignItems: "center", gap: "5px" }}>
-                            <span
-                              role="img"
-                              aria-label={analyzed ? `${label} analyzed` : `${label} not analyzed`}
-                              style={{ width: "6px", height: "6px", borderRadius: "50%", background: analyzed ? "var(--success)" : "var(--glass-border)", flexShrink: 0, display: "inline-block" }}
-                            />
-                            <span style={{ fontSize: "11px", color: analyzed ? "var(--success)" : "var(--text-secondary)" }}>
-                              {analyzed
-                                ? `Analyzed ${analysisLabel} · ${job.summary?.average_accuracy ?? "?"}% avg accuracy`
-                                : "Not analyzed yet"}
-                            </span>
+                          <div style={{ borderTop: "1px solid var(--glass-border)", paddingTop: "12px", marginTop: "auto", display: "flex", alignItems: "flex-start", gap: "6px" }}>
+                            {analyzed
+                              ? <CheckCircle2 size={12} style={{ color: "var(--success)", flexShrink: 0, marginTop: "1px" }} aria-hidden="true" />
+                              : <Clock size={12} style={{ color: "var(--text-secondary)", flexShrink: 0, marginTop: "1px" }} aria-hidden="true" />
+                            }
+                            <div>
+                              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", color: analyzed ? "var(--success)" : "var(--text-secondary)" }}>
+                                {analyzed ? `Analyzed ${analysisLabel}` : "Not analyzed yet"}
+                              </div>
+                              {analyzed && job.summary?.average_accuracy != null && (
+                                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", color: "var(--text-secondary)", marginTop: "1px" }}>
+                                  {job.summary.average_accuracy}% avg accuracy
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </Link>
                       );
@@ -487,15 +533,16 @@ export default function Dashboard() {
                 <h2
                   id="recent-games-heading"
                   style={{
-                    fontSize: "16px",
-                    fontWeight: "600",
+                    fontFamily: "'Space Grotesk', system-ui, sans-serif",
+                    fontSize: "1.1rem",
+                    fontWeight: 600,
+                    letterSpacing: "-0.01em",
+                    color: "var(--text-primary)",
                     margin: 0,
-                    color: "var(--text-secondary)",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.8px",
                   }}
                 >
-                  Recent Games {games.length > 0 && <span style={{ fontWeight: 400, fontSize: "13px" }}>({games.length})</span>}
+                  Recent Games
+                  {games.length > 0 && <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 400, fontSize: "0.88rem", color: "var(--text-secondary)", marginLeft: "8px" }}>{games.length}</span>}
                 </h2>
                 <button
                   onClick={() => { setShowFetchPanel((v) => !v); setFetchError(""); setReplaceConfirmStep(false); }}
@@ -529,39 +576,20 @@ export default function Dashboard() {
                           key={f}
                           onClick={() => setGameFilter(f)}
                           aria-pressed={active}
-                          style={{
-                            padding: "5px 14px",
-                            borderRadius: "99px",
-                            fontSize: "13px",
-                            fontWeight: active ? "700" : "500",
-                            cursor: "pointer",
-                            border: `1px solid ${active ? "var(--accent-color)" : "var(--glass-border)"}`,
-                            background: active ? "var(--accent-color)" : "transparent",
-                            color: active ? "#050505" : "var(--text-secondary)",
-                            transition: "all 0.15s ease",
-                          }}
+                          className={active ? "filter-chip filter-chip--active" : "filter-chip"}
                         >
                           {f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)}
-                          <span style={{ marginLeft: "6px", opacity: 0.7, fontSize: "11px" }}>{cnt}</span>
+                          <span style={{ marginLeft: "6px", opacity: 0.65, fontSize: "11px", fontWeight: 500 }}>{cnt}</span>
                         </button>
                       );
                     })}
                     {gameFilter !== "all" && (
                       <button
                         onClick={() => router.push(`/games?tc=${gameFilter}`)}
-                        style={{
-                          padding: "5px 14px",
-                          borderRadius: "99px",
-                          fontSize: "13px",
-                          fontWeight: "500",
-                          cursor: "pointer",
-                          border: "1px solid var(--glass-border)",
-                          background: "transparent",
-                          color: "var(--accent-color)",
-                          marginLeft: "auto",
-                        }}
+                        className="filter-chip"
+                        style={{ marginLeft: "auto", color: "var(--accent-color)", borderColor: "var(--accent-color)" }}
                       >
-                        Browse all {gameFilter.charAt(0).toUpperCase() + gameFilter.slice(1)} games →
+                        Browse all {gameFilter.charAt(0).toUpperCase() + gameFilter.slice(1)} →
                       </button>
                     )}
                   </div>
@@ -642,6 +670,7 @@ export default function Dashboard() {
                         ...(replaceConfirmStep ? { background: "var(--danger)", borderColor: "var(--danger)" } : {}),
                       }}
                     >
+                      {fetching && <Loader2 size={14} className="animate-spin" aria-hidden="true" />}
                       {fetching ? "Fetching…" : replaceConfirmStep ? `Confirm — replace ${(games as any[]).length} game${(games as any[]).length !== 1 ? "s" : ""}` : "Fetch Games"}
                     </button>
                   </form>
@@ -672,26 +701,37 @@ export default function Dashboard() {
                     ))}
                   </div>
                 ) : (
-                  <div className="glass" style={{ padding: "32px", textAlign: "center", color: "var(--text-secondary)" }}>
-                    No {gameFilter} games in your loaded set.{" "}
+                  <div className="glass" style={{ padding: "40px 32px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px" }}>
+                    <RefreshCw size={22} style={{ color: "var(--text-secondary)" }} aria-hidden="true" />
+                    <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.95rem", color: "var(--text-secondary)", margin: 0 }}>
+                      No {gameFilter} games in your loaded set.
+                    </p>
                     <button
                       onClick={() => router.push(`/games?tc=${gameFilter}`)}
-                      style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent-color)", fontSize: "inherit", textDecoration: "underline" }}
+                      className="btn btn-secondary"
+                      style={{ fontSize: "13px", padding: "8px 18px" }}
                     >
-                      Browse all {gameFilter} games from Chess.com →
+                      Browse {gameFilter.charAt(0).toUpperCase() + gameFilter.slice(1)} games →
                     </button>
                   </div>
                 );
               })() : (
                 <div
                   className="glass"
-                  style={{
-                    padding: "32px",
-                    textAlign: "center",
-                    color: "var(--text-secondary)",
-                  }}
+                  style={{ padding: "48px 32px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: "14px" }}
                 >
-                  No recent games found. Use the <strong>Load Games</strong> button above to fetch your games.
+                  <RefreshCw size={24} style={{ color: "var(--text-secondary)" }} aria-hidden="true" />
+                  <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.95rem", color: "var(--text-secondary)", margin: 0 }}>
+                    No recent games found.
+                  </p>
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => { setShowFetchPanel(true); setFetchError(""); }}
+                    style={{ fontSize: "13px", padding: "10px 22px" }}
+                  >
+                    <RefreshCw size={14} aria-hidden="true" />
+                    Load Games
+                  </button>
                 </div>
               )}
             </section>

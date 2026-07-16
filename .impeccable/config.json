@@ -9,14 +9,38 @@
       {
         "rule": "overused-font",
         "value": "inter",
-        "reason": "Committed design system choice: Inter chosen for readability in dense data/labels per DESIGN.md",
+        "reason": "Inter is the established body font in DESIGN.md; not introduced by this session",
         "createdAt": "2026-07-09T19:59:00.845Z"
       },
       {
         "rule": "overused-font",
         "value": "space grotesk",
-        "reason": "Committed design system choice: Space Grotesk chosen for geometric technical character in headings per DESIGN.md",
+        "reason": "Space Grotesk is the established heading font in DESIGN.md; not introduced by this session",
         "createdAt": "2026-07-09T19:59:04.321Z"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "24px",
+        "reason": "Pre-existing register card border-radius, intentional original design",
+        "createdAt": "2026-07-16T15:26:17.553Z"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "18px",
+        "reason": "Pre-existing icon container radius in register page, intentional original design",
+        "createdAt": "2026-07-16T15:26:17.617Z"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "13px",
+        "reason": "Pre-existing inner icon radius in register page, intentional original design",
+        "createdAt": "2026-07-16T15:26:17.673Z"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#34d399",
+        "reason": "Pre-existing player tab gradient color, intentional original design",
+        "createdAt": "2026-07-16T15:26:17.729Z"
       }
     ]
   }

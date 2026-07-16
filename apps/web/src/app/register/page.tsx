@@ -2,7 +2,7 @@
 import { useState, useEffect, Suspense, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Crown, User, Lock, Mail, Eye, EyeOff, Loader2, School, Building, CheckCircle, XCircle } from "lucide-react";
+import { Crown, User, Lock, Mail, Eye, EyeOff, Loader2, Building, CheckCircle, XCircle } from "lucide-react";
 
 type Tab = "player" | "coach" | "academy";
 
@@ -224,8 +224,11 @@ function RegisterContent() {
   const [cEmail, setCEmail] = useState("");
   const [cPassword, setCPassword] = useState("");
   const [cConfirm, setCConfirm] = useState("");
+  const [cAffiliation, setCAffiliation] = useState<"independent" | "academy">("independent");
+  const [cAcademyCode, setCAcademyCode] = useState("");
   const [cAcademyId, setCAcademyId] = useState("");
-  const [academies, setAcademies] = useState<{ id: string; name: string }[]>([]);
+  const [cAcademyCodeStatus, setCAcademyCodeStatus] = useState<"idle" | "checking" | "valid" | "invalid">("idle");
+  const [cAcademyName, setCAcademyName] = useState("");
   const [cLoading, setCLoading] = useState(false);
   const [cError, setCError] = useState("");
 
@@ -245,10 +248,29 @@ function RegisterContent() {
   const isFocused = (f: string) => focusedField === f;
 
   useEffect(() => {
-    fetch("/api/academies/public")
-      .then((r) => r.json())
-      .then((data) => { if (Array.isArray(data)) setAcademies(data); });
-  }, []);
+    const code = cAcademyCode.replace("-", "");
+    if (code.length < 8) {
+      setCAcademyCodeStatus("idle");
+      setCAcademyName("");
+      setCAcademyId("");
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setCAcademyCodeStatus("checking");
+      const res = await fetch(`/api/academies/by-invite-code?code=${encodeURIComponent(cAcademyCode.toUpperCase().trim())}`);
+      if (res.ok) {
+        const data = await res.json();
+        setCAcademyId(data.academyId);
+        setCAcademyName(data.academyName);
+        setCAcademyCodeStatus("valid");
+      } else {
+        setCAcademyId("");
+        setCAcademyName("");
+        setCAcademyCodeStatus("invalid");
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [cAcademyCode]);
 
   useEffect(() => {
     const code = pInviteCode.replace("-", "");
@@ -299,12 +321,16 @@ function RegisterContent() {
     setCError("");
     if (cPassword !== cConfirm) { setCError("Passwords do not match."); return; }
     if (cPassword.length < 8) { setCError("Password must be at least 8 characters."); return; }
+    if (cAffiliation === "academy" && !cAcademyId) {
+      setCError("Please enter a valid academy invite code.");
+      return;
+    }
     setCLoading(true);
 
     const res = await fetch("/api/auth/signup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "coach", email: cEmail, password: cPassword, fullName: cFullName.trim(), academyId: cAcademyId || undefined }),
+      body: JSON.stringify({ type: "coach", email: cEmail, password: cPassword, fullName: cFullName.trim(), academyId: cAffiliation === "academy" ? cAcademyId : undefined }),
     });
     const data = await res.json();
     setCLoading(false);
@@ -455,16 +481,72 @@ function RegisterContent() {
             <InputField label="Email" type="email" placeholder="you@example.com" value={cEmail} onChange={setCEmail} onFocus={focus("c-email")} onBlur={blur} icon={<Mail size={18} />} focused={isFocused("c-email")} activeColor={meta.color} disabled={cLoading} required autoComplete="email" />
             <PasswordField label="Password" value={cPassword} onChange={setCPassword} onFocus={focus("c-pass")} onBlur={blur} focused={isFocused("c-pass")} activeColor={meta.color} disabled={cLoading} autoComplete="new-password" />
             <PasswordField label="Confirm Password" value={cConfirm} onChange={setCConfirm} onFocus={focus("c-conf")} onBlur={blur} focused={isFocused("c-conf")} activeColor={meta.color} disabled={cLoading} autoComplete="new-password" />
-            <CustomDropdown
-              label="Academy (optional)"
-              value={cAcademyId}
-              onChange={setCAcademyId}
-              options={academies.map((a) => ({ value: a.id, label: a.name }))}
-              placeholder="Independent coach"
-              disabled={cLoading}
-              icon={<School size={18} />}
-              activeColor={meta.color}
-            />
+
+            {/* Affiliation toggle */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              <label className="input-label">Affiliation</label>
+              <div style={{ display: "flex", gap: "6px", background: "rgba(255,255,255,0.03)", borderRadius: "10px", padding: "3px" }}>
+                <button
+                  type="button"
+                  disabled={cLoading}
+                  onClick={() => { setCAffiliation("independent"); setCAcademyCode(""); setCAcademyId(""); setCAcademyCodeStatus("idle"); setCAcademyName(""); }}
+                  style={{
+                    flex: 1, padding: "8px 4px", fontSize: "12px", fontWeight: cAffiliation === "independent" ? "700" : "500",
+                    background: cAffiliation === "independent" ? "rgba(99,102,241,0.18)" : "transparent",
+                    color: cAffiliation === "independent" ? "#818cf8" : "var(--text-secondary)",
+                    border: cAffiliation === "independent" ? "1px solid rgba(99,102,241,0.35)" : "1px solid transparent",
+                    borderRadius: "8px", cursor: "pointer", transition: "all 0.2s ease",
+                  }}
+                >
+                  Independent
+                </button>
+                <button
+                  type="button"
+                  disabled={cLoading}
+                  onClick={() => setCAffiliation("academy")}
+                  style={{
+                    flex: 1, padding: "8px 4px", fontSize: "12px", fontWeight: cAffiliation === "academy" ? "700" : "500",
+                    background: cAffiliation === "academy" ? "rgba(99,102,241,0.18)" : "transparent",
+                    color: cAffiliation === "academy" ? "#818cf8" : "var(--text-secondary)",
+                    border: cAffiliation === "academy" ? "1px solid rgba(99,102,241,0.35)" : "1px solid transparent",
+                    borderRadius: "8px", cursor: "pointer", transition: "all 0.2s ease",
+                  }}
+                >
+                  Join Academy
+                </button>
+              </div>
+            </div>
+
+            {/* Academy invite code — shown only when joining an academy */}
+            {cAffiliation === "academy" && (
+              <div>
+                <label className="input-label">Academy Invite Code</label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    className="input-field"
+                    placeholder="XXXX-XXXX"
+                    value={cAcademyCode}
+                    onChange={(e) => setCAcademyCode(e.target.value)}
+                    disabled={cLoading}
+                    required
+                    style={{
+                      paddingRight: "36px",
+                      border: cAcademyCodeStatus === "valid" ? "1px solid #10b981" : cAcademyCodeStatus === "invalid" ? "1px solid var(--danger)" : "1px solid var(--input-border)",
+                      boxShadow: cAcademyCodeStatus === "valid" ? "0 0 0 3px rgba(16,185,129,0.15)" : cAcademyCodeStatus === "invalid" ? "0 0 0 3px rgba(239,68,68,0.15)" : "none",
+                      transition: "all 0.3s ease",
+                    }}
+                  />
+                  <div style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)" }}>
+                    {cAcademyCodeStatus === "checking" && <Loader2 size={16} className="animate-spin" style={{ color: "var(--text-secondary)" }} />}
+                    {cAcademyCodeStatus === "valid" && <CheckCircle size={16} style={{ color: "#10b981" }} />}
+                    {cAcademyCodeStatus === "invalid" && <XCircle size={16} style={{ color: "var(--danger)" }} />}
+                  </div>
+                </div>
+                {cAcademyCodeStatus === "valid" && <p style={{ fontSize: "12px", color: "#10b981", marginTop: "4px" }}>Academy: {cAcademyName}</p>}
+                {cAcademyCodeStatus === "invalid" && <p style={{ fontSize: "12px", color: "var(--danger)", marginTop: "4px" }}>Invalid or inactive academy code</p>}
+              </div>
+            )}
+
             {cError && <ErrorBox message={cError} />}
             <SubmitButton loading={cLoading} color={meta.bg} shadow={meta.shadow} label="Create Coach Account" />
           </form>
