@@ -1,5 +1,9 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700;800&display=swap");
 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* ─── Dark-first theme (Studio Dark) ───────────────────────────────────── */
 :root {
   --bg-color: #0f0f0f;
@@ -820,6 +824,19 @@ button {
   .analysis-annotation-col {
     height: 460px !important;
     overflow: hidden !important;
+  }
+}
+
+/* ─── Bento colour-split grid (White / Black quadrants) ─────────────────── */
+.bento-color-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  overflow: hidden;
+}
+
+@media (max-width: 400px) {
+  .bento-color-grid {
+    grid-template-columns: 1fr;
   }
 }
 

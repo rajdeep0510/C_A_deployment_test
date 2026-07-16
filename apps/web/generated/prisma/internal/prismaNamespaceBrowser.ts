@@ -492,6 +492,7 @@ export const AcademiesScalarFieldEnum = {
   city: 'city',
   owner_id: 'owner_id',
   status: 'status',
+  invite_code: 'invite_code',
   created_at: 'created_at',
   updated_at: 'updated_at'
 } as const

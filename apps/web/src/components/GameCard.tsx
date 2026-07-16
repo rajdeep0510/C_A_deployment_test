@@ -1,6 +1,9 @@
+"use client";
 import Link from "next/link";
-import { Swords, Calendar } from "lucide-react";
-import "./GameCard.css";
+import { Calendar } from "lucide-react";
+import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 const DRAW_RESULTS = new Set([
   "stalemate", "insufficient", "agreed", "repetition",
@@ -29,53 +32,58 @@ function resolveOutcome(
   return "Draw";
 }
 
-const OUTCOME_COLOR = {
-  Win: "var(--success)",
-  Loss: "var(--danger)",
-  Draw: "#60a5fa",
-};
-
 export default function GameCard({ game, username = "" }: { game: any; username?: string }) {
   const outcome = resolveOutcome(game.result, game.white, game.black, username);
+  const isUserWhite = (game.white || "").toLowerCase() === username.toLowerCase();
 
   return (
-    <div className="glass-card game-card">
-      <div className="game-card-header">
-        <span className="platform-badge">{game.platform}</span>
-        <div className="game-date">
-          <Calendar size={14} />
+    <Card className="flex flex-col motion-safe:hover:-translate-y-0.5 hover:border-[var(--border-medium)] hover:bg-[var(--card-hover)]">
+      {/* Platform + Date */}
+      <CardHeader className="flex-row items-center justify-between space-y-0">
+        <Badge variant="accent" className="uppercase tracking-wider text-[11px]">
+          {game.platform}
+        </Badge>
+        <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+          <Calendar size={12} aria-hidden="true" />
           {new Date(game.end_time * 1000).toLocaleDateString()}
         </div>
-      </div>
+      </CardHeader>
 
-      <div className="game-players">
-        <div className="player white">
-          <div className="piece-icon">♙</div>
-          <span className="player-name">{game.white}</span>
+      {/* Players (left) + Outcome anchored top-right */}
+      <CardContent className="flex-1 flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-2 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-base leading-none shrink-0" aria-hidden="true" style={{ color: "var(--text-secondary)" }}>♙</span>
+            <span className={cn("text-[14px] truncate", isUserWhite ? "font-semibold text-foreground" : "text-muted-foreground")}>
+              {game.white}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-base leading-none shrink-0" aria-hidden="true" style={{ color: "var(--border-medium)" }}>♟</span>
+            <span className={cn("text-[14px] truncate", !isUserWhite ? "font-semibold text-foreground" : "text-muted-foreground")}>
+              {game.black}
+            </span>
+          </div>
         </div>
-        <div className="vs">
-          <Swords size={16} />
-        </div>
-        <div className="player black">
-          <div className="piece-icon">♟</div>
-          <span className="player-name">{game.black}</span>
-        </div>
-      </div>
 
-      <div className="game-footer">
-        <div className="result">
-          Result:{" "}
-          <span style={{ color: OUTCOME_COLOR[outcome], fontWeight: 700 }}>
-            {outcome}
-          </span>
-        </div>
+        <Badge
+          variant={outcome === "Win" ? "success" : outcome === "Loss" ? "danger" : "secondary"}
+          className="shrink-0 mt-0.5 font-semibold tracking-wide uppercase text-[11px]"
+        >
+          {outcome}
+        </Badge>
+      </CardContent>
+
+      {/* CTA */}
+      <CardFooter className="justify-end">
         <Link
           href={`/analysis/${encodeURIComponent(game.filename)}`}
           className="btn btn-primary btn-sm"
+          aria-label={`Analyze game: ${game.white} vs ${game.black}, ${new Date(game.end_time * 1000).toLocaleDateString()}`}
         >
-          Analyze Game
+          Analyze
         </Link>
-      </div>
-    </div>
+      </CardFooter>
+    </Card>
   );
 }

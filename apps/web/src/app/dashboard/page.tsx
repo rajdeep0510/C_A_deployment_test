@@ -333,7 +333,7 @@ export default function Dashboard() {
                   });
                   const total = games.length;
                   return (
-                    <div className="glass-card" style={{ padding: 0, display: "grid", gridTemplateColumns: "1fr 1fr", overflow: "hidden" }}>
+                    <div className="glass-card bento-color-grid" style={{ padding: 0 }}>
                       {(["white", "black"] as const).map((color, i) => {
                         const { wins, losses, draws } = colorStats[color];
                         const sideTotal = wins + losses + draws;
