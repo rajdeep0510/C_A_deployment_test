@@ -30,9 +30,9 @@ export default function ChartRadar({ data, dataKey = "A" }) {
           <Radar
             name="Performance"
             dataKey={dataKey}
-            stroke="var(--accent-color)"
-            fill="var(--accent-color)"
-            fillOpacity={0.5}
+            stroke="#3b82f6"
+            fill="#3b82f6"
+            fillOpacity={0.25}
           />
           <Tooltip
             contentStyle={{

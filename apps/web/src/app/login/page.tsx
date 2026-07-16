@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Crown, Lock, Mail, User, Eye, EyeOff, Loader2, CheckCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
+import styles from "./login.module.css";
 
 function LoginForm() {
   const router = useRouter();
@@ -120,10 +121,10 @@ function LoginForm() {
         alignItems: "center",
         justifyContent: "center",
         padding: "24px",
-        background: "#0f0f0f",
       }}
     >
       <div
+        className={styles.card}
         style={{
           width: "100%",
           maxWidth: "400px",
@@ -136,6 +137,7 @@ function LoginForm() {
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: "32px" }}>
           <div
+            className={styles.logoIcon}
             style={{
               width: "56px",
               height: "56px",
@@ -166,6 +168,7 @@ function LoginForm() {
 
         {justVerified && (
           <div
+            className={styles.alert}
             style={{
               display: "flex",
               alignItems: "center",
@@ -186,6 +189,7 @@ function LoginForm() {
 
         {justRegistered && (
           <div
+            className={styles.alert}
             style={{
               display: "flex",
               alignItems: "center",
@@ -206,7 +210,7 @@ function LoginForm() {
 
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           {/* ID field */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+          <div className={styles.fieldRow} style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
             <label style={{ fontSize: "13px", fontWeight: "500", color: "#a1a1aa", letterSpacing: "0.02em" }}>
               Chess ID or Email
             </label>
@@ -233,7 +237,7 @@ function LoginForm() {
 
           {/* Password — only for staff (email contains @) */}
           {isStaff && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            <div className={styles.passwordField} style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <label style={{ fontSize: "13px", fontWeight: "500", color: "#a1a1aa", letterSpacing: "0.02em" }}>
                   Password
@@ -266,20 +270,20 @@ function LoginForm() {
           )}
 
           {error && (
-            <div style={{ color: "#ef4444", fontSize: "13px", background: "#1f1f1f", padding: "10px 14px", borderRadius: "8px", border: "1px solid #2a2a2a" }}>
+            <div className={styles.alert} style={{ color: "#ef4444", fontSize: "13px", background: "#1f1f1f", padding: "10px 14px", borderRadius: "8px", border: "1px solid #2a2a2a" }}>
               {error}
             </div>
           )}
 
           {pendingApproval && (
-            <div style={{ fontSize: "13px", background: "#1f1f1f", padding: "12px 14px", borderRadius: "8px", border: "1px solid #2a2a2a" }}>
+            <div className={styles.alert} style={{ fontSize: "13px", background: "#1f1f1f", padding: "12px 14px", borderRadius: "8px", border: "1px solid #2a2a2a" }}>
               <span style={{ color: "#f59e0b" }}>Your account is pending approval from your coach. You'll receive an email once approved.</span>
             </div>
           )}
 
 
           {unverified && (
-            <div style={{ fontSize: "13px", background: "#1f1f1f", padding: "12px 14px", borderRadius: "8px", border: "1px solid #2a2a2a", display: "flex", flexDirection: "column", gap: "8px" }}>
+            <div className={styles.alert} style={{ fontSize: "13px", background: "#1f1f1f", padding: "12px 14px", borderRadius: "8px", border: "1px solid #2a2a2a", display: "flex", flexDirection: "column", gap: "8px" }}>
               <span style={{ color: "#f59e0b" }}>Please verify your email before signing in.</span>
               {resendDone ? (
                 <span style={{ color: "#1dc189", fontSize: "12px" }}>Verification email sent — check your inbox.</span>
@@ -298,7 +302,7 @@ function LoginForm() {
           )}
 
           {needsReset && (
-            <div style={{ fontSize: "13px", background: "#1f1f1f", padding: "12px 14px", borderRadius: "8px", border: "1px solid #2a2a2a", display: "flex", flexDirection: "column", gap: "8px" }}>
+            <div className={styles.alert} style={{ fontSize: "13px", background: "#1f1f1f", padding: "12px 14px", borderRadius: "8px", border: "1px solid #2a2a2a", display: "flex", flexDirection: "column", gap: "8px" }}>
               <span style={{ color: "#f59e0b" }}>Your account was migrated. Please set a new password to continue.</span>
               <Link
                 href="/forgot-password"
@@ -315,7 +319,7 @@ function LoginForm() {
             style={{ padding: "13px", fontSize: "15px" }}
             disabled={loading}
           >
-            {loading ? <Loader2 size={18} className="animate-spin" style={{ margin: "0 auto" }} /> : "Sign In"}
+            {loading ? <span className={styles.spinner} /> : "Sign In"}
           </button>
 
           <p style={{ textAlign: "center", fontSize: "13px", color: "#a1a1aa" }}>

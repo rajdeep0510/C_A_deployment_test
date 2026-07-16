@@ -46,7 +46,7 @@ export async function getStats(username) {
   return res.json();
 }
 
-export async function analyzeGame(username: string, filename: string): Promise<any> {
+export async function analyzeGame(username: string, filename: string, force = false): Promise<any> {
   const { engineConfig } = await import("@/lib/engine-config");
   if (!engineConfig.enabled) {
     throw new Error("Client-side analysis is disabled. Set NEXT_PUBLIC_ANALYSIS_ENABLE_WASM=true");
@@ -55,6 +55,14 @@ export async function analyzeGame(username: string, filename: string): Promise<a
   const { isWasmSupported } = await import("@/lib/engine/wasm-detect");
   if (typeof window === "undefined" || !isWasmSupported()) {
     throw new Error("WebAssembly is not supported in this browser. Please use a modern browser like Chrome, Firefox, or Edge.");
+  }
+
+  if (force) {
+    await fetch("/api/analyze", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, filename }),
+    }).catch(() => {});
   }
 
   // Check Supabase for a cached completed analysis

@@ -1,0 +1,117 @@
+/* ── Login page animations ───────────────────────────────────────────────── */
+
+/* Card entrance — slides up from 20px, slight scale */
+.card {
+  animation: cardReveal 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes cardReveal {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Logo icon — scale pop with a short delay after card */
+.logoIcon {
+  animation: logoReveal 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+}
+
+@keyframes logoReveal {
+  from {
+    opacity: 0;
+    transform: scale(0.65);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ID field row — fades up */
+.fieldRow {
+  animation: fieldFadeUp 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.18s both;
+}
+
+@keyframes fieldFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Password field — slides in from above when it mounts (isStaff flip) */
+.passwordField {
+  animation: passwordReveal 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes passwordReveal {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Alert / status banners — subtle fade-drop */
+.alert {
+  animation: alertIn 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes alertIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Smooth circular spinner — replaces static Loader2 on submit */
+.spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid rgba(5, 5, 5, 0.18);
+  border-top-color: #050505;
+  border-radius: 50%;
+  animation: spinSmooth 0.65s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spinSmooth {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Reduced motion: instant appearance, no spin */
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .logoIcon,
+  .fieldRow,
+  .passwordField,
+  .alert {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .spinner {
+    animation: none;
+    border-top-color: rgba(5, 5, 5, 0.55);
+  }
+}
