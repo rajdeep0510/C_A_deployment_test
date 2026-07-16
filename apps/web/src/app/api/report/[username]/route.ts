@@ -531,6 +531,70 @@ function applyIndividualAccuracies(
   };
 }
 
+function computeNewMetrics(indJobs: any[]) {
+  const completed = indJobs.filter((j) => j.result);
+
+  const moveTimeBuckets: Record<number, number[]> = {};
+  for (const job of completed) {
+    const mh: any[] = (job.result as any)?.move_history ?? [];
+    for (const m of mh) {
+      if (m.time_spent != null && m.move_number != null && m.move_number <= 50) {
+        if (!moveTimeBuckets[m.move_number]) moveTimeBuckets[m.move_number] = [];
+        moveTimeBuckets[m.move_number].push(Number(m.time_spent));
+      }
+    }
+  }
+  const time_per_move = Object.entries(moveTimeBuckets)
+    .map(([moveNum, times]) => ({
+      move: Number(moveNum),
+      avg_time: parseFloat((times.reduce((a, b) => a + b, 0) / times.length).toFixed(2)),
+    }))
+    .sort((a, b) => a.move - b.move);
+
+  const game_endings = {
+    wins:   { total: 0, timeout: 0, resignation: 0, checkmate: 0, other: 0 },
+    losses: { total: 0, timeout: 0, resignation: 0, checkmate: 0, other: 0 },
+  };
+  for (const job of completed) {
+    const r = job.result as any;
+    if (!r?.user_result || (r.user_result !== "win" && r.user_result !== "loss")) continue;
+    const termStr = (r.metadata?.Termination ?? "").toLowerCase();
+    let termType: "timeout" | "resignation" | "checkmate" | "other" = "other";
+    if (termStr.includes("time") || termStr.includes("forfeit")) termType = "timeout";
+    else if (termStr.includes("resign") || termStr.includes("abandon")) termType = "resignation";
+    else if (termStr.includes("checkmate") || termStr.includes("checkmated")) termType = "checkmate";
+    const bucket = r.user_result === "win" ? game_endings.wins : game_endings.losses;
+    bucket.total++;
+    bucket[termType]++;
+  }
+
+  const colorMap: Record<"white" | "black", Record<string, { wins: number; losses: number; draws: number; games: number }>> = {
+    white: {}, black: {},
+  };
+  for (const job of completed) {
+    const r = job.result as any;
+    const color: "white" | "black" | undefined = r?.user_color;
+    const name: string | undefined = r?.opening_name;
+    if (!color || !name || (color !== "white" && color !== "black")) continue;
+    if (!colorMap[color][name]) colorMap[color][name] = { wins: 0, losses: 0, draws: 0, games: 0 };
+    colorMap[color][name].games++;
+    if (r.user_result === "win") colorMap[color][name].wins++;
+    else if (r.user_result === "loss") colorMap[color][name].losses++;
+    else colorMap[color][name].draws++;
+  }
+  const toArr = (m: Record<string, { wins: number; losses: number; draws: number; games: number }>) =>
+    Object.entries(m)
+      .map(([opening, s]) => ({
+        opening, games: s.games, wins: s.wins, losses: s.losses, draws: s.draws,
+        win_rate: s.games > 0 ? Math.round((s.wins / s.games) * 100) : 0,
+      }))
+      .sort((a, b) => b.games - a.games)
+      .slice(0, 8);
+  const openings_by_color = { as_white: toArr(colorMap.white), as_black: toArr(colorMap.black) };
+
+  return { time_per_move, game_endings, openings_by_color };
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ username: string }> }
@@ -562,6 +626,8 @@ export async function GET(
       if (key.replace(/\|/g, "")) byGameKey.set(key, parsed);
     }
 
+    const newMetrics = computeNewMetrics(indJobs);
+
     if (tc && tc !== "all") {
       const tcJob = await prisma.batch_jobs.findFirst({
         where:   { username, status: "completed", time_class: tc },
@@ -571,7 +637,7 @@ export async function GET(
 
       if (tcJob?.result) {
         const merged = applyIndividualAccuracies(tcJob.result, byFilename, byGameKey);
-        return NextResponse.json(buildReportFromBatch(username, merged));
+        return NextResponse.json({ ...buildReportFromBatch(username, merged), ...newMetrics });
       }
     }
 
@@ -588,14 +654,14 @@ export async function GET(
         if (filterResult._tc_no_data) {
           return NextResponse.json({ tc_no_data: true, tc, tc_reason: filterResult._tc_reason });
         }
-        return NextResponse.json(buildReportFromBatch(username, filterResult));
+        return NextResponse.json({ ...buildReportFromBatch(username, filterResult), ...newMetrics });
       }
-      return NextResponse.json(buildReportFromBatch(username, merged));
+      return NextResponse.json({ ...buildReportFromBatch(username, merged), ...newMetrics });
     }
 
     if (indJobs.length > 0) {
       const report = buildReportFromJobs(username, indJobs);
-      if (report) return NextResponse.json(report);
+      if (report) return NextResponse.json({ ...report, ...newMetrics });
     }
 
     const games = await fetchRecentChessComGames(username, 20);

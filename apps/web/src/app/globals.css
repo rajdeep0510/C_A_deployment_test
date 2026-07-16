@@ -388,6 +388,16 @@ button {
 .animate-fade-in {
   animation: fadeIn 0.5s ease-out forwards;
 }
+
+.animate-spin {
+  animation: spin 0.65s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-spin {
+    animation: none;
+  }
+}
 .delay-100 {
   animation-delay: 100ms;
 }
@@ -504,7 +514,8 @@ button {
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    padding-bottom: 0;           /* remove scroll-tail padding */
+    padding-top: 16px !important;   /* override inline 32px; saves 16px for board */
+    padding-bottom: 0 !important;   /* override inline 48px; inline wins without !important */
   }
 
   /* Cockpit grows to fill space below the page title row */
@@ -526,7 +537,9 @@ button {
 
   .puzzle-viewport [data-panel="board"] {
     height: 100%;
-    overflow-y: auto;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
 
   .puzzle-viewport [data-panel="stats"] {
@@ -647,6 +660,21 @@ button {
   .analysis-main-grid {
     grid-template-columns: 1fr;
     overflow: visible;
+  }
+
+  /* Center board column: stack feedback buttons to full width for touch targets */
+  .puzzle-feedback-row {
+    flex-direction: column;
+  }
+  .puzzle-feedback-row > button,
+  .puzzle-feedback-row > a {
+    width: 100%;
+    min-height: 44px;
+    margin-left: 0 !important;
+    justify-content: center;
+    text-align: center;
+    display: flex;
+    align-items: center;
   }
 }
 

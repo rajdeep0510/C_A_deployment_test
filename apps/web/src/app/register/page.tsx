@@ -96,12 +96,12 @@ function CustomDropdown({ label, value, onChange, options, placeholder, disabled
         </button>
         {isOpen && (
           <div
-            className="glass animate-fade-in"
+            className="animate-fade-in"
             style={{
               position: "absolute", top: "100%", left: 0, width: "100%", maxHeight: "220px",
               overflowY: "auto", marginTop: "6px", zIndex: 100, padding: "6px",
-              border: "1px solid rgba(255,255,255,0.12)", boxShadow: "0 10px 25px rgba(0,0,0,0.4)",
-              borderRadius: "12px", backdropFilter: "blur(20px)", background: "rgba(10,10,10,0.8)",
+              border: "1px solid var(--border-subtle)", boxShadow: "0 10px 25px rgba(0,0,0,0.4)",
+              borderRadius: "12px", background: "var(--surface-2)",
             }}
           >
             {options.length === 0 ? (
@@ -116,9 +116,9 @@ function CustomDropdown({ label, value, onChange, options, placeholder, disabled
                     onClick={() => { onChange(opt.value); setIsOpen(false); setIsFocused(false); }}
                     style={{
                       width: "100%", textAlign: "left", padding: "10px 14px",
-                      background: isSelected ? "rgba(255,255,255,0.08)" : "transparent",
-                      color: isSelected ? "#fff" : "var(--text-primary)",
-                      border: isSelected ? "1px solid rgba(255,255,255,0.6)" : "1px solid transparent",
+                      background: isSelected ? "var(--surface-1)" : "transparent",
+                      color: isSelected ? "var(--text-primary)" : "var(--text-primary)",
+                      border: isSelected ? "1px solid var(--border-medium)" : "1px solid transparent",
                       borderRadius: "8px", fontSize: "14px", fontWeight: isSelected ? "600" : "400",
                       cursor: "pointer", transition: "all 0.2s ease", marginBottom: "2px",
                     }}
@@ -342,12 +342,6 @@ function RegisterContent() {
         alignItems: "center",
         justifyContent: "center",
         padding: "24px",
-        background: tab === "player"
-          ? "radial-gradient(circle at 50% 40%, rgba(29,193,137,0.1) 0%, transparent 65%)"
-          : tab === "academy"
-          ? "radial-gradient(circle at 50% 40%, rgba(245,158,11,0.1) 0%, transparent 65%)"
-          : "radial-gradient(circle at 50% 40%, rgba(99,102,241,0.1) 0%, transparent 65%)",
-        transition: "background 0.4s ease",
       }}
     >
       <div

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from "react";
 import { Chessboard } from "react-chessboard";
 import { Chess } from "chess.js";
 import { CheckCircle, XCircle, Lightbulb, RotateCcw, TrendingUp, TrendingDown } from "lucide-react";
@@ -65,7 +65,39 @@ export default function PuzzleBoard({
   const [failMove,         setFailMove]         = useState<string>("");
   const [selectedSquare,   setSelectedSquare]   = useState<string | null>(null);
   const [pendingPromotion, setPendingPromotion] = useState<{ from: string; to: string } | null>(null);
-  const startTime = useRef(Date.now());
+  const startTime     = useRef(Date.now());
+  const containerRef  = useRef<HTMLDivElement>(null);
+  const nonBoardRef   = useRef<HTMLDivElement>(null);
+  const [boardSize, setBoardSize] = useState(480);
+
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const measure = () => {
+      const containerW = container.clientWidth;
+      const containerH = container.clientHeight;
+      const isMobile   = window.innerWidth <= 768;
+
+      if (isMobile || containerH < 200) {
+        setBoardSize(Math.min(containerW, 480));
+        return;
+      }
+
+      const nonBoardH       = nonBoardRef.current?.offsetHeight ?? 0;
+      const FEEDBACK_RESERVE = 110; // feedback panel is ~100px (padding 32 + rows ~68)
+      const GAPS             = 14 * 3;
+      const availH           = containerH - nonBoardH - FEEDBACK_RESERVE - GAPS;
+      setBoardSize(Math.max(Math.min(availH, containerW, 480), 180));
+    };
+
+    const ro = new ResizeObserver(measure);
+    ro.observe(container);
+    if (nonBoardRef.current) ro.observe(nonBoardRef.current);
+    measure();
+    return () => ro.disconnect();
+  }, []);
+
   const { boardTheme } = useSettings();
   const boardColors = BOARD_THEMES[boardTheme] ?? BOARD_THEMES.classic;
   const { play } = useChessSound();
@@ -319,7 +351,10 @@ export default function PuzzleBoard({
   const promoChoices = game.turn() === "w" ? WHITE_PROMO : BLACK_PROMO;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "14px", width: "100%" }}>
+    <div ref={containerRef} style={{ display: "flex", flexDirection: "column", gap: "14px", width: "100%", flex: 1, minHeight: 0 }}>
+
+      {/* Non-board content measured for height-aware board sizing */}
+      <div ref={nonBoardRef} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
 
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -355,7 +390,7 @@ export default function PuzzleBoard({
 
       {/* Instruction + Hint (hint hidden in rush/autoAdvance mode) */}
       {solveState === "waiting" && (
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
           <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: "14px" }}>
             <Lightbulb size={14} style={{ marginRight: "6px", verticalAlign: "middle" }} />
             {playerMovesDone > 0
@@ -400,8 +435,10 @@ export default function PuzzleBoard({
         <div style={hintBox}>Solution: <strong>{currentExpected}</strong></div>
       )}
 
+      </div>{/* end nonBoardRef */}
+
       {/* Board + promotion picker */}
-      <div style={{ position: "relative", maxWidth: "480px", width: "100%", marginInline: "auto" }}>
+      <div style={{ position: "relative", width: boardSize, height: boardSize, flexShrink: 0, marginInline: "auto" }}>
         <div style={{
           borderRadius: "12px", overflow: "hidden",
           outline: boardFlash === "green" ? "4px solid var(--success)" :
@@ -523,7 +560,7 @@ export default function PuzzleBoard({
               </span>
             )}
           </div>
-          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
+          <div className="puzzle-feedback-row" style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
             {solveState === "failed" && (
               <button onClick={handleTryAgain} style={secondaryBtnStyle}>
                 <RotateCcw size={13} /> Try Again

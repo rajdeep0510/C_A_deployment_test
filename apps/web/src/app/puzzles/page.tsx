@@ -382,10 +382,13 @@ export default function PuzzlesPage() {
 
       <div className="container page-content-mobile puzzle-viewport" style={{ paddingTop: "32px", paddingBottom: "48px" }}>
 
-        {/* ── Page header ── */}
-        <div style={{ marginBottom: "24px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "6px", flexWrap: "wrap" }}>
-            <h1 style={{ margin: 0, fontSize: "clamp(20px, 4vw, 28px)", fontWeight: 800 }}>
+        {/* ── Page header — compact when a puzzle is on screen ── */}
+        {(() => {
+          const hasPuzzle = !loading && puzzle != null && !(mode === "survival" && gameOver);
+          return (
+        <div style={{ marginBottom: hasPuzzle ? "8px" : "24px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: hasPuzzle ? "0" : "6px", flexWrap: "wrap" }}>
+            <h1 style={{ margin: 0, fontSize: hasPuzzle ? "15px" : "clamp(20px, 4vw, 28px)", fontWeight: 800 }}>
               Puzzle Training
             </h1>
             {streakDays > 0 && (
@@ -399,11 +402,13 @@ export default function PuzzlesPage() {
               </span>
             )}
           </div>
-          <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: "14px" }}>
-            Sharpen your tactics — from your own games and the Lichess library
-          </p>
+          {!hasPuzzle && (
+            <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: "14px" }}>
+              Sharpen your tactics — from your own games and the Lichess library
+            </p>
+          )}
 
-          {showCalibration && !isActiveMode && (
+          {showCalibration && !isActiveMode && !hasPuzzle && (
             <div style={{
               marginTop: "14px", padding: "14px 18px", borderRadius: "12px",
               background: "rgba(29,193,137,0.08)", border: "1px solid rgba(29,193,137,0.25)",
@@ -427,6 +432,8 @@ export default function PuzzlesPage() {
             </div>
           )}
         </div>
+          );
+        })()}
 
         {/* ── Mobile tab bar (hidden on desktop via CSS) ── */}
         <div className="puzzle-mobile-tabs">
@@ -629,7 +636,7 @@ export default function PuzzlesPage() {
           </aside>
 
           {/* ─────────── CENTER: Board ─────────── */}
-          <div data-panel="board" style={{ gridArea: "board", minWidth: 0, alignSelf: "start" }}>
+          <div data-panel="board" style={{ gridArea: "board", minWidth: 0 }}>
 
             {/* Survival status bar */}
             {mode === "survival" && !gameOver && (
@@ -654,7 +661,7 @@ export default function PuzzlesPage() {
             {/* Game Over */}
             {mode === "survival" && gameOver && !showSummary && (
               <div className="glass-card" style={{
-                padding: "48px 32px", textAlign: "center",
+                padding: "clamp(24px, 6vw, 48px) clamp(16px, 4vw, 32px)", textAlign: "center",
                 display: "flex", flexDirection: "column", alignItems: "center", gap: "20px",
               }}>
                 <Trophy size={48} color="var(--warning)" />
@@ -671,7 +678,7 @@ export default function PuzzlesPage() {
 
             {/* Loading */}
             {loading && !(mode === "survival" && gameOver) && (
-              <div className="glass-card" style={{ padding: "32px" }}>
+              <div className="glass-card">
                 <Loader message="Loading puzzles…" />
               </div>
             )}
@@ -691,7 +698,7 @@ export default function PuzzlesPage() {
 
             {/* Empty state */}
             {!loading && !puzzle && !loadError && !(mode === "survival" && gameOver) && (
-              <div className="glass-card" style={{ padding: "48px 32px", textAlign: "center" }}>
+              <div className="glass-card" style={{ padding: "clamp(24px, 6vw, 48px) clamp(16px, 4vw, 32px)", textAlign: "center" }}>
                 {source === "own" ? (
                   <>
                     <Target size={48} color="var(--accent-color)" style={{ margin: "0 auto 16px" }} />
@@ -765,29 +772,27 @@ export default function PuzzlesPage() {
 
             {/* Board */}
             {!loading && puzzle && !(mode === "survival" && gameOver) && (
-              <div className="glass-card" style={{ padding: "24px" }}>
-                {mode === "time" ? (
-                  <TimedPuzzleBoard
-                    key={puzzle.puzzle_id}
-                    puzzle={puzzle}
-                    puzzleIndex={currentIndex}
-                    totalPuzzles={puzzles.length}
-                    timeLimit={timeLimit}
-                    onAttempt={(solved, time, timedOut) => handleAttempt(solved, time, timedOut)}
-                    onNext={handleNext}
-                  />
-                ) : (
-                  <PuzzleBoard
-                    key={puzzle.puzzle_id}
-                    puzzle={puzzle}
-                    puzzleIndex={currentIndex}
-                    totalPuzzles={puzzles.length}
-                    onAttempt={(solved, time) => handleAttempt(solved, time)}
-                    onNext={handleNext}
-                    ratingDelta={ratingDelta}
-                  />
-                )}
-              </div>
+              mode === "time" ? (
+                <TimedPuzzleBoard
+                  key={puzzle.puzzle_id}
+                  puzzle={puzzle}
+                  puzzleIndex={currentIndex}
+                  totalPuzzles={puzzles.length}
+                  timeLimit={timeLimit}
+                  onAttempt={(solved, time, timedOut) => handleAttempt(solved, time, timedOut)}
+                  onNext={handleNext}
+                />
+              ) : (
+                <PuzzleBoard
+                  key={puzzle.puzzle_id}
+                  puzzle={puzzle}
+                  puzzleIndex={currentIndex}
+                  totalPuzzles={puzzles.length}
+                  onAttempt={(solved, time) => handleAttempt(solved, time)}
+                  onNext={handleNext}
+                  ratingDelta={ratingDelta}
+                />
+              )
             )}
           </div>
 
