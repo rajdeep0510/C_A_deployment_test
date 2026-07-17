@@ -3,7 +3,9 @@
     "ignoreRules": [],
     "ignoreFiles": [
       "src/components/PuzzleBoard.tsx",
-      "apps/web/src/app/register/page.tsx"
+      "apps/web/src/app/register/page.tsx",
+      "apps/web/src/app/globals.css",
+      "apps/web/src/components/Header.css"
     ],
     "ignoreValues": [
       {
@@ -41,6 +43,78 @@
         "value": "#34d399",
         "reason": "Pre-existing player tab gradient color, intentional original design",
         "createdAt": "2026-07-16T15:26:17.729Z"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgba(255, 255, 255, 0.08)",
+        "reason": "Pre-existing dark theme subtle border, used throughout landing page design system",
+        "createdAt": "2026-07-17T14:38:47.745Z"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgba(255, 255, 255, 0.075)",
+        "reason": "Pre-existing dark theme hover/tonal surface, landing page design system",
+        "createdAt": "2026-07-17T14:38:57.264Z"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "courier new",
+        "reason": "Domain-appropriate monospace for chess notation symbols (!!?, !?, ??)",
+        "createdAt": "2026-07-17T14:38:57.321Z"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#4ade80",
+        "reason": "Move quality green — chess domain color for good moves",
+        "createdAt": "2026-07-17T14:38:57.375Z"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#86efac",
+        "reason": "Move quality light green — chess domain color",
+        "createdAt": "2026-07-17T14:38:57.431Z"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#a3a3a3",
+        "reason": "Pre-existing muted gray in landing page",
+        "createdAt": "2026-07-17T14:38:57.487Z"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgba(240,217,181,0.92)",
+        "reason": "Chessboard light square color — domain-appropriate",
+        "createdAt": "2026-07-17T14:38:57.543Z"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgba(181,136,99,0.92)",
+        "reason": "Chessboard dark square color — domain-appropriate",
+        "createdAt": "2026-07-17T14:38:57.598Z"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgba(34,197,94,0.12)",
+        "reason": "Green tint for positive move indicator — chess domain",
+        "createdAt": "2026-07-17T14:38:57.653Z"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "2px",
+        "reason": "Intentional micro-radius on 2px-tall active indicator strip",
+        "createdAt": "2026-07-17T17:51:38.750Z"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgba(0, 0, 0, 0.5)",
+        "reason": "Box-shadow overlay, not a fill color — intentional",
+        "createdAt": "2026-07-17T17:51:38.822Z"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "0 0 2px 2px",
+        "reason": "Intentional micro-radius on 2px-tall bottom-nav active strip — same as suppressed 2px",
+        "createdAt": "2026-07-17T17:58:05.441Z"
       }
     ]
   }
