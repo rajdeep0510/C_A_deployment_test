@@ -1,7 +1,10 @@
 
+import os
 import re
 import time
 import logging
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 # Configure logging BEFORE any project imports — some __init__.py files call
 # module-level logging.error() which triggers logging.basicConfig() with
@@ -326,7 +329,26 @@ def process_batch_job(job: dict) -> None:
 # Main polling loop
 # ---------------------------------------------------------------------------
 
+def _start_health_server() -> None:
+    """Bind a minimal HTTP server so Render's health check doesn't time out."""
+    port = int(os.environ.get("PORT", 10000))
+
+    class _Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"ok")
+
+        def log_message(self, *args):
+            pass  # suppress access logs
+
+    server = HTTPServer(("0.0.0.0", port), _Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    logger.info("Health server listening on port %d", port)
+
+
 def main() -> None:
+    _start_health_server()
     logger.info("Stockfish worker started — Stockfish path: %s", settings.STOCKFISH_PATH)
     reset_stuck_jobs()
     analyzer = GameAnalyzer(engine_path=settings.STOCKFISH_PATH)
