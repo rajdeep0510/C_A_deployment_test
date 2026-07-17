@@ -67,6 +67,8 @@ const PHASE_ICON: Record<string, string> = {
 
 // ─── BlunderBoard ────────────────────────────────────────────────────────────
 
+const BOARD_SIZE = 320; // 40px × 8 squares — always a clean integer
+
 function BlunderBoard({ entry, game }: { entry: any; game: any }) {
   const fen =
     entry.fen_before ??
@@ -92,9 +94,7 @@ function BlunderBoard({ entry, game }: { entry: any; game: any }) {
         }}
       >
         <span style={{ fontSize: "28px", opacity: 0.4 }}>♟</span>
-        <p style={{ margin: 0 }}>
-          Re-run Batch Analysis to see board positions
-        </p>
+        <p style={{ margin: 0 }}>Re-run Batch Analysis to see board positions</p>
       </div>
     );
   }
@@ -105,29 +105,53 @@ function BlunderBoard({ entry, game }: { entry: any; game: any }) {
   if (playedSq) arrows.push({ startSquare: playedSq[0], endSquare: playedSq[1], color: "rgba(239,68,68,0.85)" });
   if (bestSq)   arrows.push({ startSquare: bestSq[0],   endSquare: bestSq[1],   color: "rgba(34,197,94,0.85)" });
 
+  const evalBefore = typeof entry.eval_before === "number" ? entry.eval_before : null;
+  const evalAfter  = typeof entry.eval_after  === "number" ? entry.eval_after  : null;
+
   return (
-    <div style={{ width: "100%", maxWidth: "280px" }}>
-      <Chessboard
-        options={{
-          position:         fen,
-          boardOrientation: game.user_color === "black" ? "black" : "white",
-          allowDragging:    false,
-          allowDrawingArrows: false,
-          arrows,
-          boardStyle: { borderRadius: "6px", overflow: "hidden" },
-        }}
-      />
-      <div
-        style={{
-          display: "flex",
-          gap: "12px",
-          marginTop: "10px",
-          fontSize: "12px",
-          justifyContent: "center",
-        }}
-      >
-        <span style={{ color: "#ef4444" }}>● Played: {entry.san}</span>
-        <span style={{ color: "#22c55e" }}>● Best: {entry.best_move}</span>
+    <div style={{ display: "flex", gap: "20px", alignItems: "flex-start", flexWrap: "wrap" }}>
+      {/* Fixed-size board — 320px = 40px per square, no sub-pixel gaps */}
+      <div style={{ width: BOARD_SIZE, flexShrink: 0 }}>
+        <Chessboard
+          options={{
+            position:           fen,
+            boardOrientation:   game.user_color === "black" ? "black" : "white",
+            allowDragging:      false,
+            allowDrawingArrows: false,
+            arrows,
+            boardStyle:       { borderRadius: "6px" },
+            darkSquareStyle:  { backgroundColor: "#769656" },
+            lightSquareStyle: { backgroundColor: "#eeeed2" },
+          }}
+        />
+      </div>
+
+      {/* Move info panel */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "10px", paddingTop: "4px", flex: 1, minWidth: "120px" }}>
+        <div style={{
+          padding: "10px 14px", borderRadius: "8px",
+          background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)",
+        }}>
+          <div style={{ fontSize: "11px", color: "var(--text-secondary)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.04em" }}>Played</div>
+          <div style={{ fontSize: "18px", fontWeight: 800, color: "#ef4444", fontFamily: "monospace" }}>{entry.san}</div>
+        </div>
+        <div style={{
+          padding: "10px 14px", borderRadius: "8px",
+          background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)",
+        }}>
+          <div style={{ fontSize: "11px", color: "var(--text-secondary)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.04em" }}>Best</div>
+          <div style={{ fontSize: "18px", fontWeight: 800, color: "#22c55e", fontFamily: "monospace" }}>{entry.best_move}</div>
+        </div>
+        {evalBefore !== null && evalAfter !== null && (
+          <div style={{ padding: "10px 14px", borderRadius: "8px", background: "var(--surface-2)", border: "1px solid var(--glass-border)" }}>
+            <div style={{ fontSize: "11px", color: "var(--text-secondary)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.04em" }}>Eval shift</div>
+            <div style={{ fontSize: "13px", fontFamily: "monospace" }}>
+              <span style={{ color: "var(--text-secondary)" }}>{evalBefore > 0 ? "+" : ""}{evalBefore.toFixed(1)}</span>
+              <span style={{ color: "var(--text-secondary)", margin: "0 6px" }}>→</span>
+              <span style={{ color: evalAfter >= evalBefore ? "#22c55e" : "#ef4444", fontWeight: 700 }}>{evalAfter > 0 ? "+" : ""}{evalAfter.toFixed(1)}</span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -167,11 +191,10 @@ function BlunderEntry({
     <div
       style={{
         borderRadius: "10px",
-        border: "1px solid var(--glass-border)",
+        border: `1px solid ${qs.color}33`,
         background: "var(--surface-1)",
         overflow: "hidden",
         transition: "border-color 0.15s",
-        borderLeft: `3px solid ${qs.color}`,
       }}
     >
       {/* Card header — always visible */}
@@ -589,7 +612,7 @@ function StudyFocusRow({ tip }: { tip: any }) {
   const color  = isHigh ? "var(--danger)" : isMed ? "var(--warning)" : "var(--accent-color)";
   const bg     = isHigh ? "rgba(239,68,68,0.08)" : isMed ? "rgba(245,158,11,0.08)" : "rgba(29,193,137,0.08)";
   return (
-    <div style={{ padding: "16px", background: "var(--surface-1)", borderRadius: "8px", borderLeft: `4px solid ${color}` }}>
+    <div style={{ padding: "16px", background: bg, borderRadius: "8px", border: `1px solid ${color}33` }}>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
         <span style={{ fontWeight: "700", fontSize: "16px" }}>{tip.topic}</span>
         <span style={{ fontSize: "11px", padding: "2px 10px", borderRadius: "20px", fontWeight: "700", background: bg, color, border: `1px solid ${color}33` }}>
@@ -608,7 +631,7 @@ function OpeningAdjCard({ adj }: { adj: any }) {
   const name     = adj.opening || adj.topic || adj.name || "Opening";
   const suggestion = adj.suggestion || adj.message || adj.advice || "";
   return (
-    <div style={{ padding: "16px", background: "var(--surface-1)", borderRadius: "8px", borderLeft: `4px solid ${color}` }}>
+    <div style={{ padding: "16px", background: bg, borderRadius: "8px", border: `1px solid ${color}33` }}>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
         <span style={{ fontWeight: "700", fontSize: "16px" }}>{name}</span>
         <span style={{ fontSize: "11px", padding: "2px 10px", borderRadius: "20px", fontWeight: "700", background: bg, color, border: `1px solid ${color}33` }}>

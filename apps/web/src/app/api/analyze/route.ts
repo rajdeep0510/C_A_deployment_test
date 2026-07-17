@@ -46,6 +46,22 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
+export async function DELETE(request: NextRequest) {
+  try {
+    const { username, filename } = await request.json();
+    if (!username || !filename) {
+      return NextResponse.json({ error: "Username and filename are required" }, { status: 400 });
+    }
+    await prisma.analysis_jobs.deleteMany({
+      where: { username, filename },
+    });
+    return NextResponse.json({ deleted: true });
+  } catch (err) {
+    console.error("Unexpected error in DELETE analysis API:", err);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const username = searchParams.get("username");

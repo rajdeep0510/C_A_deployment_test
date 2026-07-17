@@ -32,6 +32,7 @@ export type AcademiesMinAggregateOutputType = {
   city: string | null
   owner_id: string | null
   status: string | null
+  invite_code: string | null
   created_at: Date | null
   updated_at: Date | null
 }
@@ -43,6 +44,7 @@ export type AcademiesMaxAggregateOutputType = {
   city: string | null
   owner_id: string | null
   status: string | null
+  invite_code: string | null
   created_at: Date | null
   updated_at: Date | null
 }
@@ -54,6 +56,7 @@ export type AcademiesCountAggregateOutputType = {
   city: number
   owner_id: number
   status: number
+  invite_code: number
   created_at: number
   updated_at: number
   _all: number
@@ -67,6 +70,7 @@ export type AcademiesMinAggregateInputType = {
   city?: true
   owner_id?: true
   status?: true
+  invite_code?: true
   created_at?: true
   updated_at?: true
 }
@@ -78,6 +82,7 @@ export type AcademiesMaxAggregateInputType = {
   city?: true
   owner_id?: true
   status?: true
+  invite_code?: true
   created_at?: true
   updated_at?: true
 }
@@ -89,6 +94,7 @@ export type AcademiesCountAggregateInputType = {
   city?: true
   owner_id?: true
   status?: true
+  invite_code?: true
   created_at?: true
   updated_at?: true
   _all?: true
@@ -173,6 +179,7 @@ export type AcademiesGroupByOutputType = {
   city: string | null
   owner_id: string | null
   status: string
+  invite_code: string | null
   created_at: Date | null
   updated_at: Date | null
   _count: AcademiesCountAggregateOutputType | null
@@ -205,6 +212,7 @@ export type academiesWhereInput = {
   city?: Prisma.StringNullableFilter<"academies"> | string | null
   owner_id?: Prisma.UuidNullableFilter<"academies"> | string | null
   status?: Prisma.StringFilter<"academies"> | string
+  invite_code?: Prisma.StringNullableFilter<"academies"> | string | null
   created_at?: Prisma.DateTimeNullableFilter<"academies"> | Date | string | null
   updated_at?: Prisma.DateTimeNullableFilter<"academies"> | Date | string | null
   profiles?: Prisma.ProfilesListRelationFilter
@@ -217,6 +225,7 @@ export type academiesOrderByWithRelationInput = {
   city?: Prisma.SortOrderInput | Prisma.SortOrder
   owner_id?: Prisma.SortOrderInput | Prisma.SortOrder
   status?: Prisma.SortOrder
+  invite_code?: Prisma.SortOrderInput | Prisma.SortOrder
   created_at?: Prisma.SortOrderInput | Prisma.SortOrder
   updated_at?: Prisma.SortOrderInput | Prisma.SortOrder
   profiles?: Prisma.profilesOrderByRelationAggregateInput
@@ -224,6 +233,7 @@ export type academiesOrderByWithRelationInput = {
 
 export type academiesWhereUniqueInput = Prisma.AtLeast<{
   id?: string
+  invite_code?: string
   AND?: Prisma.academiesWhereInput | Prisma.academiesWhereInput[]
   OR?: Prisma.academiesWhereInput[]
   NOT?: Prisma.academiesWhereInput | Prisma.academiesWhereInput[]
@@ -235,7 +245,7 @@ export type academiesWhereUniqueInput = Prisma.AtLeast<{
   created_at?: Prisma.DateTimeNullableFilter<"academies"> | Date | string | null
   updated_at?: Prisma.DateTimeNullableFilter<"academies"> | Date | string | null
   profiles?: Prisma.ProfilesListRelationFilter
-}, "id">
+}, "id" | "invite_code">
 
 export type academiesOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
@@ -244,6 +254,7 @@ export type academiesOrderByWithAggregationInput = {
   city?: Prisma.SortOrderInput | Prisma.SortOrder
   owner_id?: Prisma.SortOrderInput | Prisma.SortOrder
   status?: Prisma.SortOrder
+  invite_code?: Prisma.SortOrderInput | Prisma.SortOrder
   created_at?: Prisma.SortOrderInput | Prisma.SortOrder
   updated_at?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.academiesCountOrderByAggregateInput
@@ -261,6 +272,7 @@ export type academiesScalarWhereWithAggregatesInput = {
   city?: Prisma.StringNullableWithAggregatesFilter<"academies"> | string | null
   owner_id?: Prisma.UuidNullableWithAggregatesFilter<"academies"> | string | null
   status?: Prisma.StringWithAggregatesFilter<"academies"> | string
+  invite_code?: Prisma.StringNullableWithAggregatesFilter<"academies"> | string | null
   created_at?: Prisma.DateTimeNullableWithAggregatesFilter<"academies"> | Date | string | null
   updated_at?: Prisma.DateTimeNullableWithAggregatesFilter<"academies"> | Date | string | null
 }
@@ -272,6 +284,7 @@ export type academiesCreateInput = {
   city?: string | null
   owner_id?: string | null
   status?: string
+  invite_code?: string | null
   created_at?: Date | string | null
   updated_at?: Date | string | null
   profiles?: Prisma.profilesCreateNestedManyWithoutAcademiesInput
@@ -284,6 +297,7 @@ export type academiesUncheckedCreateInput = {
   city?: string | null
   owner_id?: string | null
   status?: string
+  invite_code?: string | null
   created_at?: Date | string | null
   updated_at?: Date | string | null
   profiles?: Prisma.profilesUncheckedCreateNestedManyWithoutAcademiesInput
@@ -296,6 +310,7 @@ export type academiesUpdateInput = {
   city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   owner_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
+  invite_code?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   created_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   updated_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   profiles?: Prisma.profilesUpdateManyWithoutAcademiesNestedInput
@@ -308,6 +323,7 @@ export type academiesUncheckedUpdateInput = {
   city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   owner_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
+  invite_code?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   created_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   updated_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   profiles?: Prisma.profilesUncheckedUpdateManyWithoutAcademiesNestedInput
@@ -320,6 +336,7 @@ export type academiesCreateManyInput = {
   city?: string | null
   owner_id?: string | null
   status?: string
+  invite_code?: string | null
   created_at?: Date | string | null
   updated_at?: Date | string | null
 }
@@ -331,6 +348,7 @@ export type academiesUpdateManyMutationInput = {
   city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   owner_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
+  invite_code?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   created_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   updated_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
@@ -342,6 +360,7 @@ export type academiesUncheckedUpdateManyInput = {
   city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   owner_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
+  invite_code?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   created_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   updated_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
@@ -353,6 +372,7 @@ export type academiesCountOrderByAggregateInput = {
   city?: Prisma.SortOrder
   owner_id?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  invite_code?: Prisma.SortOrder
   created_at?: Prisma.SortOrder
   updated_at?: Prisma.SortOrder
 }
@@ -364,6 +384,7 @@ export type academiesMaxOrderByAggregateInput = {
   city?: Prisma.SortOrder
   owner_id?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  invite_code?: Prisma.SortOrder
   created_at?: Prisma.SortOrder
   updated_at?: Prisma.SortOrder
 }
@@ -375,6 +396,7 @@ export type academiesMinOrderByAggregateInput = {
   city?: Prisma.SortOrder
   owner_id?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  invite_code?: Prisma.SortOrder
   created_at?: Prisma.SortOrder
   updated_at?: Prisma.SortOrder
 }
@@ -407,6 +429,7 @@ export type academiesCreateWithoutProfilesInput = {
   city?: string | null
   owner_id?: string | null
   status?: string
+  invite_code?: string | null
   created_at?: Date | string | null
   updated_at?: Date | string | null
 }
@@ -418,6 +441,7 @@ export type academiesUncheckedCreateWithoutProfilesInput = {
   city?: string | null
   owner_id?: string | null
   status?: string
+  invite_code?: string | null
   created_at?: Date | string | null
   updated_at?: Date | string | null
 }
@@ -445,6 +469,7 @@ export type academiesUpdateWithoutProfilesInput = {
   city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   owner_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
+  invite_code?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   created_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   updated_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
@@ -456,6 +481,7 @@ export type academiesUncheckedUpdateWithoutProfilesInput = {
   city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   owner_id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
+  invite_code?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   created_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   updated_at?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
@@ -498,6 +524,7 @@ export type academiesSelect<ExtArgs extends runtime.Types.Extensions.InternalArg
   city?: boolean
   owner_id?: boolean
   status?: boolean
+  invite_code?: boolean
   created_at?: boolean
   updated_at?: boolean
   profiles?: boolean | Prisma.academies$profilesArgs<ExtArgs>
@@ -511,6 +538,7 @@ export type academiesSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ext
   city?: boolean
   owner_id?: boolean
   status?: boolean
+  invite_code?: boolean
   created_at?: boolean
   updated_at?: boolean
 }, ExtArgs["result"]["academies"]>
@@ -522,6 +550,7 @@ export type academiesSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ext
   city?: boolean
   owner_id?: boolean
   status?: boolean
+  invite_code?: boolean
   created_at?: boolean
   updated_at?: boolean
 }, ExtArgs["result"]["academies"]>
@@ -533,11 +562,12 @@ export type academiesSelectScalar = {
   city?: boolean
   owner_id?: boolean
   status?: boolean
+  invite_code?: boolean
   created_at?: boolean
   updated_at?: boolean
 }
 
-export type academiesOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "description" | "city" | "owner_id" | "status" | "created_at" | "updated_at", ExtArgs["result"]["academies"]>
+export type academiesOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "description" | "city" | "owner_id" | "status" | "invite_code" | "created_at" | "updated_at", ExtArgs["result"]["academies"]>
 export type academiesInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   profiles?: boolean | Prisma.academies$profilesArgs<ExtArgs>
   _count?: boolean | Prisma.AcademiesCountOutputTypeDefaultArgs<ExtArgs>
@@ -557,6 +587,7 @@ export type $academiesPayload<ExtArgs extends runtime.Types.Extensions.InternalA
     city: string | null
     owner_id: string | null
     status: string
+    invite_code: string | null
     created_at: Date | null
     updated_at: Date | null
   }, ExtArgs["result"]["academies"]>
@@ -989,6 +1020,7 @@ export interface academiesFieldRefs {
   readonly city: Prisma.FieldRef<"academies", 'String'>
   readonly owner_id: Prisma.FieldRef<"academies", 'String'>
   readonly status: Prisma.FieldRef<"academies", 'String'>
+  readonly invite_code: Prisma.FieldRef<"academies", 'String'>
   readonly created_at: Prisma.FieldRef<"academies", 'DateTime'>
   readonly updated_at: Prisma.FieldRef<"academies", 'DateTime'>
 }

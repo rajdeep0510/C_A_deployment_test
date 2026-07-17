@@ -11,6 +11,8 @@ import ChartBar from "@/components/ChartBar";
 import OpeningTable, { OpeningRow } from "@/components/OpeningTable";
 import PatternGrid from "@/components/PatternGrid";
 import TimeAnalysisCard from "@/components/TimeAnalysisCard";
+import ChartTimePerMove from "@/components/ChartTimePerMove";
+import GameEndingsCard from "@/components/GameEndingsCard";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { getReport } from "@/services/api";
 import {
@@ -30,6 +32,8 @@ const MOVE_QUALITY_COLORS: Record<string, string> = {
   Inaccuracy: "#f59e0b",
   Mistake: "#f97316",
   Blunder: "#ef4444",
+  Book: "#6b7280",
+  Forced: "#374151",
 };
 
 function buildMoveQualityData(dist: Record<string, number> | undefined) {
@@ -316,7 +320,7 @@ function ReportPageInner() {
                           fontFamily: "Space Grotesk, sans-serif",
                           fontSize: "24px",
                           fontWeight: 700,
-                          color: "var(--border-medium)",
+                          color: "rgba(29, 193, 137, 0.45)",
                           lineHeight: "1",
                           flexShrink: 0,
                           paddingTop: "3px",
@@ -356,11 +360,14 @@ function ReportPageInner() {
                     >
                       As White
                     </div>
-                    <div style={{ fontSize: "14px" }}>
-                      {reportData.report.repertoire_snapshot.user_as_white?.join(
-                        ", ",
-                      ) || "N/A"}
-                    </div>
+                    <ul style={{ margin: 0, padding: "0 0 0 18px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                      {reportData.report.repertoire_snapshot.user_as_white?.length
+                        ? reportData.report.repertoire_snapshot.user_as_white.map((o: string, i: number) => (
+                            <li key={i} style={{ fontSize: "14px" }}>{o}</li>
+                          ))
+                        : <li style={{ fontSize: "14px", listStyle: "none" }}>N/A</li>
+                      }
+                    </ul>
                   </div>
                   <div>
                     <div
@@ -372,11 +379,14 @@ function ReportPageInner() {
                     >
                       As Black
                     </div>
-                    <div style={{ fontSize: "14px" }}>
-                      {reportData.report.repertoire_snapshot.user_as_black?.join(
-                        ", ",
-                      ) || "N/A"}
-                    </div>
+                    <ul style={{ margin: 0, padding: "0 0 0 18px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                      {reportData.report.repertoire_snapshot.user_as_black?.length
+                        ? reportData.report.repertoire_snapshot.user_as_black.map((o: string, i: number) => (
+                            <li key={i} style={{ fontSize: "14px" }}>{o}</li>
+                          ))
+                        : <li style={{ fontSize: "14px", listStyle: "none" }}>N/A</li>
+                      }
+                    </ul>
                   </div>
                 </div>
               </div>
@@ -508,6 +518,182 @@ function ReportPageInner() {
             )}
           </div>
         </div>
+
+        {(reportData.game_endings || reportData.openings_by_color) && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px", marginTop: "16px" }}>
+            {reportData.game_endings && (
+              <GameEndingsCard
+                wins={reportData.game_endings.wins}
+                losses={reportData.game_endings.losses}
+              />
+            )}
+
+            {reportData.openings_by_color && (
+              <div
+                style={{
+                  background: "var(--surface-1)",
+                  border: "1px solid var(--border-subtle)",
+                  borderRadius: "var(--radius-md)",
+                  padding: "24px",
+                }}
+              >
+                <h3
+                  style={{
+                    fontFamily: "'Space Grotesk', sans-serif",
+                    fontWeight: 700,
+                    fontSize: "16px",
+                    color: "var(--text-primary)",
+                    marginBottom: "4px",
+                  }}
+                >
+                  Openings by color
+                </h3>
+                <p style={{ fontSize: "13px", color: "var(--text-secondary)", marginBottom: "20px" }}>
+                  Win rate per opening, split by the side you played.
+                </p>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+                  {(["as_white", "as_black"] as const).map((side) => {
+                    const rows = reportData.openings_by_color[side];
+                    const totalGames = rows.reduce((s: number, r: any) => s + r.games, 0);
+                    return (
+                      <div key={side}>
+                        <p
+                          style={{
+                            fontSize: "12px",
+                            fontWeight: 600,
+                            color: "var(--text-secondary)",
+                            letterSpacing: "0.04em",
+                            textTransform: "uppercase",
+                            marginBottom: "12px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                          }}
+                        >
+                          <span
+                            style={{
+                              display: "inline-block",
+                              width: "7px",
+                              height: "7px",
+                              borderRadius: "50%",
+                              background: side === "as_white" ? "rgba(245,245,245,0.7)" : "rgba(120,120,120,0.6)",
+                              border: side === "as_white" ? "1px solid rgba(255,255,255,0.3)" : "1px solid rgba(80,80,80,0.5)",
+                              flexShrink: 0,
+                            }}
+                          />
+                          {side === "as_white" ? "As White" : "As Black"}
+                          <span style={{ fontWeight: 400 }}>· {totalGames} games</span>
+                        </p>
+                        {rows.length === 0 ? (
+                          <p style={{ fontSize: "13px", color: "var(--text-secondary)" }}>No data</p>
+                        ) : (
+                          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                            {rows.map((row: any) => (
+                              <div key={row.opening}>
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    alignItems: "baseline",
+                                    marginBottom: "4px",
+                                  }}
+                                >
+                                  <span
+                                    style={{
+                                      fontSize: "12px",
+                                      color: "var(--text-primary)",
+                                      fontWeight: 500,
+                                      whiteSpace: "nowrap",
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis",
+                                      maxWidth: "65%",
+                                    }}
+                                  >
+                                    {row.opening}
+                                  </span>
+                                  <span
+                                    style={{
+                                      fontSize: "12px",
+                                      color: row.win_rate >= 50 ? "#10b981" : "#ef4444",
+                                      fontWeight: 600,
+                                    }}
+                                  >
+                                    {row.win_rate}%
+                                  </span>
+                                </div>
+                                <div
+                                  style={{
+                                    height: "4px",
+                                    background: "var(--surface-2)",
+                                    borderRadius: "2px",
+                                    overflow: "hidden",
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      height: "100%",
+                                      width: "100%",
+                                      background: row.win_rate >= 50 ? "#10b981" : "#ef4444",
+                                      borderRadius: "2px",
+                                      transformOrigin: "left",
+                                      transform: `scaleX(${row.win_rate / 100})`,
+                                      transition: "transform 0.4s ease",
+                                    }}
+                                  />
+                                </div>
+                                <p style={{ fontSize: "11px", color: "var(--text-secondary)", marginTop: "2px" }}>
+                                  {row.games} game{row.games !== 1 ? "s" : ""} · {row.wins}W {row.losses}L {row.draws}D
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {reportData.mistakes_by_phase && (
+          <div style={sectionCard}>
+            <h3 style={{ fontSize: "16px", marginBottom: "4px" }}>
+              Mistakes by Phase
+            </h3>
+            <p style={{ fontSize: "13px", color: "var(--text-secondary)", marginBottom: "16px" }}>
+              Where your blunders, mistakes, and inaccuracies actually happen.
+            </p>
+            <ChartBar
+              data={["opening", "middlegame", "endgame"].map((phase) => ({
+                phase: phase.charAt(0).toUpperCase() + phase.slice(1),
+                blunders:     reportData.mistakes_by_phase[phase]?.blunders ?? 0,
+                mistakes:     reportData.mistakes_by_phase[phase]?.mistakes ?? 0,
+                inaccuracies: reportData.mistakes_by_phase[phase]?.inaccuracies ?? 0,
+              }))}
+              xKey="phase"
+              bars={[
+                { key: "blunders",     color: "var(--danger)",  label: "Blunders" },
+                { key: "mistakes",     color: "var(--warning)", label: "Mistakes" },
+                { key: "inaccuracies", color: "#eab308",        label: "Inaccuracies" },
+              ]}
+              height={240}
+            />
+          </div>
+        )}
+
+        {reportData.time_per_move && reportData.time_per_move.length > 0 && (
+          <div style={sectionCard}>
+            <h3 style={{ fontSize: "16px", marginBottom: "4px" }}>
+              Time per move
+            </h3>
+            <p style={{ fontSize: "13px", color: "var(--text-secondary)", marginBottom: "16px" }}>
+              Average seconds spent per move number across analyzed games.
+            </p>
+            <ChartTimePerMove data={reportData.time_per_move} />
+          </div>
+        )}
       </div>
     );
   }
@@ -728,7 +914,7 @@ function ReportPageInner() {
           </div>
         )}
 
-        {(reportData.time_analysis || reportData.mistake_frequency) && (
+        {(reportData.time_analysis || reportData.mistake_frequency || reportData.mistakes_by_phase) && (
           <div
             style={{
               display: "grid",
@@ -933,7 +1119,7 @@ function ReportPageInner() {
                 >
                   Your Accuracy
                 </div>
-                <div style={{ fontSize: "20px", fontWeight: 700 }}>
+                <div style={{ fontSize: "20px", fontWeight: 700, color: "var(--accent-color)" }}>
                   {accuracyVal}%
                 </div>
               </div>
@@ -958,7 +1144,7 @@ function ReportPageInner() {
                   style={{
                     fontSize: "20px",
                     fontWeight: 700,
-                    color: "var(--text-secondary)",
+                    color: "rgba(59, 130, 246, 0.85)",
                   }}
                 >
                   {cohortAvg}%
@@ -1012,7 +1198,7 @@ function ReportPageInner() {
                   { key: "You", color: "var(--accent-color)", label: "You" },
                   {
                     key: "Cohort",
-                    color: "rgba(148,163,184,0.6)",
+                    color: "rgba(59,130,246,0.55)",
                     label: "Cohort Avg",
                   },
                 ]}
@@ -1084,10 +1270,10 @@ function ReportPageInner() {
 
   // ─── Derived values ────────────────────────────────────────────────────────
   const period = reportData?.report?.period_summary;
-  const momentumColor = period?.current_momentum
-    ?.toLowerCase()
-    .includes("improv")
+  const momentumColor = period?.current_momentum?.toLowerCase().includes("improv")
     ? "var(--success)"
+    : period?.current_momentum?.toLowerCase().match(/declin|drop|worsen|worse/)
+    ? "var(--danger)"
     : "var(--text-primary)";
 
   return (
@@ -1333,6 +1519,7 @@ function ReportPageInner() {
                   style={{
                     padding: "16px 24px",
                     borderRight: "1px solid var(--border-subtle)",
+                    background: "rgba(29, 193, 137, 0.05)",
                   }}
                 >
                   <div
@@ -1423,19 +1610,17 @@ function ReportPageInner() {
                   onClick={() => setTab(t)}
                   style={{
                     padding: "11px 20px",
-                    background: "none",
+                    background: tab === t ? "rgba(29, 193, 137, 0.08)" : "none",
                     border: "none",
                     borderBottom: `2px solid ${tab === t ? "var(--accent-color)" : "transparent"}`,
-                    color:
-                      tab === t
-                        ? "var(--text-primary)"
-                        : "var(--text-secondary)",
+                    borderRadius: "6px 6px 0 0",
+                    color: tab === t ? "var(--accent-color)" : "var(--text-secondary)",
                     fontFamily: "Inter, sans-serif",
                     fontSize: "14px",
-                    fontWeight: 500,
+                    fontWeight: tab === t ? 600 : 500,
                     cursor: "pointer",
                     marginBottom: "-1px",
-                    transition: "color 0.15s ease, border-color 0.15s ease",
+                    transition: "color 0.15s ease, border-color 0.15s ease, background 0.15s ease",
                     whiteSpace: "nowrap",
                     flexShrink: 0,
                   }}
