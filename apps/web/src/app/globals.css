@@ -82,6 +82,13 @@
 
 html {
   scroll-behavior: smooth;
+  overflow-x: hidden;
+}
+
+@media (max-width: 991px) {
+  html {
+    scroll-snap-type: y proximity;
+  }
 }
 
 body {
@@ -129,6 +136,7 @@ h3 {
   font-family: "Space Grotesk", system-ui, sans-serif;
   font-weight: 700;
   letter-spacing: -0.02em;
+  text-wrap: balance;
 }
 
 h4,
@@ -684,9 +692,9 @@ button {
 
 /* ── Analysis page mobile overrides ─────────────────────────── */
 @media (max-width: 768px) {
-  /* Shrink the fixed-header spacer (header is 60px on mobile, not 70px) */
+  /* Shrink the fixed-header spacer (header is 52px on mobile) */
   .analysis-header-spacer {
-    height: 60px !important;
+    height: 52px !important;
   }
 
   /* Tighter container padding on mobile */

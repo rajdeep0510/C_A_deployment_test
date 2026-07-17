@@ -152,6 +152,7 @@ export default function Dashboard() {
         setBatchStatus(statusMap);
       })
       .catch(() => {});
+
   }, [chessUsername, isApproved, playerLoading, router]);
 
   const handleLoadGames = async (e: React.FormEvent) => {

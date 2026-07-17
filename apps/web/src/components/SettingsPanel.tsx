@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useCallback, useState } from "react";
-import { X, Palette, Settings2, Sparkles, User, Volume2, TriangleAlert } from "lucide-react";
+import { X, Palette, Settings2, Sparkles, User, Volume2, TriangleAlert, LogOut } from "lucide-react";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -28,9 +28,10 @@ type Props = {
   username: string;
   email?: string;
   role?: string;
+  onLogout?: () => void;
 };
 
-export default function SettingsPanel({ isOpen, onClose, userType, username, email, role }: Props) {
+export default function SettingsPanel({ isOpen, onClose, userType, username, email, role, onLogout }: Props) {
   const {
     boardTheme, setBoardTheme,
     soundEnabled, setSoundEnabled,
@@ -105,6 +106,29 @@ export default function SettingsPanel({ isOpen, onClose, userType, username, ema
                 {role && <span className="profile-role-badge">{role.replace("_", " ")}</span>}
               </div>
             </div>
+            {onLogout && (
+              <button
+                onClick={() => { onClose(); onLogout(); }}
+                style={{
+                  marginTop: "12px",
+                  width: "100%",
+                  padding: "9px 14px",
+                  borderRadius: "8px",
+                  background: "transparent",
+                  border: "1px solid var(--glass-border)",
+                  color: "var(--text-secondary)",
+                  fontSize: "13px",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                }}
+              >
+                <LogOut size={14} />
+                Sign Out
+              </button>
+            )}
           </div>
 
           <div className="settings-divider" />
