@@ -614,7 +614,7 @@ export default function PuzzlesPage() {
                           return (
                             <button
                               key={t.value}
-                              onClick={() => setPuzzleType(t.value)}
+                              onClick={() => { setPuzzleType(t.value); setMobileTab("board"); }}
                               style={{
                                 display: "flex", alignItems: "center", gap: "8px",
                                 padding: "6px 10px", borderRadius: "6px", cursor: "pointer",

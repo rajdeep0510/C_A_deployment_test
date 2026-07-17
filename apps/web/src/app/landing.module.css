@@ -962,6 +962,12 @@
 }
 
 /* ── Move classification ─────────────────── */
+@media (min-width: 992px) {
+  .classificationPin {
+    min-height: 100vh;
+  }
+}
+
 .classificationSection {
   padding: 100px 40px;
 }

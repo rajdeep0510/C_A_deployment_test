@@ -343,6 +343,8 @@ export default function Home() {
   const [badgeKey, setBadgeKey] = useState(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const menuFirstLinkRef = useRef<HTMLButtonElement>(null);
+  const classificationSectionRef = useRef<HTMLElement>(null);
+  const classificationTableRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const raw = localStorage.getItem("playerSession");
@@ -391,6 +393,119 @@ export default function Home() {
       menuFirstLinkRef.current?.focus();
     }
   }, [mobileMenuOpen]);
+
+  // GSAP animations: hero entrance + sticky classification reveal
+  useEffect(() => {
+    // Capture refs synchronously — before any await — so they're never stale
+    const section = classificationSectionRef.current;
+    const table = classificationTableRef.current;
+    const isDesktop = window.innerWidth >= 992;
+
+    let gsapCtx: { revert: () => void } | undefined;
+    let mounted = true;
+
+    (async () => {
+      const { default: gsap } = await import("gsap");
+      const { ScrollTrigger } = await import("gsap/ScrollTrigger");
+      if (!mounted) return;
+
+      gsap.registerPlugin(ScrollTrigger);
+
+      gsapCtx = gsap.context(() => {
+        // ── Hero entrance (all screen sizes) ──────────────────────────
+        const heroItems = document.querySelectorAll("[data-gsap-hero]");
+        const heroRight = document.querySelector("[data-gsap-hero-right]");
+
+        if (heroItems.length) {
+          gsap.from(heroItems, {
+            y: 32,
+            opacity: 0,
+            duration: 0.7,
+            ease: "power2.out",
+            stagger: 0.13,
+            delay: 0.1,
+          });
+        }
+        if (heroRight) {
+          gsap.from(heroRight, {
+            x: 48,
+            opacity: 0,
+            duration: 0.9,
+            ease: "power2.out",
+            delay: 0.25,
+          });
+        }
+
+        // ── Classification reveal ──────────────────────────────────────
+        if (!section || !table) return;
+
+        const rows = Array.from(table.children) as HTMLElement[];
+        gsap.set(rows, { x: 40, opacity: 0 });
+        const dots = rows.map((r) => r.querySelector("[data-dot]")).filter(Boolean);
+        gsap.set(dots, { scale: 0 });
+
+        if (isDesktop) {
+          // Desktop: pin + scrub timeline
+          const tl = gsap.timeline({
+            scrollTrigger: {
+              trigger: section,
+              start: "top top",
+              end: `+=${rows.length * 120 + 200}`,
+              pin: true,
+              anticipatePin: 1,
+              scrub: 0.6,
+            },
+          });
+
+          rows.forEach((row, i) => {
+            const dot = row.querySelector("[data-dot]") as HTMLElement | null;
+            tl.to(row, { x: 0, opacity: 1, duration: 0.6, ease: "power2.out" }, i * 0.8);
+            if (dot) {
+              tl.to(dot, { scale: 1, duration: 0.35, ease: "back.out(2)" }, i * 0.8 + 0.15);
+            }
+          });
+        } else {
+          // Mobile: simple stagger reveal on scroll-into-view, no pin
+          rows.forEach((row, i) => {
+            const dot = row.querySelector("[data-dot]") as HTMLElement | null;
+            gsap.to(row, {
+              x: 0,
+              opacity: 1,
+              duration: 0.45,
+              ease: "power2.out",
+              delay: i * 0.07,
+              scrollTrigger: {
+                trigger: section,
+                start: "top 85%",
+                toggleActions: "play none none none",
+              },
+            });
+            if (dot) {
+              gsap.to(dot, {
+                scale: 1,
+                duration: 0.3,
+                ease: "back.out(2)",
+                delay: i * 0.07 + 0.1,
+                scrollTrigger: {
+                  trigger: section,
+                  start: "top 85%",
+                  toggleActions: "play none none none",
+                },
+              });
+            }
+          });
+        }
+
+        // Force recalculate after full page layout is stable (critical in production)
+        ScrollTrigger.refresh();
+      });
+    })();
+
+    return () => {
+      mounted = false;
+      gsapCtx?.revert();
+    };
+  }, []);
 
   const scrollTo = (id: string) =>
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
@@ -511,23 +626,23 @@ export default function Home() {
       <section className={styles.hero}>
         <div className={styles.heroContainer}>
           <div className={styles.heroLeft}>
-            <div className={styles.heroBadge}>
+            <div className={styles.heroBadge} data-gsap-hero>
               <span className={styles.heroBadgeDot} />
               Now Live — Chess Academy Platform
             </div>
 
-            <h1 className={styles.heroTitle}>
+            <h1 className={styles.heroTitle} data-gsap-hero>
               Your Chess Coach,{" "}
               <span className={styles.heroTitleAccent}>Powered by AI.</span>
             </h1>
 
-            <p className={styles.heroDescription}>
+            <p className={styles.heroDescription} data-gsap-hero>
               Deep Stockfish analysis. Real-time pattern detection. Move-by-move
               feedback. Built for serious students and the coaches who train
               them.
             </p>
 
-            <div className={styles.heroCtas}>
+            <div className={styles.heroCtas} data-gsap-hero>
               <Link href="/login" className={styles.btnGetStarted}>
                 <ArrowRight size={15} strokeWidth={2} /> Get Started Free
               </Link>
@@ -536,7 +651,7 @@ export default function Home() {
               </Link>
             </div>
 
-            <div className={styles.statsBar}>
+            <div className={styles.statsBar} data-gsap-hero>
               <div className={styles.statsGrid}>
                 {[
                   { val: "99.4%", lbl: "Detection Accuracy" },
@@ -553,7 +668,7 @@ export default function Home() {
             </div>
           </div>
 
-          <div className={styles.heroRight}>
+          <div className={styles.heroRight} data-gsap-hero-right>
             <div className={styles.chessboardContainer}>
               {/* ── Live board ── */}
               <div className={styles.heroBoardWrapper}>
@@ -746,7 +861,7 @@ export default function Home() {
       <div className={styles.sectionDivider} />
 
       {/* ── Move Classification ── */}
-      <section id="classification" className={styles.section}>
+      <section id="classification" className={`${styles.section} ${styles.classificationPin}`} ref={classificationSectionRef}>
         <div className={styles.sectionContainer}>
           <div className={styles.classificationGrid}>
             <div className={styles.classificationLeft}>
@@ -766,13 +881,14 @@ export default function Home() {
               </Link>
             </div>
 
-            <div className={styles.classificationTable}>
+            <div className={styles.classificationTable} ref={classificationTableRef}>
               {MOVE_TIERS.map((tier) => (
                 <div key={tier.name} className={styles.classificationRow}>
                   <div className={styles.classificationRowLeft}>
                     <div
                       className={styles.classificationDot}
                       style={{ background: tier.color }}
+                      data-dot=""
                     />
                     <span className={styles.classificationName}>
                       {tier.name}

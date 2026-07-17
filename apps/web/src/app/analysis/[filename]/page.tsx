@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, use, useRef, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Header from "@/components/Header";
 import Loader from "@/components/Loader";
 import MistakeCard from "@/components/MistakeCard";
@@ -135,6 +135,7 @@ export default function GameAnalysisPage({
   params: Promise<{ filename: string }>;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const resolvedParams = use(params);
   const { filename } = resolvedParams;
   const { chessUsername, coachId, isApproved, loading: playerLoading } = usePlayer();
@@ -247,9 +248,44 @@ export default function GameAnalysisPage({
   }, [chessUsername, isApproved, playerLoading, filename, router]);
 
   useEffect(() => {
-    if (!coachId || !chessUsername || !filename) return;
-    fetchAnnotations(coachId, chessUsername, filename).then(setAnnotations);
+    if (!filename) return;
+    // Fetch all player notes then filter client-side to avoid server-side filename encoding issues
+    fetch("/api/player/coach-notes")
+      .then((r) => r.json())
+      .then(({ notes }) => {
+        if (Array.isArray(notes)) {
+          let decodedFilename = filename;
+          try { decodedFilename = decodeURIComponent(filename); } catch { /* keep original */ }
+          const forThisFile = notes.filter(
+            (n: any) => n.filename === filename || n.filename === decodedFilename
+          );
+          if (forThisFile.length) {
+            setAnnotations(forThisFile);
+            return;
+          }
+        }
+        // Fallback to old route (works when user is a coach reviewing their player's game)
+        if (coachId && chessUsername) {
+          fetchAnnotations(coachId, chessUsername, filename).then(setAnnotations);
+        }
+      })
+      .catch(() => {
+        if (coachId && chessUsername) {
+          fetchAnnotations(coachId, chessUsername, filename).then(setAnnotations);
+        }
+      });
   }, [coachId, chessUsername, filename]);
+
+  useEffect(() => {
+    if (!fenHistory.length) return;
+    const annotationParam = searchParams.get("annotation");
+    if (annotationParam == null) return;
+    const plyIdx = parseInt(annotationParam, 10);
+    if (!isNaN(plyIdx) && plyIdx >= 0 && plyIdx < fenHistory.length) {
+      setCurrentMoveIndex(plyIdx);
+      setActiveTab("moves");
+    }
+  }, [fenHistory, searchParams]);
 
   useEffect(() => {
     const html = document.documentElement;
@@ -463,8 +499,8 @@ export default function GameAnalysisPage({
       }}
     >
       <Header />
-      {/* spacer for the 70px fixed header */}
-      <div className="analysis-header-spacer" style={{ height: "70px", flexShrink: 0 }} />
+      {/* spacer for the 56px fixed header */}
+      <div className="analysis-header-spacer" style={{ height: "56px", flexShrink: 0 }} />
 
       <main
         className="container animate-fade-in analysis-main-container"
@@ -866,6 +902,22 @@ export default function GameAnalysisPage({
                 ))}
               </div>
 
+              {/* Coach note for current move — student read-only view */}
+              {coachId && chessUsername && (
+                <div style={{ flexShrink: 0 }}>
+                  <AnnotationPanel
+                    mode="student"
+                    coachId={coachId}
+                    playerUsername={chessUsername}
+                    filename={filename}
+                    moveIndex={currentMoveIndex}
+                    annotations={annotations}
+                    onSaved={() => {}}
+                    onDeleted={() => {}}
+                  />
+                </div>
+              )}
+
               {/* Tab content */}
               <div
                 className="glass-card"
@@ -1057,7 +1109,7 @@ export default function GameAnalysisPage({
                                   <div
                                     style={{
                                       height: "100%",
-                                      width: `${Math.min(pct, 100)}%`,
+                                      width: "100%",
                                       background:
                                         pct >= 70
                                           ? "var(--success)"
@@ -1065,7 +1117,9 @@ export default function GameAnalysisPage({
                                             ? "var(--warning)"
                                             : "var(--danger)",
                                       borderRadius: "3px",
-                                      transition: "width 0.6s ease",
+                                      transform: `scaleX(${Math.min(pct, 100) / 100})`,
+                                      transformOrigin: "left",
+                                      transition: "transform 0.6s ease",
                                     }}
                                   />
                                 </div>
