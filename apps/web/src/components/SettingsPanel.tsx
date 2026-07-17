@@ -1,8 +1,9 @@
 "use client";
-import { useEffect, useCallback } from "react";
-import { X, Palette, Settings2, Sparkles, User, Mail, Shield, Volume2 } from "lucide-react";
+import { useEffect, useCallback, useState } from "react";
+import { X, Palette, Settings2, Sparkles, User, Volume2, TriangleAlert } from "lucide-react";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useAuth } from "@/contexts/AuthContext";
 import "./SettingsPanel.css";
 
 const BOARD_THEMES: Record<string, { dark: string; light: string; label: string }> = {
@@ -40,6 +41,23 @@ export default function SettingsPanel({ isOpen, onClose, userType, username, ema
     liteMode, setLiteMode,
   } = useSettings();
   const { theme, toggle } = useTheme();
+  const { signOut } = useAuth();
+
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  async function handleDeleteAccount() {
+    setDeleteLoading(true);
+    try {
+      await fetch("/api/auth/account", { method: "DELETE" });
+      await signOut();
+    } catch {
+      alert("Failed to delete account. Please try again.");
+    } finally {
+      setDeleteLoading(false);
+    }
+  }
 
   const engineValues = { engineDepth, multiPv, maxWorkers, hashSize };
   const engineSetters = { setEngineDepth, setMultiPv, setMaxWorkers, setHashSize };
@@ -76,29 +94,16 @@ export default function SettingsPanel({ isOpen, onClose, userType, username, ema
           {/* Account */}
           <div className="settings-section">
             <div className="settings-section-title">
-              <User size={16} />
+              <User size={14} />
               Account
             </div>
-            <div className="profile-info">
-              <div className="profile-row">
-                <User size={14} className="profile-row-icon" />
-                <span className="profile-row-label">Name</span>
-                <span>{username}</span>
+            <div className="profile-card">
+              <div className="profile-avatar">{username.charAt(0)}</div>
+              <div className="profile-details">
+                <span className="profile-name">{username}</span>
+                {email && <span className="profile-meta">{email}</span>}
+                {role && <span className="profile-role-badge">{role.replace("_", " ")}</span>}
               </div>
-              {userType === "coach" && email && (
-                <div className="profile-row">
-                  <Mail size={14} className="profile-row-icon" />
-                  <span className="profile-row-label">Email</span>
-                  <span>{email}</span>
-                </div>
-              )}
-              {userType === "coach" && role && (
-                <div className="profile-row">
-                  <Shield size={14} className="profile-row-icon" />
-                  <span className="profile-row-label">Role</span>
-                  <span style={{ textTransform: "capitalize" }}>{role.replace("_", " ")}</span>
-                </div>
-              )}
             </div>
           </div>
 
@@ -107,7 +112,7 @@ export default function SettingsPanel({ isOpen, onClose, userType, username, ema
           {/* Board Theme */}
           <div className="settings-section">
             <div className="settings-section-title">
-              <Palette size={16} />
+              <Palette size={14} />
               Board Theme
             </div>
             <div className="theme-swatches">
@@ -138,7 +143,7 @@ export default function SettingsPanel({ isOpen, onClose, userType, username, ema
           {/* Sound */}
           <div className="settings-section">
             <div className="settings-section-title">
-              <Volume2 size={16} />
+              <Volume2 size={14} />
               Sound
             </div>
             <div className="toggle-row">
@@ -156,7 +161,7 @@ export default function SettingsPanel({ isOpen, onClose, userType, username, ema
           {/* Analysis Engine */}
           <div className="settings-section">
             <div className="settings-section-title">
-              <Settings2 size={16} />
+              <Settings2 size={14} />
               Analysis Engine
             </div>
             {ENGINE_SLIDERS.map(({ key, label, min, max, step }) => {
@@ -180,7 +185,7 @@ export default function SettingsPanel({ isOpen, onClose, userType, username, ema
                 </div>
               );
             })}
-            <div className="engine-setting" style={{ marginTop: "16px" }}>
+            <div className="engine-setting">
               <div className="toggle-row">
                 <span className="engine-setting-label">Lite Mode</span>
                 <div className="toggle-switch" onClick={() => setLiteMode(!liteMode)}>
@@ -200,11 +205,11 @@ export default function SettingsPanel({ isOpen, onClose, userType, username, ema
           {/* Appearance */}
           <div className="settings-section">
             <div className="settings-section-title">
-              <Sparkles size={16} />
+              <Sparkles size={14} />
               Appearance
             </div>
             <div className="toggle-row">
-              <span className="engine-setting-label">Dark Theme</span>
+              <span className="engine-setting-label">Dark mode</span>
               <div className="toggle-switch" onClick={toggle}>
                 <div className={`toggle-track${theme === "dark" ? " active" : ""}`}>
                   <div className="toggle-thumb" />
@@ -212,8 +217,95 @@ export default function SettingsPanel({ isOpen, onClose, userType, username, ema
               </div>
             </div>
           </div>
+
+          <div className="settings-divider" />
+
+          {/* Danger Zone */}
+          <div className="settings-section">
+            <div className="settings-section-title" style={{ color: "var(--danger)" }}>
+              <TriangleAlert size={14} />
+              Danger Zone
+            </div>
+            <p style={{ fontSize: "13px", color: "var(--text-secondary)", marginBottom: "12px" }}>
+              Permanently delete your account and all associated data. This cannot be undone.
+            </p>
+            <button
+              onClick={() => setDeleteModalOpen(true)}
+              style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.3)", padding: "8px 16px", borderRadius: "8px", fontSize: "13px", fontWeight: "600", cursor: "pointer", width: "100%" }}
+            >
+              Delete Account
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Delete confirmation modal */}
+      {deleteModalOpen && (
+        <>
+          <div
+            onClick={() => { setDeleteModalOpen(false); setDeleteConfirmText(""); }}
+            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 300 }}
+          />
+          <div style={{
+            position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
+            zIndex: 301, background: "var(--surface-1)", border: "1px solid rgba(239,68,68,0.4)",
+            borderRadius: "16px", padding: "32px", width: "100%", maxWidth: "420px",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
+              <TriangleAlert size={22} style={{ color: "var(--danger)", flexShrink: 0 }} />
+              <h3 style={{ fontSize: "18px", fontWeight: "700", color: "var(--text-primary)", margin: 0 }}>Delete Account</h3>
+            </div>
+
+            <p style={{ fontSize: "14px", color: "var(--text-secondary)", marginBottom: "16px", lineHeight: "1.6" }}>
+              This will permanently delete:
+            </p>
+            <ul style={{ fontSize: "13px", color: "var(--text-secondary)", paddingLeft: "20px", marginBottom: "20px", lineHeight: "2" }}>
+              <li>Your account and profile</li>
+              <li>All your players and their data</li>
+              <li>All active sessions</li>
+            </ul>
+
+            <p style={{ fontSize: "13px", color: "var(--text-secondary)", marginBottom: "8px" }}>
+              Type <strong style={{ color: "var(--danger)" }}>DELETE</strong> to confirm:
+            </p>
+            <input
+              type="text"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder="Type DELETE"
+              style={{
+                width: "100%", padding: "10px 14px", borderRadius: "8px", fontSize: "14px",
+                background: "var(--input-bg)", border: "1px solid var(--input-border)",
+                color: "var(--text-primary)", outline: "none", boxSizing: "border-box", marginBottom: "20px",
+              }}
+            />
+
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button
+                onClick={() => { setDeleteModalOpen(false); setDeleteConfirmText(""); }}
+                style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "1px solid var(--input-border)", background: "transparent", color: "var(--text-primary)", fontSize: "14px", fontWeight: "600", cursor: "pointer" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleteConfirmText !== "DELETE" || deleteLoading}
+                style={{
+                  flex: 1, padding: "10px", borderRadius: "8px", border: "none",
+                  background: deleteConfirmText === "DELETE" ? "var(--danger)" : "rgba(239,68,68,0.2)",
+                  color: deleteConfirmText === "DELETE" ? "#fff" : "rgba(239,68,68,0.4)",
+                  fontSize: "14px", fontWeight: "600",
+                  cursor: deleteConfirmText === "DELETE" ? "pointer" : "not-allowed",
+                  transition: "all 0.2s",
+                }}
+              >
+                {deleteLoading ? "Deleting..." : "Delete Account"}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 }

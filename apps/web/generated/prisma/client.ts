@@ -239,3 +239,28 @@ export type puzzles = Prisma.puzzlesModel
  * 
  */
 export type analysis_jobs = Prisma.analysis_jobsModel
+/**
+ * Model batch_jobs
+ * 
+ */
+export type batch_jobs = Prisma.batch_jobsModel
+/**
+ * Model app_users
+ * 
+ */
+export type app_users = Prisma.app_usersModel
+/**
+ * Model user_sessions
+ * 
+ */
+export type user_sessions = Prisma.user_sessionsModel
+/**
+ * Model email_verification_tokens
+ * 
+ */
+export type email_verification_tokens = Prisma.email_verification_tokensModel
+/**
+ * Model password_reset_tokens
+ * 
+ */
+export type password_reset_tokens = Prisma.password_reset_tokensModel

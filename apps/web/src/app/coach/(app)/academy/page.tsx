@@ -2,7 +2,6 @@
 import { useEffect, useState } from "react";
 import CoachHeader from "@/components/CoachHeader";
 import Loader from "@/components/Loader";
-import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { GraduationCap, Users } from "lucide-react";
 
@@ -30,27 +29,21 @@ export default function CoachAcademyPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!coachProfile?.academy_id) { setLoading(false); return; }
-    loadAcademy(coachProfile.academy_id);
+    if (!coachProfile) { setLoading(false); return; }
+    loadAcademy();
   }, [coachProfile]);
 
-  async function loadAcademy(academyId: string) {
+  async function loadAcademy() {
     setLoading(true);
-
-    const [{ data: academyData }, { data: coachesData }, { data: playersData }] = await Promise.all([
-      supabase.from("academies").select("*").eq("id", academyId).single(),
-      supabase.from("profiles").select("id, full_name, email, created_at").eq("academy_id", academyId).eq("role", "coach").eq("status", "approved"),
-      supabase.from("players").select("coach_id").eq("status", "approved"),
-    ]);
-
-    setAcademy(academyData ?? null);
-
-    const enriched: CoachRow[] = (coachesData ?? []).map((c) => ({
-      ...c,
-      playerCount: (playersData ?? []).filter((p) => p.coach_id === c.id).length,
-    }));
-    setCoaches(enriched);
-    setLoading(false);
+    try {
+      const res = await fetch("/api/coach/academy");
+      if (!res.ok) { setLoading(false); return; }
+      const { academy: academyData, coaches: coachesData } = await res.json();
+      setAcademy(academyData ?? null);
+      setCoaches(coachesData ?? []);
+    } finally {
+      setLoading(false);
+    }
   }
 
   const thStyle: React.CSSProperties = {

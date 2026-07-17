@@ -29,6 +29,7 @@ import {
   ArrowLeft,
   Play,
   Pause,
+  RefreshCw,
 } from "lucide-react";
 
 const PIECE_SYMBOLS: Record<string, string> = {
@@ -261,6 +262,8 @@ export default function GameAnalysisPage({
     };
   }, []);
 
+  const [reanalyzing, setReanalyzing] = useState(false);
+
   const [isPlaying, setIsPlaying] = useState(false);
 
   const goToStart = () => {
@@ -413,6 +416,38 @@ export default function GameAnalysisPage({
     { id: "patterns", label: "Patterns" },
   ];
 
+  async function handleReanalyze() {
+    if (!chessUsername || !filename) return;
+    setReanalyzing(true);
+    try {
+      const data = await analyzeGame(chessUsername, filename, true);
+      setAnalysis(data);
+      if (data?.full_history) {
+        const game = new Chess();
+        const fens = [game.fen()];
+        const pairs: Array<{ from: string; to: string }> = [];
+        for (const move of data.full_history) {
+          try {
+            const result = game.move(move.san);
+            pairs.push(result ? { from: result.from, to: result.to } : { from: "", to: "" });
+            fens.push(game.fen());
+          } catch {
+            pairs.push({ from: "", to: "" });
+            fens.push(fens[fens.length - 1]);
+          }
+        }
+        setFenHistory(fens);
+        setMovePairs(pairs);
+        setCurrentMoveIndex(0);
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Re-analysis failed. Please try again.");
+    } finally {
+      setReanalyzing(false);
+    }
+  }
+
   return (
     <div
       className="analysis-root"
@@ -454,13 +489,29 @@ export default function GameAnalysisPage({
             marginBottom: "16px",
           }}
         >
-          <button
-            className="btn btn-secondary analysis-back-btn"
-            onClick={() => router.push("/dashboard")}
-            style={{ padding: "8px 12px" }}
-          >
-            <ArrowLeft size={18} /> Back
-          </button>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            <button
+              className="btn btn-secondary analysis-back-btn"
+              onClick={() => router.push("/dashboard")}
+              style={{ padding: "8px 12px" }}
+            >
+              <ArrowLeft size={18} /> Back
+            </button>
+            {analysis && (
+              <button
+                className="btn btn-secondary"
+                onClick={handleReanalyze}
+                disabled={reanalyzing}
+                style={{ padding: "8px 12px", display: "flex", alignItems: "center", gap: "6px" }}
+              >
+                <RefreshCw
+                  size={16}
+                  style={reanalyzing ? { animation: "spin 0.8s linear infinite" } : undefined}
+                />
+                {reanalyzing ? "Re-analyzing…" : "Re-analyze"}
+              </button>
+            )}
+          </div>
           {analysis && (
             <div className="analysis-top-info" style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px", minWidth: 0, maxWidth: "55%" }}>
               <div className="analysis-game-title" style={{

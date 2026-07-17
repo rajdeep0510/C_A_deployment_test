@@ -1,12 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function AcademyPendingPage() {
   const router = useRouter();
-  const { user, coachProfile, refreshProfile } = useAuth();
+  const { user, coachProfile, refreshProfile, signOut } = useAuth();
   const [checking, setChecking] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
 
@@ -21,11 +20,8 @@ export default function AcademyPendingPage() {
     if (!user) return;
     setChecking(true);
     setStatusMsg("");
-    const { data } = await supabase
-      .from("profiles")
-      .select("status")
-      .eq("id", user.id)
-      .single();
+    const res = await fetch("/api/auth/me");
+    const data = await res.json();
     if (data?.status === "approved") {
       await refreshProfile();
       router.push("/academy/dashboard");
@@ -36,11 +32,6 @@ export default function AcademyPendingPage() {
       setChecking(false);
       setStatusMsg("Still pending — the admin hasn't reviewed your academy yet.");
     }
-  };
-
-  const signOut = async () => {
-    await supabase.auth.signOut();
-    router.push("/login");
   };
 
   return (

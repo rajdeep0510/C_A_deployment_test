@@ -2,39 +2,58 @@ import { Game } from "@repo/types";
 
 const HEADERS = { "User-Agent": "ChessCoachPlatform/1.0 (Contact: your@email.com)" };
 
-export async function fetchChessComGames(username: string, limit: number): Promise<Game[]> {
-  const archivesUrl = `https://api.chess.com/pub/player/${username}/games/archives`;
+function recentMonthUrls(username: string, count = 12): string[] {
+  const now = new Date();
+  const urls: string[] = [];
+  for (let i = 0; i < count; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    urls.push(`https://api.chess.com/pub/player/${username}/games/${y}/${m}`);
+  }
+  return urls;
+}
+
+export async function fetchChessComGames(username: string, limit: number, timeClass?: string): Promise<Game[]> {
   try {
-    const response = await fetch(archivesUrl, { headers: HEADERS });
-    if (!response.ok) return [];
-
-    const { archives } = await response.json();
-    if (!archives || archives.length === 0) return [];
-
+    const monthUrls = recentMonthUrls(username, 12);
     const allGames: any[] = [];
-    for (const archiveUrl of [...archives].reverse()) {
-      const archiveResponse = await fetch(archiveUrl, { headers: HEADERS });
-      if (archiveResponse.ok) {
-        const { games } = await archiveResponse.json();
-        allGames.push(...[...games].reverse());
-        if (allGames.length >= limit) break;
+
+    for (const url of monthUrls) {
+      if (allGames.length >= limit) break;
+      try {
+        const res = await fetch(url, { headers: HEADERS, signal: AbortSignal.timeout(10000) });
+        if (!res.ok) continue;
+        const { games } = await res.json();
+        if (!games?.length) continue;
+        const batch = ([...games] as any[]).reverse();
+        const filtered = timeClass
+          ? batch.filter(g => (g.time_class || "").toLowerCase() === timeClass.toLowerCase())
+          : batch;
+        allGames.push(...filtered.slice(0, limit - allGames.length));
+      } catch {
+        continue;
       }
     }
 
     return allGames.slice(0, limit).map((game: any) => {
       let result: string;
-      if (game.white.result === "win") result = "1-0";
-      else if (game.black.result === "win") result = "0-1";
+      if (game.white?.result === "win") result = "1-0";
+      else if (game.black?.result === "win") result = "0-1";
       else result = "1/2-1/2";
       return {
         platform: "chess.com",
         url: game.url,
         filename: game.url,
         pgn: game.pgn,
-        white: game.white.username,
-        black: game.black.username,
+        white: game.white?.username ?? "",
+        black: game.black?.username ?? "",
+        white_rating: game.white?.rating,
+        black_rating: game.black?.rating,
         result,
         end_time: game.end_time,
+        time_class: game.time_class,
+        time_control: game.time_control,
       };
     });
   } catch (error) {

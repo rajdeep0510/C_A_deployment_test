@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase-admin";
+import { prisma } from "@/lib/prisma";
 
 export async function GET(
   _req: NextRequest,
@@ -7,11 +7,10 @@ export async function GET(
 ) {
   const { username } = await params;
 
-  const { data } = await supabaseAdmin
-    .from("player_puzzle_rating")
-    .select("rating, rd, streak_days, calibrated, last_active_date")
-    .eq("username", username)
-    .maybeSingle();
+  const data = await prisma.player_puzzle_rating.findUnique({
+    where: { username },
+    select: { rating: true, rd: true, streak_days: true, calibrated: true, last_active_date: true },
+  });
 
   return NextResponse.json(
     data ?? { rating: 1200, rd: 350, streak_days: 0, calibrated: false },

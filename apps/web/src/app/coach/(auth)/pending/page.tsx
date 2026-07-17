@@ -1,12 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function CoachPendingPage() {
   const router = useRouter();
-  const { user, coachProfile, refreshProfile } = useAuth();
+  const { user, coachProfile, refreshProfile, signOut } = useAuth();
   const [academyName, setAcademyName] = useState("");
   const [checking, setChecking] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
@@ -15,12 +14,13 @@ export default function CoachPendingPage() {
     if (!user) { router.push("/login"); return; }
     if (coachProfile?.status === "approved") { router.push("/coach/dashboard"); return; }
     if (coachProfile?.academy_id) {
-      supabase
-        .from("academies")
-        .select("name")
-        .eq("id", coachProfile.academy_id)
-        .single()
-        .then(({ data }) => { if (data) setAcademyName(data.name); });
+      fetch("/api/academies/public")
+        .then((r) => r.json())
+        .then((list: { id: string; name: string }[]) => {
+          const match = list.find((a) => a.id === coachProfile.academy_id);
+          if (match) setAcademyName(match.name);
+        })
+        .catch(() => {});
     }
   }, [user, coachProfile, router]);
 
@@ -28,11 +28,8 @@ export default function CoachPendingPage() {
     if (!user) return;
     setChecking(true);
     setStatusMsg("");
-    const { data } = await supabase
-      .from("profiles")
-      .select("status")
-      .eq("id", user.id)
-      .single();
+    const res = await fetch("/api/auth/me");
+    const data = await res.json();
     if (data?.status === "approved") {
       await refreshProfile();
       router.push("/coach/dashboard");
@@ -43,11 +40,6 @@ export default function CoachPendingPage() {
       setChecking(false);
       setStatusMsg("Still pending — the academy hasn't approved you yet.");
     }
-  };
-
-  const signOut = async () => {
-    await supabase.auth.signOut();
-    router.push("/login");
   };
 
   return (

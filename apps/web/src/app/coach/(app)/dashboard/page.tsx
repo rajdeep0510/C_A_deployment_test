@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/lib/supabase";
 import CoachHeader from "@/components/CoachHeader";
 import Loader from "@/components/Loader";
 import { getStats } from "@/services/api";
@@ -165,7 +164,6 @@ export default function CoachDashboardPage() {
   const { coachProfile } = useAuth();
   const [tab, setTab] = useState<Tab>("players");
   const [academyName, setAcademyName] = useState<string | null>(null);
-  const [academyLoading, setAcademyLoading] = useState(false);
   const [approvedPlayers, setApprovedPlayers] = useState<Player[]>([]);
   const [pendingPlayers, setPendingPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
@@ -174,6 +172,9 @@ export default function CoachDashboardPage() {
     {},
   );
   const [statsLoading, setStatsLoading] = useState(false);
+
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
+  const [codeCopied, setCodeCopied] = useState(false);
 
   // Roster sort state
   const [sortKey, setSortKey] = useState<SortKey>("full_name");
@@ -196,34 +197,24 @@ export default function CoachDashboardPage() {
     }
     setLoading(true);
     try {
-      const [approvedRes, pendingRes] = await Promise.all([
-        supabase
-          .from("players")
-          .select("*")
-          .eq("coach_id", coachProfile.id)
-          .eq("status", "approved")
-          .order("full_name"),
-        supabase
-          .from("players")
-          .select("*")
-          .eq("coach_id", coachProfile.id)
-          .eq("status", "pending")
-          .order("created_at"),
-      ]);
-      const approved = approvedRes.data ?? [];
-      setApprovedPlayers(approved);
-      setPendingPlayers(pendingRes.data ?? []);
+      const res = await fetch("/api/coach/dashboard");
+      if (!res.ok) return;
+      const { approvedPlayers: approved, pendingPlayers: pending, inviteCode: code, academyName: name } = await res.json();
+      const approvedList: Player[] = approved ?? [];
+      setApprovedPlayers(approvedList);
+      setPendingPlayers(pending ?? []);
+      setInviteCode(code ?? null);
+      setAcademyName(name ?? null);
 
-      // Fetch stats for all approved players in parallel (non-blocking)
-      if (approved.length > 0) {
+      if (approvedList.length > 0) {
         setStatsLoading(true);
         const results = await Promise.allSettled(
-          approved.map((p) => getStats(p.chess_username)),
+          approvedList.map((p) => getStats(p.chess_username)),
         );
         const statsMap: Record<string, PlayerStats> = {};
         results.forEach((r, i) => {
           if (r.status === "fulfilled")
-            statsMap[approved[i].chess_username] = r.value;
+            statsMap[approvedList[i].chess_username] = r.value;
         });
         setPlayerStats(statsMap);
         setStatsLoading(false);
@@ -237,41 +228,27 @@ export default function CoachDashboardPage() {
 
   useEffect(() => {
     if (!coachProfile) {
-      // If auth loading is done but no profile, stop dashboard loading
       setLoading(false);
       return;
     }
     fetchPlayers();
-    if (coachProfile.academy_id) {
-      setAcademyLoading(true);
-      const fetchAcademy = async () => {
-        const { data } = await supabase
-          .from("academies")
-          .select("name")
-          .eq("id", coachProfile.academy_id)
-          .single();
-        setAcademyName(data?.name ?? null);
-        setAcademyLoading(false);
-      };
-      fetchAcademy();
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [coachProfile]);
 
   const approvePlayer = async (player: Player) => {
     setActionLoading(player.id);
-    const { error } = await supabase
-      .from("players")
-      .update({ status: "approved" })
-      .eq("id", player.id);
-    if (!error) {
+    const res = await fetch("/api/coach/dashboard", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ playerId: player.id, status: "approved" }),
+    });
+    if (res.ok) {
       setPendingPlayers((prev) => prev.filter((p) => p.id !== player.id));
       setApprovedPlayers((prev) =>
         [...prev, { ...player, status: "approved" }].sort((a, b) =>
           a.full_name.localeCompare(b.full_name),
         ),
       );
-      // Fetch stats for the newly approved player
       getStats(player.chess_username)
         .then((s) =>
           setPlayerStats((prev) => ({ ...prev, [player.chess_username]: s })),
@@ -283,11 +260,12 @@ export default function CoachDashboardPage() {
 
   const rejectPlayer = async (player: Player) => {
     setActionLoading(player.id);
-    const { error } = await supabase
-      .from("players")
-      .update({ status: "rejected" })
-      .eq("id", player.id);
-    if (!error)
+    const res = await fetch("/api/coach/dashboard", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ playerId: player.id, status: "rejected" }),
+    });
+    if (res.ok)
       setPendingPlayers((prev) => prev.filter((p) => p.id !== player.id));
     setActionLoading(null);
   };
@@ -388,9 +366,7 @@ export default function CoachDashboardPage() {
               <span style={{ fontSize: "13px", color: "var(--text-secondary)", fontWeight: "500" }}>
                 Academy:
               </span>
-              {academyLoading ? (
-                <span style={{ fontSize: "13px", color: "var(--text-secondary)" }}>Loading…</span>
-              ) : academyName ? (
+              {academyName ? (
                 <span style={{
                   fontSize: "13px", fontWeight: "700", color: "#f59e0b",
                   background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)",
@@ -439,6 +415,57 @@ export default function CoachDashboardPage() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Invite code card */}
+        <div
+          className="glass"
+          style={{
+            padding: "16px 20px",
+            borderRadius: "16px",
+            border: "1px solid rgba(99,102,241,0.2)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "12px",
+            marginBottom: "28px",
+          }}
+        >
+          <div>
+            <p style={{ fontSize: "11px", fontWeight: "700", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: "4px" }}>
+              Your Invite Code
+            </p>
+            <p style={{ fontSize: "22px", fontWeight: "800", fontFamily: "'Space Grotesk', monospace", letterSpacing: "0.12em", color: "var(--text-primary)" }}>
+              {inviteCode ?? "—"}
+            </p>
+            <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "2px" }}>
+              Share this with students so they can join your roster
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              if (!inviteCode) return;
+              navigator.clipboard.writeText(inviteCode);
+              setCodeCopied(true);
+              setTimeout(() => setCodeCopied(false), 2000);
+            }}
+            disabled={!inviteCode}
+            style={{
+              padding: "10px 16px",
+              borderRadius: "10px",
+              background: "rgba(99,102,241,0.1)",
+              border: "1px solid rgba(99,102,241,0.25)",
+              color: "#818cf8",
+              fontSize: "13px",
+              fontWeight: "600",
+              cursor: inviteCode ? "pointer" : "not-allowed",
+              whiteSpace: "nowrap",
+              opacity: inviteCode ? 1 : 0.5,
+              transition: "all 0.2s ease",
+            }}
+          >
+            {codeCopied ? "Copied!" : "Copy Code"}
+          </button>
         </div>
 
         {/* Tabs */}

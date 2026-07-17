@@ -2,43 +2,30 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Users, LogOut, Shield, GraduationCap, UserMinus, X } from "lucide-react";
+import { Users, LogOut, Shield, GraduationCap, Settings, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/lib/supabase";
+import { useTheme } from "@/contexts/ThemeContext";
 import ThemeToggle from "./ThemeToggle";
 import SettingsPanel from "./SettingsPanel";
 import "./Header.css";
 
 const ROLE_META = {
-  admin:          { label: "Admin",   logo: "♛", color: "#6366f1" },
-  academy_owner:  { label: "Academy", logo: "🏫", color: "#f59e0b" },
-  coach:          { label: "Coach",   logo: "♛", color: "#6366f1" },
+  admin:          { label: "Admin",   logo: "♛", color: "#6366f1", lightColor: "#4338ca" },
+  academy_owner:  { label: "Academy", logo: "🏫", color: "#f59e0b", lightColor: "#b45309" },
+  coach:          { label: "Coach",   logo: "♛", color: "#6366f1", lightColor: "#4338ca" },
 } as const;
 
 export default function CoachHeader() {
   const pathname = usePathname();
   const { coachProfile, signOut } = useAuth();
+  const { theme } = useTheme();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   if (!coachProfile) return null;
 
-  async function handleRemoveAccount() {
-    if (!confirm("Are you sure you want to remove your account entirely? This action cannot be undone.")) return;
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      await fetch(`/api/auth/account`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${session?.access_token}` },
-      });
-      await signOut();
-    } catch (e) {
-      console.error(e);
-      alert("Failed to remove account.");
-    }
-  }
-
   const meta = ROLE_META[coachProfile.role] ?? ROLE_META.coach;
+  const displayColor = theme === "light" ? meta.lightColor : meta.color;
   const closeDrawer = () => setDrawerOpen(false);
 
   return (
@@ -46,7 +33,7 @@ export default function CoachHeader() {
       <header className="header-glass" style={{ borderBottom: `2px solid ${meta.color}22` }}>
         <div className="container flex-between header-inner">
           <div className="header-brand">
-            <span className="brand-logo" style={{ color: meta.color }}>
+            <span className="brand-logo" style={{ color: displayColor }}>
               {meta.logo}
             </span>
             <span className="brand-text">
@@ -54,7 +41,7 @@ export default function CoachHeader() {
               <span
                 style={{
                   fontSize: "12px",
-                  color: meta.color,
+                  color: displayColor,
                   fontWeight: "700",
                   background: `${meta.color}18`,
                   padding: "2px 8px",
@@ -98,11 +85,13 @@ export default function CoachHeader() {
           {/* Desktop user area */}
           <div className="header-user">
             <ThemeToggle />
-            <span className="user-name clickable" onClick={() => setSettingsOpen(true)}>
-              {coachProfile.full_name}
-            </span>
-            <button className="btn-logout" title="Remove Account" onClick={handleRemoveAccount} style={{ color: "var(--danger)" }}>
-              <UserMinus size={16} />
+            <span className="user-name">{coachProfile.full_name}</span>
+            <button
+              className="btn-logout"
+              title="Settings"
+              onClick={() => setSettingsOpen(true)}
+            >
+              <Settings size={16} />
             </button>
             <button className="btn-logout" title="Log Out" onClick={signOut}>
               <LogOut size={16} />
@@ -141,7 +130,7 @@ export default function CoachHeader() {
       <div className={`mobile-drawer ${drawerOpen ? "open" : ""}`}>
         <div className="mobile-drawer-header">
           <div className="mobile-drawer-brand">
-            <span style={{ fontSize: "20px", color: meta.color }}>{meta.logo}</span>
+            <span style={{ fontSize: "20px", color: displayColor }}>{meta.logo}</span>
             Chess Advisor
           </div>
           <button className="mobile-drawer-close" onClick={closeDrawer}>
@@ -189,6 +178,13 @@ export default function CoachHeader() {
             <ThemeToggle />
             <span style={{ fontSize: "13px", color: "var(--text-secondary)" }}>Toggle theme</span>
           </div>
+          <button
+            className="mobile-drawer-logout"
+            onClick={() => { setSettingsOpen(true); closeDrawer(); }}
+          >
+            <Settings size={16} />
+            Settings
+          </button>
           <button
             className="mobile-drawer-logout"
             onClick={() => { signOut(); closeDrawer(); }}

@@ -1,39 +1,33 @@
-import { supabaseAdmin } from "./supabase-admin";
+import { prisma } from "./prisma";
+import { deleteUser } from "./auth";
 
 export async function deleteAcademyCascade(academyId: string) {
-  // Find all coaches with this academy_id
-  const { data: coaches } = await supabaseAdmin
-    .from("profiles")
-    .select("id")
-    .eq("academy_id", academyId);
+  const academy = await prisma.academies.findUnique({
+    where: { id: academyId },
+    select: { owner_id: true },
+  });
 
-  if (coaches) {
-    for (const coach of coaches) {
-      try {
-        await supabaseAdmin.auth.admin.deleteUser(coach.id);
-      } catch (e) {
-        // skip if already deleted or error
-      }
+  const coaches = await prisma.profiles.findMany({
+    where: { academy_id: academyId },
+    select: { id: true },
+  });
+
+  // Delete coaches (CASCADE on app_users removes their sessions/tokens/profile)
+  for (const coach of coaches) {
+    try {
+      await deleteUser(coach.id);
+    } catch {
+      // already deleted or FK mismatch — continue
     }
   }
 
-  // Get the academy owner
-  const { data: academy } = await supabaseAdmin
-    .from("academies")
-    .select("owner_id")
-    .eq("id", academyId)
-    .single();
+  await prisma.academies.delete({ where: { id: academyId } });
 
-  const ownerId = academy?.owner_id;
-
-  // Delete the academy itself
-  await supabaseAdmin.from("academies").delete().eq("id", academyId);
-
-  if (ownerId) {
+  if (academy?.owner_id) {
     try {
-      await supabaseAdmin.auth.admin.deleteUser(ownerId);
-    } catch (e) {
-      // skip
+      await deleteUser(academy.owner_id);
+    } catch {
+      // already deleted
     }
   }
 }

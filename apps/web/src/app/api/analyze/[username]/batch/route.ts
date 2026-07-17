@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase-admin";
+import { prisma } from "@/lib/prisma";
 
 const CHESS_COM_HEADERS = { "User-Agent": "ChessAdvisor/1.0" };
 
 async function fetchGameUrlsForBatch(username: string, limit: number): Promise<string[]> {
-  // Try Chess.com first
   try {
     const archivesRes = await fetch(
       `https://api.chess.com/pub/player/${username}/games/archives`,
@@ -28,7 +27,6 @@ async function fetchGameUrlsForBatch(username: string, limit: number): Promise<s
     }
   } catch {}
 
-  // Fallback: Lichess
   try {
     const res = await fetch(
       `https://lichess.org/api/games/user/${username}?max=${limit}&pgnInJson=true`,
@@ -75,22 +73,17 @@ export async function GET(
     const jobs: any[] = [];
     let skipped = 0;
     for (const url of gameUrls) {
-      const { data: existing } = await supabaseAdmin
-        .from("analysis_jobs")
-        .select("id, status")
-        .eq("username", username)
-        .eq("filename", url)
-        .in("status", ["pending", "processing", "completed"])
-        .maybeSingle();
+      const existing = await prisma.analysis_jobs.findFirst({
+        where: { username, filename: url, status: { in: ["pending", "processing", "completed"] } },
+        select: { id: true, status: true },
+      });
 
       if (existing) { skipped++; continue; }
 
-      const { data, error } = await supabaseAdmin
-        .from("analysis_jobs")
-        .insert({ username, filename: url, status: "pending" })
-        .select()
-        .single();
-      if (!error && data) jobs.push(data);
+      const job = await prisma.analysis_jobs.create({
+        data: { username, filename: url, status: "pending" },
+      });
+      jobs.push(job);
     }
 
     return NextResponse.json({ queued: jobs.length, skipped, jobs });

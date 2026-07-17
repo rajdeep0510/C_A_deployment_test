@@ -28,7 +28,7 @@ export default function OnboardingPage() {
 
     try {
       const games = await fetchGames(platform, username, limit);
-      localStorage.setItem("recentGames", JSON.stringify(games));
+      localStorage.setItem(`recentGames_${username}`, JSON.stringify(games));
       setStatus("success");
       setTimeout(() => {
         router.push("/dashboard");
@@ -100,8 +100,7 @@ export default function OnboardingPage() {
           ♟
         </div>
         <h1
-          className="text-gradient"
-          style={{ fontSize: "28px", marginBottom: "12px" }}
+          style={{ fontSize: "28px", marginBottom: "12px", color: "var(--text-primary)" }}
         >
           Let&apos;s Get Started
         </h1>

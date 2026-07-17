@@ -1,5 +1,9 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700;800&display=swap");
 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* ─── Dark-first theme (Studio Dark) ───────────────────────────────────── */
 :root {
   --bg-color: #0f0f0f;
@@ -8,6 +12,7 @@
 
   --accent-color: #1dc189;
   --accent-hover: #15a373;
+  --accent-text: #1dc189;
   --success: #10b981;
   --danger: #ef4444;
   --warning: #f59e0b;
@@ -61,6 +66,8 @@
   --input-bg-focus: #f8fafc;
   --input-border: #e2e8f0;
 
+  --accent-text: #0d7a56;
+
   color-scheme: light;
 }
 
@@ -106,8 +113,8 @@ body {
 
 [data-theme="light"] body {
   background:
-    linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+    linear-gradient(rgba(0, 0, 0, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.06) 1px, transparent 1px),
     var(--bg-color);
   background-size:
     48px 48px,
@@ -148,6 +155,11 @@ button {
 ::selection {
   background: #f5f5f5;
   color: #050505;
+}
+
+[data-theme="light"] ::selection {
+  background: rgba(29, 193, 137, 0.25);
+  color: #0f172a;
 }
 
 /* ─── Surface Utilities (Studio Dark) ──────────────────────────────────── */
@@ -235,6 +247,34 @@ button {
   box-shadow: 0 12px 36px rgba(255, 255, 255, 0.2);
 }
 
+[data-theme="light"] .btn-primary {
+  background: #0f172a;
+  color: #f8fafc;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .btn-primary:hover {
+  background: #1e293b;
+  color: #ffffff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+/* ─── Light mode interactive chrome ────────────────────────────────────── */
+[data-theme="light"] .theme-toggle,
+[data-theme="light"] .btn-logout,
+[data-theme="light"] .hamburger-btn {
+  background: var(--surface-2);
+}
+
+/* ─── Light mode elevation shadows ─────────────────────────────────────── */
+[data-theme="light"] .glass-card {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07), 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .header-glass {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
 .btn-secondary {
   background: var(--surface-1);
   color: var(--text-secondary);
@@ -267,6 +307,11 @@ button {
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
 }
 
+[data-theme="light"] .input-field:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(29, 193, 137, 0.18);
+}
+
 .input-label {
   display: block;
   font-size: 13px;
@@ -280,7 +325,7 @@ button {
   width: 100%;
   max-width: 100%;
   margin: 0 auto;
-  padding: 0 48px;
+  padding: 0 20px;
 }
 
 .flex-center {
@@ -300,18 +345,6 @@ button {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-}
-
-/* ─── Typography ────────────────────────────────────────────────────────── */
-.text-gradient {
-  background: linear-gradient(
-    135deg,
-    #ffffff 0%,
-    rgba(255, 255, 255, 0.6) 100%
-  );
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
 }
 
 /* ─── Theme toggle button ───────────────────────────────────────────────── */
@@ -359,6 +392,16 @@ button {
 .animate-fade-in {
   animation: fadeIn 0.5s ease-out forwards;
 }
+
+.animate-spin {
+  animation: spin 0.65s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-spin {
+    animation: none;
+  }
+}
 .delay-100 {
   animation-delay: 100ms;
 }
@@ -383,6 +426,13 @@ button {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.4);
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.18);
+}
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.32);
 }
 
 /* ─── Responsive Layout Classes ─────────────────────────────────────────── */
@@ -448,6 +498,65 @@ button {
   }
   .puzzle-filter-section { flex: 0 0 auto; min-width: 160px; }
   .puzzle-filter-section--type { flex: 1 1 100%; }
+  /* Constrain the type options list so 30+ entries don't balloon the filter bar */
+  .puzzle-filter-section--type > div {
+    max-height: 200px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-subtle) transparent;
+  }
+  .puzzle-filter-section--type > div::-webkit-scrollbar { width: 3px; }
+  .puzzle-filter-section--type > div::-webkit-scrollbar-track { background: transparent; }
+  .puzzle-filter-section--type > div::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 99px; }
+}
+
+/* ── Puzzle: viewport-locked layout (no page scroll on desktop) ────────── */
+@media (min-width: 769px) {
+  /* Container fills exactly the viewport area below the fixed header */
+  .puzzle-viewport {
+    height: calc(100dvh - 80px); /* 80px = .page-wrapper padding-top */
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding-top: 16px !important;   /* override inline 32px; saves 16px for board */
+    padding-bottom: 0 !important;   /* override inline 48px; inline wins without !important */
+  }
+
+  /* Cockpit grows to fill space below the page title row */
+  .puzzle-viewport .puzzle-cockpit {
+    flex: 1;
+    min-height: 0;
+    align-items: stretch;        /* all columns fill cockpit height */
+    overflow: hidden;
+  }
+
+  /* Each panel fills its column and scrolls internally */
+  .puzzle-viewport .puzzle-filter-panel {
+    position: static;
+    top: auto;
+    max-height: none;
+    height: 100%;
+    overflow-y: auto;
+  }
+
+  .puzzle-viewport [data-panel="board"] {
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .puzzle-viewport [data-panel="stats"] {
+    height: 100%;
+    overflow-y: auto;
+  }
+}
+
+/* Medium screens: filter row takes natural height, board+stats row fills rest */
+@media (max-width: 1280px) and (min-width: 769px) {
+  .puzzle-viewport .puzzle-cockpit {
+    grid-template-rows: auto 1fr;
+  }
 }
 
 /* Analysis page: 2-col layout becomes 1-col on mobile */
@@ -464,6 +573,11 @@ button {
 
 /* ─── Mobile Foundation (max-width: 768px) ───────────────────────────────── */
 @media (max-width: 768px) {
+  /* Page wrapper: match 60px mobile header */
+  .page-wrapper {
+    padding-top: 60px;
+  }
+
   /* Container: tighter horizontal padding */
   .container {
     padding: 0 16px;
@@ -542,7 +656,7 @@ button {
     margin-bottom: -1px;
   }
   .puzzle-mobile-tab.active {
-    color: var(--accent-color);
+    color: var(--accent-text);
     border-bottom-color: var(--accent-color);
   }
 
@@ -550,6 +664,21 @@ button {
   .analysis-main-grid {
     grid-template-columns: 1fr;
     overflow: visible;
+  }
+
+  /* Center board column: stack feedback buttons to full width for touch targets */
+  .puzzle-feedback-row {
+    flex-direction: column;
+  }
+  .puzzle-feedback-row > button,
+  .puzzle-feedback-row > a {
+    width: 100%;
+    min-height: 44px;
+    margin-left: 0 !important;
+    justify-content: center;
+    text-align: center;
+    display: flex;
+    align-items: center;
   }
 }
 
@@ -698,6 +827,114 @@ button {
   }
 }
 
+/* ─── Bento colour-split grid (White / Black quadrants) ─────────────────── */
+.bento-color-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  overflow: hidden;
+}
+
+@media (max-width: 400px) {
+  .bento-color-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─── Filter chips ──────────────────────────────────────────────────────── */
+.filter-chip {
+  padding: 5px 14px;
+  border-radius: 99px;
+  font-family: "Inter", sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--glass-border);
+  background: transparent;
+  color: var(--text-secondary);
+  transition: all 0.12s ease;
+}
+
+.filter-chip:hover {
+  background: var(--surface-2);
+  border-color: var(--border-medium);
+  color: var(--text-primary);
+}
+
+.filter-chip:active {
+  transform: scale(0.96);
+}
+
+.filter-chip--active {
+  font-weight: 700;
+  border-color: var(--accent-color);
+  background: var(--accent-color);
+  color: #050505;
+}
+
+.filter-chip--active:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: #050505;
+}
+
+@media (pointer: coarse) {
+  .filter-chip:hover {
+    background: transparent;
+    border-color: var(--glass-border);
+    color: var(--text-secondary);
+  }
+  .filter-chip--active:hover {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+  }
+}
+
+/* ─── Load Games form ───────────────────────────────────────────────────── */
+.load-games-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-end;
+}
+
+.load-games-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 120px;
+}
+
+@media (max-width: 768px) {
+  .load-games-field {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .load-games-submit {
+    width: 100%;
+  }
+}
+
+/* ─── Report page action buttons ────────────────────────────────────────── */
+.report-action-btns {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .report-action-btns {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .report-action-btns a,
+  .report-action-btns button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 /* Touch devices: replace hover lifts with active press feedback */
 @media (pointer: coarse) {
   .glass-card:hover {
@@ -721,8 +958,25 @@ button {
   }
 }
 
+/* ─── Report page tab panel crossfade ───────────────────────────────────── */
+@keyframes tabFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.tab-panel {
+  animation: tabFadeIn 150ms ease-out forwards;
+}
+
+/* Hide scrollbar on tab bar overflow scroll */
+.tab-bar-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
+  .tab-panel {
+    animation: none;
+  }
   .animate-fade-in {
     animation: none;
     opacity: 1;

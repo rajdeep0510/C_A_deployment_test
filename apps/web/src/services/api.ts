@@ -46,7 +46,7 @@ export async function getStats(username) {
   return res.json();
 }
 
-export async function analyzeGame(username: string, filename: string): Promise<any> {
+export async function analyzeGame(username: string, filename: string, force = false): Promise<any> {
   const { engineConfig } = await import("@/lib/engine-config");
   if (!engineConfig.enabled) {
     throw new Error("Client-side analysis is disabled. Set NEXT_PUBLIC_ANALYSIS_ENABLE_WASM=true");
@@ -55,6 +55,14 @@ export async function analyzeGame(username: string, filename: string): Promise<a
   const { isWasmSupported } = await import("@/lib/engine/wasm-detect");
   if (typeof window === "undefined" || !isWasmSupported()) {
     throw new Error("WebAssembly is not supported in this browser. Please use a modern browser like Chrome, Firefox, or Edge.");
+  }
+
+  if (force) {
+    await fetch("/api/analyze", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, filename }),
+    }).catch(() => {});
   }
 
   // Check Supabase for a cached completed analysis
@@ -86,59 +94,21 @@ export async function analyzeGame(username: string, filename: string): Promise<a
   return result;
 }
 
-// Fetch up to `limit` games of a specific time class directly from Chess.com archives.
-// Returns games normalized to the same shape GameCard + createBatchJob expect.
+// Fetch up to `limit` games of a specific time class, proxied through our API to avoid CORS.
 export async function fetchGamesByTimeControl(
   username: string,
   timeClass: string,
   limit = 50,
 ): Promise<any[]> {
-  const headers = { "User-Agent": "ChessAdvisor/1.0" };
-  const archivesRes = await fetch(
-    `https://api.chess.com/pub/player/${username}/games/archives`,
-    { headers }
-  );
-  if (!archivesRes.ok) throw new Error("Could not fetch Chess.com archives");
-  const { archives } = await archivesRes.json();
-  if (!archives?.length) return [];
-
-  const result: any[] = [];
-  for (const archiveUrl of [...archives].reverse()) {
-    if (result.length >= limit) break;
-    try {
-      const res = await fetch(archiveUrl, { headers });
-      if (!res.ok) continue;
-      const { games } = await res.json();
-      const matching = ([...games] as any[])
-        .reverse()
-        .filter(g => (g.time_class || "").toLowerCase() === timeClass)
-        .map(g => {
-          // Normalize to the Game shape expected by GameCard and createBatchJob
-          let gameResult: string;
-          if (g.white?.result === "win") gameResult = "1-0";
-          else if (g.black?.result === "win") gameResult = "0-1";
-          else gameResult = "1/2-1/2";
-          return {
-            platform: "chess.com",
-            filename: g.url,
-            url: g.url,
-            white: g.white?.username ?? "",
-            black: g.black?.username ?? "",
-            white_rating: g.white?.rating,
-            black_rating: g.black?.rating,
-            result: gameResult,
-            end_time: g.end_time,
-            time_class: g.time_class,
-            time_control: g.time_control,
-            pgn: g.pgn,
-          };
-        });
-      result.push(...matching.slice(0, limit - result.length));
-    } catch {
-      // skip months that fail to load
-    }
-  }
-  return result;
+  const params = new URLSearchParams({
+    platform: "chess.com",
+    username,
+    limit: String(limit),
+    tc: timeClass,
+  });
+  const res = await apiFetch(`${BASE_URL}/api/games?${params}`);
+  if (!res.ok) throw new Error("Could not fetch games");
+  return res.json();
 }
 
 export async function batchAnalyze(username: string, limit = 50) {
