@@ -13,36 +13,42 @@ interface Props {
 }
 
 const QUALITY_COLORS: Record<string, string> = {
+  Book: "#9ca3af",
+  Forced: "#6b7280",
+  Good: "#4ade80",
+  Excellent: "#22c55e",
+  Best: "#16a34a",
+  Inaccuracy: "#eab308",
+  Mistake: "#f97316",
   Blunder: "var(--danger)",
-  Mistake: "var(--warning)",
-  Inaccuracy: "#f59e0b",
-  Good: "var(--success)",
-  Excellent: "var(--success)",
-  Best: "#10b981",
-  Brilliant: "#6366f1",
-  Forced: "var(--text-secondary)",
+  Great: "#3b82f6",
+  Brilliant: "#4f46e5",
 };
 
 const QUALITY_BG: Record<string, string> = {
-  Blunder: "rgba(239,68,68,0.08)",
-  Mistake: "rgba(245,158,11,0.08)",
-  Inaccuracy: "rgba(245,158,11,0.05)",
-  Good: "rgba(16,185,129,0.05)",
-  Excellent: "rgba(16,185,129,0.05)",
-  Best: "rgba(16,185,129,0.08)",
-  Brilliant: "rgba(99,102,241,0.08)",
+  Book: "rgba(156,163,175,0.08)",
   Forced: "transparent",
+  Good: "rgba(74,222,128,0.05)",
+  Excellent: "rgba(34,197,94,0.05)",
+  Best: "rgba(22,163,74,0.08)",
+  Inaccuracy: "rgba(234,179,8,0.06)",
+  Mistake: "rgba(249,115,22,0.08)",
+  Blunder: "rgba(239,68,68,0.08)",
+  Great: "rgba(59,130,246,0.08)",
+  Brilliant: "rgba(79,70,229,0.08)",
 };
 
 const BORDER_COLOR: Record<string, string> = {
-  Blunder: "var(--danger)",
-  Mistake: "var(--warning)",
-  Inaccuracy: "#f59e0b",
-  Good: "var(--success)",
-  Excellent: "var(--success)",
-  Best: "var(--success)",
-  Brilliant: "#6366f1",
+  Book: "#9ca3af",
   Forced: "var(--glass-border)",
+  Good: "#4ade80",
+  Excellent: "#22c55e",
+  Best: "#16a34a",
+  Inaccuracy: "#eab308",
+  Mistake: "var(--warning)",
+  Blunder: "var(--danger)",
+  Great: "#3b82f6",
+  Brilliant: "#4f46e5",
 };
 
 export default function MistakeCard({
