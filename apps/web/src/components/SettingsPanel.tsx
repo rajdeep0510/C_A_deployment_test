@@ -40,6 +40,7 @@ export default function SettingsPanel({ isOpen, onClose, userType, username, ema
     maxWorkers, setMaxWorkers,
     hashSize, setHashSize,
     liteMode, setLiteMode,
+    useRecommended, setUseRecommended,
   } = useSettings();
   const { theme, toggle } = useTheme();
   const { signOut } = useAuth();
@@ -188,11 +189,24 @@ export default function SettingsPanel({ isOpen, onClose, userType, username, ema
               <Settings2 size={14} />
               Analysis Engine
             </div>
+            <div className="engine-setting">
+              <div className="toggle-row">
+                <span className="engine-setting-label">Use recommended settings</span>
+                <div className="toggle-switch" onClick={() => setUseRecommended(!useRecommended)}>
+                  <div className={`toggle-track${useRecommended ? " active" : ""}`}>
+                    <div className="toggle-thumb" />
+                  </div>
+                </div>
+              </div>
+              <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "4px" }}>
+                Depth 14, MultiPV 2, 2 workers, 16MB hash. Turn off to customize.
+              </p>
+            </div>
             {ENGINE_SLIDERS.map(({ key, label, min, max, step }) => {
               const value = engineValues[key as keyof typeof engineValues];
               const setter = engineSetters[`set${key.charAt(0).toUpperCase() + key.slice(1)}` as keyof typeof engineSetters];
               return (
-                <div key={key} className="engine-setting">
+                <div key={key} className="engine-setting" style={useRecommended ? { opacity: 0.45 } : undefined}>
                   <div className="engine-setting-header">
                     <span className="engine-setting-label">{label}</span>
                     <span className="engine-setting-value">{value}</span>
@@ -204,6 +218,7 @@ export default function SettingsPanel({ isOpen, onClose, userType, username, ema
                     max={max}
                     step={step}
                     value={value}
+                    disabled={useRecommended}
                     onChange={(e) => (setter as (v: number) => void)(Number(e.target.value))}
                   />
                 </div>

@@ -6,14 +6,19 @@ import { engineConfig } from "@/lib/engine-config";
 import { getPositionWinPercentage } from "@/lib/engine/helpers/win-percentage";
 import { QUALITY_MAP } from "@/types/engine-types";
 import { openings } from "@/lib/engine/openings";
+import { CLIENT_ANALYSIS_VERSION } from "@/lib/analysis-version";
 
 export async function analyzeLocally(
   username: string,
-  filename: string
+  filename: string,
+  multiPvOverride?: number
 ): Promise<any> {
   if (!isWasmSupported()) {
     throw new Error("WebAssembly is not supported in this browser");
   }
+
+  const multiPv =
+    multiPvOverride && multiPvOverride > 0 ? multiPvOverride : engineConfig.multiPv;
 
   const pgn = await fetchPgn(username, filename);
   const game = new Chess();
@@ -40,7 +45,7 @@ export async function analyzeLocally(
   );
 
   const engine = await EnginePool.create(enginePath, {
-    multiPv: engineConfig.multiPv,
+    multiPv,
     hashSize: engineConfig.hashSize,
   });
 
@@ -48,7 +53,7 @@ export async function analyzeLocally(
     fens,
     uciMoves,
     depth: engineConfig.depth,
-    multiPv: engineConfig.multiPv,
+    multiPv,
     workersNb: workers,
   });
 
@@ -283,6 +288,7 @@ function mapToAnalysisSchema(
     : undefined;
 
   return {
+    client_analysis_version: CLIENT_ANALYSIS_VERSION,
     game_accuracy: Math.round(userAccuracy * 10) / 10,
     phase_accuracy: phaseAccuracy,
     white_player: whitePlayer,
@@ -368,9 +374,29 @@ function buildMoveHistory(
     const userEval = userColor === "white" ? beforeCp : -beforeCp;
     const userEvalAfter = userColor === "white" ? afterCp : -afterCp;
 
-    const bestMoveSan = posAfter.bestMove
-      ? uciToSan(fens[i], posAfter.bestMove)
-      : undefined;
+    // The engine's suggested alternative to the move actually played must come
+    // from the position BEFORE the move (posBefore) — that's what the player
+    // was choosing between. Using posAfter here would be the reply to a move
+    // that hasn't been played yet, converted against the wrong FEN.
+    const bestMoveUci = posBefore?.bestMove || posBefore?.lines?.[0]?.pv?.[0];
+    const bestMoveSan = bestMoveUci ? uciToSan(fens[i], bestMoveUci) : undefined;
+
+    // Top engine lines at the position before the move, for multi-line arrow
+    // display (best 2-3 candidates) when MultiPV > 1.
+    const topLines = (posBefore?.lines || [])
+      .slice(0, 3)
+      .map((line) => {
+        const uci = line.pv?.[0];
+        if (!uci) return null;
+        return {
+          san: uciToSan(fens[i], uci),
+          from: uci.slice(0, 2),
+          to: uci.slice(2, 4),
+          cp: line.cp,
+          mate: line.mate,
+        };
+      })
+      .filter((l): l is { san: string; from: string; to: string; cp?: number; mate?: number } => l !== null);
 
     const moveNumber = Math.floor(i / 2) + 1;
     const turnLabel =
@@ -395,6 +421,7 @@ function buildMoveHistory(
       cp_loss: Math.round(cpLoss * 100) / 100,
       phase,
       best_move: bestMoveSan || "",
+      top_lines: topLines,
       error_nature: null,
       eval: Math.round(userEval * 100) / 100,
       eval_after: Math.round(userEvalAfter * 100) / 100,
@@ -460,8 +487,8 @@ function computePhaseAccuracy(
 
     const winDiff =
       userColor === "white"
-        ? winBefore - winAfter
-        : winAfter - winBefore;
+        ? Math.max(0, winBefore - winAfter)
+        : Math.max(0, winAfter - winBefore);
 
     const rawAccuracy =
       103.1668100711649 * Math.exp(-0.04354415386753951 * Math.abs(winDiff)) -

@@ -76,7 +76,7 @@ export interface EvaluateGameParams {
 
 export const QUALITY_MAP: Record<string, string> = {
   [MoveClassification.Splendid]: "Brilliant",
-  [MoveClassification.Perfect]: "Best",
+  [MoveClassification.Perfect]: "Great",
   [MoveClassification.Best]: "Best",
   [MoveClassification.Excellent]: "Excellent",
   [MoveClassification.Okay]: "Good",
