@@ -487,8 +487,8 @@ function computePhaseAccuracy(
 
     const winDiff =
       userColor === "white"
-        ? winBefore - winAfter
-        : winAfter - winBefore;
+        ? Math.max(0, winBefore - winAfter)
+        : Math.max(0, winAfter - winBefore);
 
     const rawAccuracy =
       103.1668100711649 * Math.exp(-0.04354415386753951 * Math.abs(winDiff)) -

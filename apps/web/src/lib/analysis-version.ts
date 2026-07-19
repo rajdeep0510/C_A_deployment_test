@@ -9,4 +9,6 @@
 // move once MultiPV dropped below 2 (it used to infer "forced" from the
 // engine returning only one line, which is also what happens when MultiPV
 // itself is 1 — now checked via actual legal-move count instead).
-export const CLIENT_ANALYSIS_VERSION = 2;
+// v3: fixed phase accuracy penalizing good moves — winDiff now clamped at 0
+// so improving moves don't get treated as blunders in the phase breakdown.
+export const CLIENT_ANALYSIS_VERSION = 3;

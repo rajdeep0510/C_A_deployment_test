@@ -265,7 +265,9 @@ export class EnginePool {
                 pv: [],
                 depth: 0,
                 multiPv: 1,
-                mate: whoIsCheckmated === "w" ? -1 : 1,
+                // isCheckmate() returns the winner ("w"=white won, "b"=black won).
+                // getWinPercentageFromMate: mate>0 → 100% (white wins), mate<0 → 0% (black wins).
+                mate: whoIsCheckmated === "w" ? 1 : -1,
               },
             ],
           });
