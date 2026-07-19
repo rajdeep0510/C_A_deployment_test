@@ -31,7 +31,12 @@ export const getMovesClassification = (
 
     const prevPosition = rawPositions[index - 1];
 
-    if (prevPosition.lines.length === 1) {
+    // A position only yields a single engine line when either (a) MultiPV
+    // was requested as 1, or (b) there was truly only one legal move. Only
+    // (b) means "forced" — checking lines.length alone (the old check)
+    // misfires on every move once MultiPV=1, since that's now the default.
+    const isForced = new Chess(fens[index - 1]).moves().length === 1;
+    if (isForced) {
       return {
         ...rawPosition,
         opening: currentOpening,

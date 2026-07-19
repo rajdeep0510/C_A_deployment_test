@@ -46,7 +46,7 @@ export async function getStats(username) {
   return res.json();
 }
 
-export async function analyzeGame(username: string, filename: string, force = false): Promise<any> {
+export async function analyzeGame(username: string, filename: string, force = false, multiPv?: number): Promise<any> {
   const { engineConfig } = await import("@/lib/engine-config");
   if (!engineConfig.enabled) {
     throw new Error("Client-side analysis is disabled. Set NEXT_PUBLIC_ANALYSIS_ENABLE_WASM=true");
@@ -65,12 +65,18 @@ export async function analyzeGame(username: string, filename: string, force = fa
     }).catch(() => {});
   }
 
-  // Check Supabase for a cached completed analysis
+  // Check Supabase for a cached completed analysis. Results stamped with an
+  // older (or missing) client_analysis_version predate a classification-logic
+  // fix and would still carry the bug — treat those as a cache miss so they
+  // get transparently recomputed below instead of served stale forever.
+  const { CLIENT_ANALYSIS_VERSION } = await import("@/lib/analysis-version");
   const cached = await fetch(
     `/api/analyze?username=${encodeURIComponent(username)}&filename=${encodeURIComponent(filename)}`
   ).then((r) => (r.ok ? r.json() : null)).catch(() => null);
 
-  if (cached?.result) return cached.result;
+  if (cached?.result && cached.result.client_analysis_version === CLIENT_ANALYSIS_VERSION) {
+    return cached.result;
+  }
 
   // Create a pending job so the result can be saved back
   const job = await fetch("/api/analyze", {
@@ -80,7 +86,7 @@ export async function analyzeGame(username: string, filename: string, force = fa
   }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
 
   const { analyzeLocally } = await import("@/services/local-analysis");
-  const result = await analyzeLocally(username, filename);
+  const result = await analyzeLocally(username, filename, multiPv);
 
   // Persist the result so future visits skip re-analysis
   if (job?.id) {

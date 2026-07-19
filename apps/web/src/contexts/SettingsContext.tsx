@@ -9,6 +9,7 @@ type Settings = {
   maxWorkers: number;
   hashSize: number;
   liteMode: boolean;
+  useRecommended: boolean;
 };
 
 type SettingsContextType = Settings & {
@@ -19,6 +20,26 @@ type SettingsContextType = Settings & {
   setMaxWorkers: (val: number) => void;
   setHashSize: (val: number) => void;
   setLiteMode: (val: boolean) => void;
+  setUseRecommended: (val: boolean) => void;
+};
+
+// Balanced defaults for the WASM analysis engine — two-line search (enough
+// for Brilliant/Great classification and the alternative-move arrows to
+// fire), plus enough depth/hash to be accurate without stalling low-end
+// devices.
+export const RECOMMENDED_ENGINE_SETTINGS = {
+  engineDepth: 14,
+  multiPv: 2,
+  maxWorkers: 2,
+  hashSize: 16,
+} as const;
+
+const defaults: Settings = {
+  boardTheme: "classic",
+  soundEnabled: true,
+  ...RECOMMENDED_ENGINE_SETTINGS,
+  liteMode: false,
+  useRecommended: true,
 };
 
 function load(): Settings {
@@ -26,7 +47,10 @@ function load(): Settings {
   try {
     const raw = localStorage.getItem("chessAdvisorSettings");
     if (!raw) return defaults;
-    return { ...defaults, ...JSON.parse(raw) };
+    const merged = { ...defaults, ...JSON.parse(raw) };
+    // Recommended mode is authoritative over whatever engine values happen to
+    // be stored (covers stale localStorage from before this flag existed).
+    return merged.useRecommended ? { ...merged, ...RECOMMENDED_ENGINE_SETTINGS } : merged;
   } catch {
     return defaults;
   }
@@ -35,16 +59,6 @@ function load(): Settings {
 function save(settings: Settings) {
   localStorage.setItem("chessAdvisorSettings", JSON.stringify(settings));
 }
-
-const defaults: Settings = {
-  boardTheme: "classic",
-  soundEnabled: true,
-  engineDepth: 14,
-  multiPv: 3,
-  maxWorkers: 2,
-  hashSize: 16,
-  liteMode: false,
-};
 
 const SettingsContext = createContext<SettingsContextType>({
   ...defaults,
@@ -55,6 +69,7 @@ const SettingsContext = createContext<SettingsContextType>({
   setMaxWorkers: () => {},
   setHashSize: () => {},
   setLiteMode: () => {},
+  setUseRecommended: () => {},
 });
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
@@ -84,6 +99,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         setMaxWorkers: (maxWorkers) => patch({ maxWorkers }),
         setHashSize: (hashSize) => patch({ hashSize }),
         setLiteMode: (liteMode) => patch({ liteMode }),
+        setUseRecommended: (useRecommended) =>
+          patch(useRecommended ? { useRecommended, ...RECOMMENDED_ENGINE_SETTINGS } : { useRecommended }),
       }}
     >
       {children}

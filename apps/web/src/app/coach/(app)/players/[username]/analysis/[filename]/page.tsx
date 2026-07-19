@@ -44,26 +44,34 @@ const PIECE_SYMBOLS: Record<string, string> = {
   Q: "♕",
 };
 
+// Book: grey (theory, not a real decision) · Forced: darker grey (only legal move)
+// Good/Excellent/Best: shades of green, deepening with move strength
+// Inaccuracy/Mistake: yellow -> orange · Blunder: red
+// Great/Brilliant: shades of blue, deepening with move strength
 const QUALITY_COLOR: Record<string, string> = {
-  Brilliant: "#6366f1",
-  Best: "#10b981",
-  Excellent: "#10b981",
-  Good: "#22d3ee",
-  Inaccuracy: "#f59e0b",
+  Book: "#9ca3af",
+  Forced: "#6b7280",
+  Good: "#4ade80",
+  Excellent: "#22c55e",
+  Best: "#16a34a",
+  Inaccuracy: "#eab308",
   Mistake: "#f97316",
   Blunder: "#ef4444",
-  Forced: "var(--text-secondary)",
+  Great: "#3b82f6",
+  Brilliant: "#4f46e5",
 };
 
 const QUALITY_BG: Record<string, string> = {
-  Brilliant: "rgba(99,102,241,0.12)",
-  Best: "rgba(16,185,129,0.12)",
-  Excellent: "rgba(16,185,129,0.10)",
-  Good: "rgba(34,211,238,0.10)",
-  Inaccuracy: "rgba(245,158,11,0.10)",
+  Book: "rgba(156,163,175,0.10)",
+  Forced: "transparent",
+  Good: "rgba(74,222,128,0.08)",
+  Excellent: "rgba(34,197,94,0.10)",
+  Best: "rgba(22,163,74,0.12)",
+  Inaccuracy: "rgba(234,179,8,0.10)",
   Mistake: "rgba(249,115,22,0.12)",
   Blunder: "rgba(239,68,68,0.12)",
-  Forced: "transparent",
+  Great: "rgba(59,130,246,0.10)",
+  Brilliant: "rgba(79,70,229,0.12)",
 };
 
 const BOARD_THEMES: Record<string, { dark: string; light: string; label: string }> = {
@@ -144,7 +152,7 @@ export default function CoachGameAnalysisPage({
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [mistakeFilter, setMistakeFilter] = useState<MistakeFilter>("All");
   const [fenHistory, setFenHistory] = useState<string[]>([]);
-  const { boardTheme, setBoardTheme } = useSettings();
+  const { boardTheme, setBoardTheme, multiPv } = useSettings();
   const [themeFlash, setThemeFlash] = useState(false);
   const [movePairs, setMovePairs] = useState<
     Array<{ from: string; to: string }>
@@ -166,13 +174,20 @@ export default function CoachGameAnalysisPage({
   }, [analysis]);
 
   const plyQualityMap = useMemo<
-    Record<number, { quality: string; bestMove?: string }>
+    Record<
+      number,
+      {
+        quality: string;
+        bestMove?: string;
+        topLines?: { san: string; from: string; to: string; cp?: number; mate?: number }[];
+      }
+    >
   >(() => {
     if (!analysis?.move_history || !moveHistoryToPly.length) return {};
-    const map: Record<number, { quality: string; bestMove?: string }> = {};
+    const map: Record<number, { quality: string; bestMove?: string; topLines?: any[] }> = {};
     (analysis.move_history as any[]).forEach((m, k) => {
       const ply = moveHistoryToPly[k];
-      if (ply != null) map[ply] = { quality: m.quality, bestMove: m.best_move };
+      if (ply != null) map[ply] = { quality: m.quality, bestMove: m.best_move, topLines: m.top_lines };
     });
     return map;
   }, [analysis, moveHistoryToPly]);
@@ -206,7 +221,7 @@ export default function CoachGameAnalysisPage({
     }
     if (!username || !filename) return;
 
-    analyzeGame(username, filename)
+    analyzeGame(username, filename, false, multiPv)
       .then((data) => {
         setAnalysis(data);
         if (data?.full_history) {
@@ -293,16 +308,25 @@ export default function CoachGameAnalysisPage({
       });
   }, [currentMoveIndex, activeTab]);
 
+  // Registered once (empty deps) and dispatches through a ref so the handler
+  // always sees the latest goTo* closures without re-subscribing on every
+  // render. Re-subscribing per render (the previous behavior) meant a burst
+  // of real keydown events — e.g. holding an arrow key — raced the listener
+  // being torn down and re-added each render, which could trip React's
+  // "Maximum update depth exceeded" guard.
+  const navHandlersRef = useRef({ goToPrev, goToNext, goToStart, goToEnd });
+  navHandlersRef.current = { goToPrev, goToNext, goToStart, goToEnd };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "ArrowLeft") goToPrev();
-      if (e.key === "ArrowRight") goToNext();
-      if (e.key === "ArrowUp") goToStart();
-      if (e.key === "ArrowDown") goToEnd();
+      if (e.key === "ArrowLeft") navHandlersRef.current.goToPrev();
+      if (e.key === "ArrowRight") navHandlersRef.current.goToNext();
+      if (e.key === "ArrowUp") navHandlersRef.current.goToStart();
+      if (e.key === "ArrowDown") navHandlersRef.current.goToEnd();
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  });
+  }, []);
 
   useEffect(() => {
     if (!isPlaying || fenHistory.length === 0) return;
@@ -325,40 +349,62 @@ export default function CoachGameAnalysisPage({
   const currentQuality = currentMoveInfo?.quality;
 
   const ARROW_COLORS: Record<string, string> = {
-    Blunder: "rgb(239,68,68)",
-    Mistake: "rgb(249,115,22)",
-    Inaccuracy: "rgb(245,158,11)",
-    Best: "rgb(34,197,94)",
+    Book: "rgb(156,163,175)",
+    Forced: "rgb(107,114,128)",
+    Good: "rgb(74,222,128)",
     Excellent: "rgb(34,197,94)",
-    Good: "rgb(34,197,94)",
-    Brilliant: "rgb(99,102,241)",
-    Forced: "rgb(120,150,220)",
-    Book: "rgb(160,160,160)",
+    Best: "rgb(22,163,74)",
+    Inaccuracy: "rgb(234,179,8)",
+    Mistake: "rgb(249,115,22)",
+    Blunder: "rgb(239,68,68)",
+    Great: "rgb(59,130,246)",
+    Brilliant: "rgb(79,70,229)",
   };
   const SQUARE_OVERLAY: Record<string, string> = {
-    Blunder: "rgba(239,68,68,0.38)",
-    Mistake: "rgba(249,115,22,0.32)",
-    Inaccuracy: "rgba(245,158,11,0.30)",
-    Best: "rgba(34,197,94,0.28)",
+    Book: "rgba(156,163,175,0.25)",
+    Forced: "rgba(107,114,128,0.25)",
+    Good: "rgba(74,222,128,0.22)",
     Excellent: "rgba(34,197,94,0.25)",
-    Good: "rgba(34,197,94,0.22)",
-    Brilliant: "rgba(99,102,241,0.30)",
+    Best: "rgba(22,163,74,0.28)",
+    Inaccuracy: "rgba(234,179,8,0.30)",
+    Mistake: "rgba(249,115,22,0.32)",
+    Blunder: "rgba(239,68,68,0.38)",
+    Great: "rgba(59,130,246,0.28)",
+    Brilliant: "rgba(79,70,229,0.30)",
   };
   const BADGE: Record<string, string> = {
     Blunder: "??",
     Mistake: "?",
     Inaccuracy: "?!",
     Brilliant: "!!",
+    Great: "!",
     Best: "!",
   };
 
-  const showBestMove =
-    (currentQuality === "Blunder" || currentQuality === "Inaccuracy") &&
-    !!currentMoveInfo?.bestMove &&
-    currentMoveIndex > 0;
+  // Shades of green, strongest for the engine's #1 choice, fading for 2nd/3rd.
+  const CANDIDATE_SHADES = ["rgb(34,197,94)", "rgb(74,222,128)", "rgb(134,239,172)"];
+
+  const NEEDS_BETTER_MOVE = currentQuality === "Blunder" || currentQuality === "Mistake" || currentQuality === "Inaccuracy";
+
+  const topLines = currentMoveInfo?.topLines || [];
+  const showCandidateLines =
+    NEEDS_BETTER_MOVE && currentMoveIndex > 0 && multiPv > 1 && topLines.length > 1;
 
   let bestMoveArrow: { startSquare: string; endSquare: string; color: string } | null = null;
-  if (showBestMove) {
+  let candidateArrows: { startSquare: string; endSquare: string; color: string }[] = [];
+
+  if (showCandidateLines) {
+    // MultiPV > 1: surface up to the top 3 engine-preferred moves instead of just one.
+    const cap = Math.min(multiPv, 3, topLines.length);
+    candidateArrows = topLines
+      .slice(0, cap)
+      .filter((l) => l.from && l.to)
+      .map((l, idx) => ({
+        startSquare: l.from,
+        endSquare: l.to,
+        color: CANDIDATE_SHADES[idx] ?? CANDIDATE_SHADES[CANDIDATE_SHADES.length - 1],
+      }));
+  } else if (NEEDS_BETTER_MOVE && !!currentMoveInfo?.bestMove && currentMoveIndex > 0) {
     try {
       const preGame = new Chess(fenHistory[currentMoveIndex - 1]);
       const mv = preGame.move(currentMoveInfo!.bestMove!);
@@ -368,12 +414,24 @@ export default function CoachGameAnalysisPage({
 
   const displayFen = currentFen;
 
-  const arrows = [
+  const rawArrows = [
     ...(currentMove?.from
       ? [{ startSquare: currentMove.from, endSquare: currentMove.to, color: (currentQuality && ARROW_COLORS[currentQuality]) || "rgb(120,150,220)" }]
       : []),
     ...(bestMoveArrow ? [bestMoveArrow] : []),
+    ...candidateArrows,
   ];
+
+  // react-chessboard keys arrows by start+end square — dedupe so an engine
+  // candidate that lands on the same squares as the played move (or the
+  // single best-move arrow) doesn't produce a duplicate React key.
+  const seenArrowSquares = new Set<string>();
+  const arrows = rawArrows.filter((a) => {
+    const key = `${a.startSquare}-${a.endSquare}`;
+    if (seenArrowSquares.has(key)) return false;
+    seenArrowSquares.add(key);
+    return true;
+  });
 
   const squareStyles: Record<string, React.CSSProperties> = {};
   if (currentMove?.from) {

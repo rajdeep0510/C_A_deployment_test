@@ -268,6 +268,18 @@
   border: none;
 }
 
+.engine-slider:disabled {
+  cursor: not-allowed;
+}
+
+.engine-slider:disabled::-webkit-slider-thumb {
+  cursor: not-allowed;
+}
+
+.engine-slider:disabled::-moz-range-thumb {
+  cursor: not-allowed;
+}
+
 /* Toggle switch */
 .toggle-row {
   display: flex;
