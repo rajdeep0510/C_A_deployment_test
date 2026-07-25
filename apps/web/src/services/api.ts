@@ -39,6 +39,29 @@ export async function fetchGames(platform, username, limit = 10) {
   return res.json();
 }
 
+export type AnalysisStatus =
+  | { analyzed: true; accuracy?: number }
+  | { analyzed: false };
+
+export async function getBatchAnalysisStatus(
+  username: string,
+  filenames: string[],
+): Promise<Record<string, AnalysisStatus>> {
+  if (!username || filenames.length === 0) return {};
+  try {
+    const res = await fetch(`${BASE_URL}/api/analyze/status-batch`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, filenames }),
+    });
+    if (!res.ok) return {};
+    const data = await res.json();
+    return data.statuses || {};
+  } catch {
+    return {};
+  }
+}
+
 export async function getStats(username) {
   const res = await apiFetch(`${BASE_URL}/api/stats/${username}`);
   if (res.status === 404) return null;
@@ -105,9 +128,10 @@ export async function fetchGamesByTimeControl(
   username: string,
   timeClass: string,
   limit = 50,
+  platform: string = "chess.com",
 ): Promise<any[]> {
   const params = new URLSearchParams({
-    platform: "chess.com",
+    platform,
     username,
     limit: String(limit),
     tc: timeClass,
@@ -147,9 +171,10 @@ export async function getBatchJobs(username: string): Promise<any[]> {
   return res.json();
 }
 
-export function getReport(username: string, limit = 50, tc?: string) {
+export function getReport(username: string, limit = 50, tc?: string, platform?: string) {
   const params = new URLSearchParams({ limit: String(limit) });
   if (tc && tc !== "all") params.set("tc", tc);
+  if (platform) params.set("platform", platform);
   return dedupedGet(`${BASE_URL}/api/report/${username}?${params}`);
 }
 
