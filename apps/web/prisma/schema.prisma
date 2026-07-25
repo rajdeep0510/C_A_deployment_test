@@ -573,16 +573,18 @@ model player_theme_rating {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model players {
-  id               String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  chess_username   String?    @unique
-  full_name        String
-  status           String     @default("pending")
-  coach_id         String?    @db.Uuid
-  created_at       DateTime?  @default(now()) @db.Timestamptz(6)
-  email            String?    @unique
-  user_id          String?    @unique @db.Uuid
-  lichess_username String?    @unique
-  active_platform  String     @default("chess.com")
+  id                        String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  chess_username            String?    @unique
+  full_name                 String
+  status                    String     @default("pending")
+  coach_id                  String?    @db.Uuid
+  created_at                DateTime?  @default(now()) @db.Timestamptz(6)
+  email                     String?    @unique
+  user_id                   String?    @unique @db.Uuid
+  lichess_username          String?    @unique
+  active_platform           String     @default("chess.com")
+  chess_username_changes    Int        @default(0)
+  lichess_username_changes  Int        @default(0)
   profiles         profiles?  @relation(fields: [coach_id], references: [id], onUpdate: NoAction)
   app_user         app_users? @relation(fields: [user_id], references: [id], onUpdate: NoAction)
 
@@ -698,7 +700,8 @@ model app_users {
   id                        String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   email                     String
   email_lower               String?                     @unique @default(dbgenerated("lower(email)"))
-  password_hash             String
+  password_hash             String?
+  google_sub                String?                     @unique
   email_verified            Boolean                     @default(false)
   created_at                DateTime                    @default(now()) @db.Timestamptz(6)
   updated_at                DateTime                    @default(now()) @db.Timestamptz(6)

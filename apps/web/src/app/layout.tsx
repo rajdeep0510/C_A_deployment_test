@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
+import OnboardingGuard from "@/components/OnboardingGuard";
 
 export const metadata = {
   title: "Chess Advisor Platform",
@@ -39,6 +40,7 @@ export default function RootLayout({ children }) {
             <ThemeProvider>
               <SettingsProvider>
                 <div className="bg-grid" />
+                <OnboardingGuard />
                 <Header />
                 <div
                   className="page-wrapper"

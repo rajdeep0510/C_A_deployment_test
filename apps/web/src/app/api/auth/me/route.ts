@@ -10,12 +10,14 @@ export async function GET(request: Request) {
   const player = user.player;
 
   const userType = profile ? "staff" : "player";
+  const onboarded = Boolean(profile || player);
 
   return NextResponse.json({
     id: user.id,
     email: user.email,
     emailVerified: user.email_verified,
     userType,
+    onboarded,
     // Staff fields
     role: profile?.role ?? null,
     status: profile?.status ?? player?.status ?? null,
