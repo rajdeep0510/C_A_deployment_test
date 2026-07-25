@@ -4,10 +4,18 @@ import { createSession, setSessionCookie, resolvePostLoginRedirect } from "@/lib
 import { exchangeCodeForProfile } from "@/lib/google-auth";
 
 const STATE_COOKIE = "google_oauth_state";
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
-function redirectToLogin(reason: string) {
-  return NextResponse.redirect(`${APP_URL}/login?google_error=${encodeURIComponent(reason)}`);
+// Use the origin the user actually hit (works for localhost, preview URLs, chessadvisor.in, etc.).
+// Vercel puts the public host on x-forwarded-host; fall back to the request's own origin.
+function getOrigin(request: Request) {
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  const forwardedProto = request.headers.get("x-forwarded-proto") ?? "https";
+  if (forwardedHost) return `${forwardedProto}://${forwardedHost}`;
+  return new URL(request.url).origin;
+}
+
+function redirectToLogin(request: Request, reason: string) {
+  return NextResponse.redirect(`${getOrigin(request)}/login?google_error=${encodeURIComponent(reason)}`);
 }
 
 export async function GET(request: Request) {
@@ -16,7 +24,7 @@ export async function GET(request: Request) {
   const state = url.searchParams.get("state");
   const error = url.searchParams.get("error");
 
-  if (error) return redirectToLogin(error);
+  if (error) return redirectToLogin(request, error);
   if (!code || !state) return NextResponse.json({ error: "Missing code or state" }, { status: 400 });
 
   const cookieHeader = request.headers.get("cookie") ?? "";
@@ -32,7 +40,7 @@ export async function GET(request: Request) {
     profile = await exchangeCodeForProfile(code);
   } catch (err) {
     console.error("[google/callback] token exchange failed", err);
-    return redirectToLogin("token_exchange_failed");
+    return redirectToLogin(request, "token_exchange_failed");
   }
 
   const emailLower = profile.email.toLowerCase();
@@ -73,7 +81,7 @@ export async function GET(request: Request) {
     profile: profileRow ? { role: profileRow.role, status: profileRow.status } : null,
     player: playerRow ? { status: playerRow.status } : null,
   });
-  const destination = `${APP_URL}${path}`;
+  const destination = `${getOrigin(request)}${path}`;
 
   const res = NextResponse.redirect(destination);
   setSessionCookie(res, rawToken);
