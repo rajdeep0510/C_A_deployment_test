@@ -3,7 +3,6 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Chess } from "chess.js";
-import Header from "@/components/Header";
 import Loader from "@/components/Loader";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { getTrainingPlan } from "@/services/api";
@@ -649,31 +648,30 @@ function OpeningAdjCard({ adj }: { adj: any }) {
 
 export default function TrainingPlanPage() {
   const router = useRouter();
-  const { chessUsername, isApproved, loading: playerLoading } = usePlayer();
+  const { activeUsername, isApproved, loading: playerLoading } = usePlayer();
   const [activeTab, setActiveTab] = useState<"clinic" | "plan">("clinic");
   const [plan,    setPlan]    = useState<any>(null);
   const [planLoading, setPlanLoading] = useState(false);
 
   useEffect(() => {
     if (playerLoading) return;
-    if (!chessUsername || !isApproved) { router.push("/login"); return; }
-  }, [chessUsername, isApproved, playerLoading, router]);
+    if (!activeUsername || !isApproved) { router.push("/login"); return; }
+  }, [activeUsername, isApproved, playerLoading, router]);
 
   // Lazy-load training plan only when that tab is opened
   useEffect(() => {
-    if (activeTab !== "plan" || plan !== null || !chessUsername) return;
+    if (activeTab !== "plan" || plan !== null || !activeUsername) return;
     setPlanLoading(true);
-    getTrainingPlan(chessUsername)
+    getTrainingPlan(activeUsername)
       .then(setPlan)
       .catch(() => setPlan(null))
       .finally(() => setPlanLoading(false));
-  }, [activeTab, plan, chessUsername]);
+  }, [activeTab, plan, activeUsername]);
 
-  if (!chessUsername) return null;
+  if (!activeUsername) return null;
 
   return (
     <>
-      <Header />
       <main
         className="container animate-fade-in page-content-mobile"
         style={{ paddingTop: "40px", paddingBottom: "60px" }}
@@ -751,7 +749,7 @@ export default function TrainingPlanPage() {
         </div>
 
         {/* Blunder Clinic tab */}
-        {activeTab === "clinic" && <BlunderClinic username={chessUsername} />}
+        {activeTab === "clinic" && <BlunderClinic username={activeUsername} />}
 
         {/* Training Plan tab */}
         {activeTab === "plan" && (
