@@ -31,6 +31,8 @@ function LoginForm() {
   useEffect(() => {
     if (searchParams.get("verified") === "1") setJustVerified(true);
     if (searchParams.get("ready") === "1") setJustRegistered(true);
+    const googleError = searchParams.get("google_error");
+    if (googleError) setError(`Google sign-in failed: ${googleError}`);
   }, [searchParams]);
 
   const clearAlerts = () => {
@@ -46,8 +48,7 @@ function LoginForm() {
     setLoading(true);
 
     try {
-      const body: Record<string, string> = { id: id.trim() };
-      if (isStaff) body.password = password;
+      const body: Record<string, string> = { id: id.trim(), password };
 
       const res = await fetch("/api/auth/login", {
         method: "POST",
@@ -66,6 +67,11 @@ function LoginForm() {
       if (res.status === 403 && data.error === "PASSWORD_RESET_REQUIRED") {
         setNeedsReset(true);
         setLoading(false);
+        return;
+      }
+
+      if (res.status === 403 && data.error === "PASSWORD_SETUP_REQUIRED") {
+        router.push(`/set-password?id=${encodeURIComponent(data.id ?? id.trim().toLowerCase())}`);
         return;
       }
 
@@ -208,6 +214,40 @@ function LoginForm() {
           </div>
         )}
 
+        <a
+          href="/api/auth/google/start"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "10px",
+            padding: "12px",
+            marginBottom: "16px",
+            fontSize: "14px",
+            fontWeight: 600,
+            color: "#f7f7f7",
+            background: "#1f1f1f",
+            border: "1px solid #2a2a2a",
+            borderRadius: "8px",
+            textDecoration: "none",
+            cursor: "pointer",
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+            <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.6-6 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34.5 6.1 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.2-.1-2.3-.4-3.5z"/>
+            <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7C34.5 6.1 29.5 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/>
+            <path fill="#4CAF50" d="M24 44c5.3 0 10.1-2 13.7-5.3l-6.3-5.3C29.5 34.7 26.9 36 24 36c-5.3 0-9.8-3.4-11.3-8l-6.5 5C9.6 39.6 16.2 44 24 44z"/>
+            <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.7l6.3 5.3C41.5 35.5 44 30.1 44 24c0-1.2-.1-2.3-.4-3.5z"/>
+          </svg>
+          Continue with Google
+        </a>
+
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
+          <div style={{ flex: 1, height: 1, background: "#2a2a2a" }} />
+          <span style={{ fontSize: "11px", color: "#52525b", letterSpacing: "0.08em" }}>OR</span>
+          <div style={{ flex: 1, height: 1, background: "#2a2a2a" }} />
+        </div>
+
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           {/* ID field */}
           <div className={styles.fieldRow} style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
@@ -235,9 +275,8 @@ function LoginForm() {
             </p>
           </div>
 
-          {/* Password — only for staff (email contains @) */}
-          {isStaff && (
-            <div className={styles.passwordField} style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+          {/* Password */}
+          <div className={styles.passwordField} style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <label style={{ fontSize: "13px", fontWeight: "500", color: "#a1a1aa", letterSpacing: "0.02em" }}>
                   Password
@@ -267,7 +306,6 @@ function LoginForm() {
                 </button>
               </div>
             </div>
-          )}
 
           {error && (
             <div className={styles.alert} style={{ color: "#ef4444", fontSize: "13px", background: "#1f1f1f", padding: "10px 14px", borderRadius: "8px", border: "1px solid #2a2a2a" }}>

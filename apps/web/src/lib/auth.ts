@@ -125,6 +125,28 @@ export async function invalidateAllUserSessions(userId: string) {
   await prisma.user_sessions.deleteMany({ where: { user_id: userId } });
 }
 
+// ── Post-login redirect resolver ──────────────────────────────────────────────
+// Shared between password login (JSON `redirectTo`) and Google callback (302 target).
+type RedirectInputs = {
+  profile: { role: string | null; status: string | null } | null;
+  player: { status: string } | null;
+};
+
+export function resolvePostLoginRedirect({ profile, player }: RedirectInputs): string {
+  if (profile) {
+    if (profile.role === "admin") return "/admin/dashboard";
+    if (profile.role === "academy_owner") {
+      return profile.status === "pending" ? "/academy/pending" : "/academy/dashboard";
+    }
+    return profile.status === "pending" ? "/coach/pending" : "/coach/dashboard";
+  }
+  if (player) {
+    return player.status === "pending" ? "/pending" : "/dashboard";
+  }
+  // No profile and no player = onboarding not done.
+  return "/account-setup";
+}
+
 // ── Auth guard for API routes ─────────────────────────────────────────────────
 
 type SessionData = Awaited<ReturnType<typeof getSessionByToken>>;
@@ -222,6 +244,51 @@ export async function consumePasswordResetToken(tokenId: string, newPasswordHash
 
 // ── Registration ──────────────────────────────────────────────────────────────
 
+// Create staff profile (+ academy row for academy_owner) for an EXISTING app_user.
+// Used by both password signup (registerStaffUser) and Google onboarding.
+export async function createStaffProfileFor(
+  userId: string,
+  data: {
+    email: string;
+    fullName: string;
+    role: "coach" | "academy_owner";
+    academyId?: string;
+    academyName?: string;
+    academyCity?: string;
+    academyDescription?: string;
+  }
+) {
+  await prisma.$transaction(async (tx) => {
+    let resolvedAcademyId = data.academyId ?? null;
+
+    if (data.role === "academy_owner") {
+      const academy = await tx.academies.create({
+        data: {
+          name: data.academyName!,
+          city: data.academyCity ?? null,
+          description: data.academyDescription ?? null,
+          owner_id: userId,
+          status: "pending",
+          invite_code: generateInviteCode(),
+        },
+      });
+      resolvedAcademyId = academy.id;
+    }
+
+    await tx.profiles.create({
+      data: {
+        id: userId,
+        email: data.email,
+        full_name: data.fullName,
+        role: data.role,
+        academy_id: resolvedAcademyId,
+        status: data.role === "academy_owner" || data.academyId ? "pending" : "approved",
+        invite_code: data.role === "coach" ? generateInviteCode() : null,
+      },
+    });
+  });
+}
+
 export async function registerStaffUser(data: {
   email: string;
   password: string;
@@ -238,86 +305,54 @@ export async function registerStaffUser(data: {
 
   const passwordHash = await hashPassword(data.password);
 
-  const user = await prisma.$transaction(async (tx) => {
-    const newUser = await tx.app_users.create({
-      data: { email: data.email, password_hash: passwordHash },
-    });
-
-    let resolvedAcademyId = data.academyId ?? null;
-
-    if (data.role === "academy_owner") {
-      const academy = await tx.academies.create({
-        data: {
-          name: data.academyName!,
-          city: data.academyCity ?? null,
-          description: data.academyDescription ?? null,
-          owner_id: newUser.id,
-          status: "pending",
-          invite_code: generateInviteCode(),
-        },
-      });
-      resolvedAcademyId = academy.id;
-    }
-
-    await tx.profiles.create({
-      data: {
-        id: newUser.id,
-        email: data.email,
-        full_name: data.fullName,
-        role: data.role,
-        academy_id: resolvedAcademyId,
-        status: data.role === "academy_owner" || data.academyId ? "pending" : "approved",
-        invite_code: data.role === "coach" ? generateInviteCode() : null,
-      },
-    });
-
-    return newUser;
+  const user = await prisma.app_users.create({
+    data: { email: data.email, password_hash: passwordHash },
   });
+
+  await createStaffProfileFor(user.id, data);
 
   const rawVerificationToken = await createEmailVerificationToken(user.id);
   return { user, rawVerificationToken };
 }
 
-export async function registerPlayerUser(data: {
-  email: string;
-  fullName: string;
-  chessUsername?: string;
-  lichessUsername?: string;
-  activePlatform?: string;
-  coachId: string;
-}) {
-  const emailLower = data.email.toLowerCase();
+// Create (or claim) a player record for an EXISTING app_user.
+// Used by both password signup (registerPlayerUser) and Google onboarding.
+// Returns { preApproved } — if the caller wants to auto-verify the email in that case, they can.
+export async function createPlayerRecordFor(
+  userId: string,
+  data: {
+    email: string;
+    fullName: string;
+    chessUsername?: string;
+    lichessUsername?: string;
+    activePlatform?: string;
+    coachId: string;
+  }
+) {
   const chessLower = data.chessUsername?.toLowerCase() || null;
   const lichessLower = data.lichessUsername?.toLowerCase() || null;
 
-  const [existingEmail, existingByChess, existingByLichess] = await Promise.all([
-    prisma.app_users.findUnique({ where: { email_lower: emailLower } }),
+  if (!chessLower && !lichessLower) {
+    throw new Error("USERNAME_REQUIRED");
+  }
+
+  const [existingByChess, existingByLichess] = await Promise.all([
     chessLower ? prisma.players.findUnique({ where: { chess_username: chessLower } }) : Promise.resolve(null),
     lichessLower ? prisma.players.findUnique({ where: { lichess_username: lichessLower } }) : Promise.resolve(null),
   ]);
 
-  if (existingEmail) throw new Error("EMAIL_TAKEN");
   if (existingByChess?.user_id || existingByLichess?.user_id) throw new Error("USERNAME_TAKEN");
 
   const existingUsername = existingByChess ?? existingByLichess;
   const activePlatform = data.activePlatform ?? (chessLower ? "chess.com" : "lichess");
-
-  // Players have no password — store an unusable placeholder that bcrypt.compare always rejects
-  const passwordHash = `*${crypto.randomBytes(32).toString("hex")}`;
-
   const preApproved = existingUsername?.status === "approved";
 
-  const user = await prisma.$transaction(async (tx) => {
-    const newUser = await tx.app_users.create({
-      data: { email: data.email, password_hash: passwordHash },
-    });
-
+  await prisma.$transaction(async (tx) => {
     if (existingUsername) {
-      // Claim existing unclaimed player record; set coach_id from invite code if not already assigned
       await tx.players.update({
         where: { id: existingUsername.id },
         data: {
-          user_id: newUser.id,
+          user_id: userId,
           email: data.email,
           full_name: data.fullName,
           ...(chessLower ? { chess_username: chessLower } : {}),
@@ -336,13 +371,34 @@ export async function registerPlayerUser(data: {
           coach_id: data.coachId,
           status: "pending",
           email: data.email,
-          user_id: newUser.id,
+          user_id: userId,
         },
       });
     }
-
-    return newUser;
   });
+
+  return { preApproved };
+}
+
+export async function registerPlayerUser(data: {
+  email: string;
+  password: string;
+  fullName: string;
+  chessUsername?: string;
+  lichessUsername?: string;
+  activePlatform?: string;
+  coachId: string;
+}) {
+  const emailLower = data.email.toLowerCase();
+  const existingEmail = await prisma.app_users.findUnique({ where: { email_lower: emailLower } });
+  if (existingEmail) throw new Error("EMAIL_TAKEN");
+
+  const passwordHash = await hashPassword(data.password);
+  const user = await prisma.app_users.create({
+    data: { email: data.email, password_hash: passwordHash },
+  });
+
+  const { preApproved } = await createPlayerRecordFor(user.id, data);
 
   if (preApproved) {
     await prisma.app_users.update({

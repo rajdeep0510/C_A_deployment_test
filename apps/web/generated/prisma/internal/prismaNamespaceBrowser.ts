@@ -564,7 +564,9 @@ export const PlayersScalarFieldEnum = {
   email: 'email',
   user_id: 'user_id',
   lichess_username: 'lichess_username',
-  active_platform: 'active_platform'
+  active_platform: 'active_platform',
+  chess_username_changes: 'chess_username_changes',
+  lichess_username_changes: 'lichess_username_changes'
 } as const
 
 export type PlayersScalarFieldEnum = (typeof PlayersScalarFieldEnum)[keyof typeof PlayersScalarFieldEnum]
@@ -664,6 +666,7 @@ export const App_usersScalarFieldEnum = {
   email: 'email',
   email_lower: 'email_lower',
   password_hash: 'password_hash',
+  google_sub: 'google_sub',
   email_verified: 'email_verified',
   created_at: 'created_at',
   updated_at: 'updated_at'
