@@ -207,7 +207,7 @@ export default function Header() {
 
   // Init: cache bounds while expanded, set initial collapse state, snap indicator
   useLayoutEffect(() => {
-    if (!chessUsername || !pillRef.current) return;
+    if (!activeUsername || !pillRef.current) return;
     // Cache bounds before any state change (DOM is currently in expanded CSS default)
     cacheExpandedBounds();
     const initialCollapsed = window.scrollY > SCROLL_THRESHOLD;
@@ -215,11 +215,11 @@ export default function Header() {
     applyCollapseState(initialCollapsed, false);
     snapDesktopIndicator();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chessUsername]);
+  }, [activeUsername]);
 
   // Slide the active pill on route change
   useLayoutEffect(() => {
-    if (!chessUsername || !activeIndicatorRef.current) return;
+    if (!activeUsername || !activeIndicatorRef.current) return;
     if (activeIndex < 0) {
       gsap.to(activeIndicatorRef.current, { opacity: 0, duration: 0.2 });
       return;
@@ -237,11 +237,11 @@ export default function Header() {
       force3D: true,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeIndex, chessUsername]);
+  }, [activeIndex, activeUsername]);
 
   // Scroll-driven collapse
   useEffect(() => {
-    if (!chessUsername) return;
+    if (!activeUsername) return;
     let ticking = false;
     const onScroll = () => {
       if (ticking) return;
@@ -258,11 +258,11 @@ export default function Header() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chessUsername]);
+  }, [activeUsername]);
 
   // Reflow on viewport resize
   useEffect(() => {
-    if (!chessUsername) return;
+    if (!activeUsername) return;
     let raf = 0;
     const onResize = () => {
       cancelAnimationFrame(raf);
@@ -279,11 +279,11 @@ export default function Header() {
       cancelAnimationFrame(raf);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chessUsername]);
+  }, [activeUsername]);
 
   // Bottom-nav active pill
   useLayoutEffect(() => {
-    if (!chessUsername || !bottomIndicatorRef.current || !bottomInnerRef.current) return;
+    if (!activeUsername || !bottomIndicatorRef.current || !bottomInnerRef.current) return;
     if (activeBottomIndex < 0) {
       gsap.to(bottomIndicatorRef.current, { opacity: 0, duration: 0.2 });
       return;
@@ -298,11 +298,11 @@ export default function Header() {
       duration: reduced ? 0 : 0.42,
       ease: "power3.out",
     });
-  }, [activeBottomIndex, chessUsername]);
+  }, [activeBottomIndex, activeUsername]);
 
   // Entrance animation — fromTo with explicit end state so Strict-Mode double-invoke can't strand it mid-fade
   useLayoutEffect(() => {
-    if (!chessUsername || !pillRef.current) return;
+    if (!activeUsername || !pillRef.current) return;
     if (prefersReduced()) return;
     const tween = gsap.fromTo(
       pillRef.current,
@@ -313,7 +313,7 @@ export default function Header() {
       tween.kill();
       if (pillRef.current) gsap.set(pillRef.current, { clearProps: "y,opacity" });
     };
-  }, [chessUsername]);
+  }, [activeUsername]);
 
   const undismissed = coachNotes.filter((n) => !dismissedIds.has(n.id));
 
@@ -327,7 +327,7 @@ export default function Header() {
   };
 
   const isPlayerRoute = PLAYER_ROUTE_PREFIXES.some((p) => pathname.startsWith(p));
-  if (!chessUsername || !isPlayerRoute) return null;
+  if (!activeUsername || !isPlayerRoute) return null;
 
   return (
     <>
@@ -430,7 +430,7 @@ export default function Header() {
         isOpen={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         userType="player"
-        username={chessUsername}
+        username={activeUsername}
         onLogout={logout}
       />
 
