@@ -1,7 +1,8 @@
-import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyPassword, createSession, setSessionCookie } from "@/lib/auth";
+import { verifyPassword, createSession, setSessionCookie, resolvePostLoginRedirect } from "@/lib/auth";
+
+const DUMMY_HASH = "$2b$12$invalid.hash.for.timing.attack.prevention.only.x";
 
 export async function POST(request: Request) {
   let body: any;
@@ -32,8 +33,15 @@ export async function POST(request: Request) {
       include: { app_user: true },
     });
 
-    if (!player) {
-      return NextResponse.json({ error: "Username not found. Please check your Chess.com or Lichess username." }, { status: 401 });
+    // Always run bcrypt to keep response timing uniform across code paths.
+    const hasPlaceholder = !!player?.app_user?.password_hash?.startsWith("*");
+    const hashToVerify = player?.app_user && !hasPlaceholder ? player.app_user.password_hash : DUMMY_HASH;
+    const passwordOk = password
+      ? await verifyPassword(password, hashToVerify).catch(() => false)
+      : false;
+
+    if (!player || !player.app_user) {
+      return NextResponse.json({ error: "Invalid username or password" }, { status: 401 });
     }
 
     if (player.status !== "approved") {
@@ -43,22 +51,22 @@ export async function POST(request: Request) {
       );
     }
 
-    // Auto-create an app_users account on first login for coach-added players
-    let userId = player.user_id;
-    if (!userId || !player.app_user) {
-      const placeholderEmail = `${player.chess_username ?? player.lichess_username}@players.chessadvisor.internal`;
-      const passwordHash = `*${crypto.randomBytes(32).toString("hex")}`;
-      const newUser = await prisma.app_users.create({
-        data: { email: placeholderEmail, password_hash: passwordHash, email_verified: true },
-      });
-      await prisma.players.update({
-        where: { id: player.id },
-        data: { user_id: newUser.id },
-      });
-      userId = newUser.id;
+    if (hasPlaceholder) {
+      return NextResponse.json(
+        { error: "PASSWORD_SETUP_REQUIRED", message: "Please set a password to continue.", id: idLower },
+        { status: 403 }
+      );
     }
 
-    const { rawToken } = await createSession(userId, { userAgent, ipAddress });
+    if (!password) {
+      return NextResponse.json({ error: "Password is required" }, { status: 400 });
+    }
+
+    if (!passwordOk) {
+      return NextResponse.json({ error: "Invalid username or password" }, { status: 401 });
+    }
+
+    const { rawToken } = await createSession(player.app_user.id, { userAgent, ipAddress });
     const response = NextResponse.json({ redirectTo: "/dashboard" });
     return setSessionCookie(response, rawToken);
   }
@@ -74,7 +82,6 @@ export async function POST(request: Request) {
   });
 
   // Always run bcrypt at full cost to prevent timing attacks regardless of user existence or migration status
-  const DUMMY_HASH = "$2b$12$invalid.hash.for.timing.attack.prevention.only.x";
   const isMigrated = user?.password_hash === "[MIGRATED]";
   const hashToVerify = !user || isMigrated ? DUMMY_HASH : user.password_hash;
   const passwordOk = await verifyPassword(password, hashToVerify).catch(() => false);
@@ -103,20 +110,12 @@ export async function POST(request: Request) {
 
   const { rawToken } = await createSession(user.id, { userAgent, ipAddress });
 
-  let redirectTo = "/dashboard";
   const profile = user.profile;
   const player = user.player;
-
-  if (profile) {
-    if (profile.role === "admin") redirectTo = "/admin/dashboard";
-    else if (profile.role === "academy_owner") {
-      redirectTo = profile.status === "pending" ? "/academy/pending" : "/academy/dashboard";
-    } else {
-      redirectTo = profile.status === "pending" ? "/coach/pending" : "/coach/dashboard";
-    }
-  } else if (player) {
-    redirectTo = player.status === "pending" ? "/pending" : "/dashboard";
-  }
+  const redirectTo = resolvePostLoginRedirect({
+    profile: profile ? { role: profile.role, status: profile.status } : null,
+    player: player ? { status: player.status } : null,
+  });
 
   const response = NextResponse.json({
     role: profile?.role ?? null,
