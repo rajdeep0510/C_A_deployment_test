@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAnalysisAuth } from "@/lib/analysis-security";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ username: string }> }
 ) {
   const { username } = await params;
+  const guard = await requireAnalysisAuth(request, "analyze:batch-status", {
+    perIp: 60,
+    perUser: 120,
+  });
+  if (guard.response) return guard.response;
+
   const { searchParams } = new URL(request.url);
   const since = searchParams.get("since");
 

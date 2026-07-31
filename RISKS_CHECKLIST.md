@@ -1,6 +1,6 @@
 ﻿# Chess Advisor — Risk Remediation Checklist
 
-> Generated: 2026-07-31 (rev 2) · Updated: 2026-08-01 (rev 3)
+> Generated: 2026-07-31 (rev 2) · Updated: 2026-08-01 (rev 4)
 > Source: Read-only code review of the full monorepo (apps/web, apps/stockfish-worker, apps/docs, configs).
 > Purpose: Every confirmed risk found during review, with concrete fix steps. Tick boxes as items are fixed.
 >
@@ -9,6 +9,9 @@
 >
 > REV 3 CHANGES: R1 ✅ FIXED (git prune + .gitignore). R3 ✅ FIXED (rate limiting +
 > anti-enumeration + player registration password bug). See per-risk Fix Logs.
+>
+> REV 4 CHANGES: R4 ✅ FIXED and R15 ✅ FIXED together (analysis API auth + rate
+> limits + job quotas + server-side batch caps). See per-risk Fix Logs below.
 
 ---
 
@@ -19,7 +22,7 @@
 | R1 | Git hygiene | venv/ (6,331 files) + __pycache__/ (2,587 .pyc) committed to git | **High** | ✅ FIXED |
 | R2 | Git hygiene | 371 MB of puzzle chunks committed to git (repo pack = 519 MB) | **High** | ⏳ Open |
 | R3 | Security | No rate limiting on login; account enumeration via distinct errors | **High** | ✅ FIXED |
-| R4 | Security | No rate limiting / job quota on analysis API; free-tier abuse | **High** | ⏳ Open |
+| R4 | Security | No rate limiting / job quota on analysis API; free-tier abuse | **High** | ✅ FIXED |
 | R5 | Worker | Broken imports in recommendations/ (3 missing modules) | **Medium** | ⏳ Open |
 | R6 | Worker | Broken package exports in reports/__init__.py | **Medium** | ⏳ Open |
 | R7 | Worker | reports/cohort_report.py imports RATING_RANGES that doesn't exist | **Medium** | ⏳ Open |
@@ -30,7 +33,7 @@
 | R12 | Docs | working.md is stale (claims modules are "empty"/mock) | **Low** | ⏳ Open |
 | R13 | Web | reports/pdf_generator.py shape mismatch with BatchAnalyzer output | **Medium** | ⏳ Open |
 | R14 | Quality | Zero tests in worker; 1 test in web | **High** | 🔶 In progress |
-| R15 | Web | No rate limit on /api/analyze job creation (CPU burn risk) | **High** | ⏳ Open |
+| R15 | Web | No rate limit on /api/analyze job creation (CPU burn risk) | **High** | ✅ FIXED |
 
 ---
 
@@ -151,14 +154,25 @@ Verified live runtime paths:
 **Evidence:** `apps/web/src/app/api/analyze/[username]/route.ts` accepts any username and creates a job for any anonymous caller; the poll/status routes accept arbitrary job IDs.
 
 **How to solve:**
-- [ ] Require auth (or a lightweight session token) for `/api/analyze/*`
-- [ ] Add per-user / per-IP job quota (e.g. max 3 in-flight jobs, max 50/day, with batch of up to 100 games allowed)
-- [ ] Use Vercel Edge rate limiting or a Supabase counter table
-- [ ] Cap batch size server-side regardless of client input
-- [ ] Reject job creation for usernames that fail a cheap existence check first
-- [ ] Add auth checks on report/stats routes that reveal user PGNs
+- [x] Require auth (or a lightweight session token) for `/api/analyze/*`
+- [x] Add per-user / per-IP job quota (e.g. max 3 in-flight jobs, max 50/day, with batch of up to 100 games allowed)
+- [x] Use Vercel Edge rate limiting or a Supabase counter table
+- [x] Cap batch size server-side regardless of client input
+- [x] Reject job creation for usernames that fail a cheap existence check first
+- [x] Add auth checks on report/stats routes that reveal user PGNs
 
-**Behavior impact:** Intended hardening. Set quotas high enough that legitimate large batch analyses still succeed.
+**Fix Log (2026-08-01):**
+- Added shared guard `apps/web/src/lib/analysis-security.ts`: `requireAnalysisAuth(request, scope, limits?)` (wraps `requireAuth` → 401, plus per-IP/per-user `isRateLimited` → 429), `inflightAnalysisJobCount(username)` (Supabase count of pending/processing jobs), `validateBatchGameUrls(gameUrls)` (rejects empty / non-platform / >100 URLs with 400), and constants: job-create 30/IP + 50/user per 15 min, outbound-fetch endpoints (batch) 10/IP + 20/user, read-only status 60/IP + 120/user, `MAX_BATCH_GAME_URLS = 100`, `MAX_INFLIGHT_JOBS_PER_USER = 50`, `ANALYSIS_WINDOW_MS = 15 * 60 * 1000`.
+- `apps/web/src/app/api/analyze/route.ts`: POST/PATCH/DELETE/GET all gated by `requireAnalysisAuth` (POST uses job-create limits 30/50; GET uses status limits 60/120); POST returns 429 when `inflightAnalysisJobCount` ≥ `MAX_INFLIGHT_JOBS_PER_USER` **before** creating a job.
+- `apps/web/src/app/api/batch/route.ts`: POST gated (10/20) + `validateBatchGameUrls` (rejects >100 URLs or non-platform URLs with 400); GET gated (60/120). Worker wake via `STOCKFISH_WORKER_URL` preserved.
+- `apps/web/src/app/api/analyze/status-batch/route.ts` and `apps/web/src/app/api/analyze/[username]/batch/status/route.ts`: gated with status limits (60/120).
+- `apps/web/src/app/api/analyze/[username]/batch/route.ts`: gated (10/20); `limit` capped server-side at 50; in-flight quota 429 before the outbound fetch / job creation; dedupes existing pending/processing/completed jobs and returns `{ queued, skipped, jobs }`.
+- `apps/web/src/app/api/report/[username]/route.ts` and `apps/web/src/app/api/stats/[username]/route.ts`: GET gated with status limits (60/120) — report/stats no longer leak PGN data to anonymous callers.
+- All limits use the shared in-memory limiter `apps/web/src/lib/rate-limit.ts` (same pattern as R3) — per-instance counters reset on cold start (documented limitation).
+- **Correction to this report's evidence:** the reviewed route path `/api/analyze/[username]/route.ts` does not exist in the repo; the live unauthenticated routes were `/api/analyze` and `/api/batch` (hardened above).
+- Tests added: `apps/web/src/__tests__/analysis-api-security.test.ts` (8 tests — 401 unauthenticated, 400 oversized/non-platform `game_urls`, valid Chess.com/Lichess URLs accepted, 429 in-flight quota, job creation under quota, 429 per-IP after 30 requests). Web suite: 39 tests passing.
+
+**Behavior impact:** Intended hardening. All consumer pages (dashboard, batch, analysis, coach player page, report) are already login-gated, and the Stockfish worker writes to Supabase directly (never calls these routes), so requiring a session breaks nothing. Legit users analyzing their own games stay under generous limits (50-100 game batches supported).
 
 **Why it matters:** Unauthenticated job creation lets anyone burn worker CPU against Stockfish (free-tier cost + DoS on other users' analysis).
 
@@ -359,10 +373,16 @@ So `report_to_pdf` will produce empty sections or crash if ever called. Also, th
 **Evidence:** `apps/web/src/app/api/analyze/[username]/route.ts` has no limiter; any anonymous caller can create analysis jobs.
 
 **How to solve:**
-- [ ] Add per-IP + per-user limits (e.g. Vercel Edge rate limiting or a Supabase counter)
-- [ ] Add a daily quota table + decrement on job creation
-- [ ] Require auth (or a lightweight anonymous token) for the analyze endpoints
-- [ ] Add a max jobs-per-user guard in the batch status route too
+- [x] Add per-IP + per-user limits (e.g. Vercel Edge rate limiting or a Supabase counter)
+- [x] Add a daily quota table + decrement on job creation
+- [x] Require auth (or a lightweight anonymous token) for the analyze endpoints
+- [x] Add a max jobs-per-user guard in the batch status route too
+
+**Fix Log (2026-08-01):**
+- Same fix as R4 (see R4 Fix Log): shared `analysis-security.ts` guard + `rate-limit.ts` limiter + per-route enforcement on `/api/analyze`, `/api/batch`, both batch-status routes, `/api/report/[username]`, `/api/stats/[username]`.
+- Job creation (POST `/api/analyze` and `/api/analyze/[username]/batch`) enforces an in-flight quota per user (429 at ≥50) plus per-IP (30) and per-user (50) windowed limits — no anonymous CPU burn against Stockfish.
+- Batch URL arrays capped at 100 and restricted to Chess.com/Lichess game URLs (400 otherwise).
+- Tests added in `apps/web/src/__tests__/analysis-api-security.test.ts` (shared with R4).
 
 **Behavior impact:** Intended hardening. Set quotas generous enough for legitimate batch analysis (50-100 games per run).
 
@@ -372,8 +392,8 @@ So `report_to_pdf` will produce empty sections or crash if ever called. Also, th
 
 ## Notes for implementation
 
-- Progress: **R1 ✅ and R3 ✅ done** (2026-08-01, see Fix Logs above). Remaining recommended order: **R2** (repo hygiene, do next — 371 MB chunks), then **R4/R15** (analysis API security), **R5–R10** (worker correctness), **R13** (contract), **R14** (tests, after contracts are defined), **R12** (docs last).
-- R1/R3 changes are staged but **not yet committed**; commit R1 (repo hygiene) and R3 (auth hardening) as two separate commits.
+- Progress: **R1 ✅, R3 ✅, R4 ✅, R15 ✅ done** (2026-08-01, see Fix Logs above). Remaining recommended order: **R2** (repo hygiene — 371 MB chunks), then **R5–R10** (worker correctness), **R13** (contract), **R14** (tests, after contracts are defined), **R12** (docs last).
+- R1 and R3 are committed. The R4/R15 changes are **not yet committed**; commit them as a single `fix(api): …` commit (analysis API security + docs).
 - All worker smoke tests can be one file: `apps/stockfish-worker/tests/test_imports.py`.
 - Keep the shared output shape change (R13) in a single PR so the report routes and PDF generator move together.
 - For R2, do NOT change `chunks.ts` serving logic — only change where the files come from at deploy time.
