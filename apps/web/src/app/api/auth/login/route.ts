@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyPassword, createSession, setSessionCookie, resolvePostLoginRedirect } from "@/lib/auth";
+import { isRateLimited, getClientIp } from "@/lib/rate-limit";
 
 const DUMMY_HASH = "$2b$12$invalid.hash.for.timing.attack.prevention.only.x";
+
+// Brute-force / credential-stuffing guards (best-effort, in-memory).
+const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const LOGIN_MAX_PER_IP = 20; // cap across all usernames/emails
+const LOGIN_MAX_PER_ID = 5; // cap per username/email
 
 export async function POST(request: Request) {
   let body: any;
@@ -18,16 +24,27 @@ export async function POST(request: Request) {
   }
 
   const userAgent = request.headers.get("user-agent") ?? undefined;
-  const ipAddress =
-    request.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
-    request.headers.get("x-real-ip") ??
-    undefined;
+  const ipAddress = getClientIp(request);
+
+  // Rate-limit before doing any DB work or bcrypt cost.
+  const idLower = id.toLowerCase().trim();
+  if (isRateLimited(`login:ip:${ipAddress ?? "unknown"}`, LOGIN_MAX_PER_IP, LOGIN_WINDOW_MS)) {
+    return NextResponse.json(
+      { error: "Too many login attempts. Please try again later." },
+      { status: 429 }
+    );
+  }
+  if (isRateLimited(`login:id:${idLower}`, LOGIN_MAX_PER_ID, LOGIN_WINDOW_MS)) {
+    return NextResponse.json(
+      { error: "Too many login attempts. Please try again later." },
+      { status: 429 }
+    );
+  }
 
   try {
 
   // ── Player login (no @ → chess.com or lichess username) ───────────────────────
   if (!id.includes("@")) {
-    const idLower = id.toLowerCase().trim();
     const player = await prisma.players.findFirst({
       where: { OR: [{ chess_username: idLower }, { lichess_username: idLower }] },
       include: { app_user: true },
@@ -77,7 +94,7 @@ export async function POST(request: Request) {
   }
 
   const user = await prisma.app_users.findUnique({
-    where: { email_lower: id.toLowerCase().trim() },
+    where: { email_lower: idLower },
     include: { profile: true, player: true },
   });
 

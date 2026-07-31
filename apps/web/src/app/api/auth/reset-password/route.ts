@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { hashPassword, verifyPasswordResetToken, consumePasswordResetToken } from "@/lib/auth";
+import { isRateLimited, getClientIp } from "@/lib/rate-limit";
+
+// Best-effort in-memory throttle on the token-submission endpoint.
+const RESET_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const RESET_MAX_PER_IP = 10;
 
 export async function POST(request: Request) {
   let body: any;
@@ -16,6 +21,14 @@ export async function POST(request: Request) {
 
   if (password.length < 8) {
     return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
+  }
+
+  const ipAddress = getClientIp(request);
+  if (isRateLimited(`reset:ip:${ipAddress ?? "unknown"}`, RESET_MAX_PER_IP, RESET_WINDOW_MS)) {
+    return NextResponse.json(
+      { error: "Too many reset attempts. Please try again later." },
+      { status: 429 }
+    );
   }
 
   const resetToken = await verifyPasswordResetToken(token);

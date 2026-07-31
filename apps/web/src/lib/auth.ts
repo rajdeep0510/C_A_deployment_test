@@ -382,7 +382,7 @@ export async function createPlayerRecordFor(
 
 export async function registerPlayerUser(data: {
   email: string;
-  password: string;
+  password?: string;
   fullName: string;
   chessUsername?: string;
   lichessUsername?: string;
@@ -393,7 +393,11 @@ export async function registerPlayerUser(data: {
   const existingEmail = await prisma.app_users.findUnique({ where: { email_lower: emailLower } });
   if (existingEmail) throw new Error("EMAIL_TAKEN");
 
-  const passwordHash = await hashPassword(data.password);
+  // Players don't set a password during registration — they claim one on first
+  // login via /set-password. Store a placeholder hash (leading `*`) so the
+  // login route returns PASSWORD_SETUP_REQUIRED. If a password IS provided
+  // (e.g. older flows / future changes), store it hashed as before.
+  const passwordHash = data.password ? await hashPassword(data.password) : "*pending-setup";
   const user = await prisma.app_users.create({
     data: { email: data.email, password_hash: passwordHash },
   });
