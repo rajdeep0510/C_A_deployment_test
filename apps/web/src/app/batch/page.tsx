@@ -165,7 +165,7 @@ function BatchPageInner() {
 
   return (
     <>
-      <main className="container animate-fade-in page-content-mobile" style={{ paddingTop: "40px", paddingBottom: "80px" }}>
+      <main className="container animate-fade-in page-content-mobile" style={{ paddingTop: "75px", paddingBottom: "80px" }}>
 
         {/* Page header */}
         <div style={{ marginBottom: "24px" }}>

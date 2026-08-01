@@ -25,14 +25,14 @@ export async function GET(request: Request) {
   const error = url.searchParams.get("error");
 
   if (error) return redirectToLogin(request, error);
-  if (!code || !state) return NextResponse.json({ error: "Missing code or state" }, { status: 400 });
+  if (!code || !state) return redirectToLogin(request, "missing_code");
 
   const cookieHeader = request.headers.get("cookie") ?? "";
   const cookieMatch = cookieHeader.match(new RegExp(`(?:^|;\\s*)${STATE_COOKIE}=([^;]+)`));
   const cookieState = cookieMatch ? decodeURIComponent(cookieMatch[1]) : null;
 
   if (!cookieState || cookieState !== state) {
-    return NextResponse.json({ error: "Invalid state" }, { status: 400 });
+    return redirectToLogin(request, "invalid_state");
   }
 
   let profile;

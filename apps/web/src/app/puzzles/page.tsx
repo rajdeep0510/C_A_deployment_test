@@ -352,7 +352,7 @@ export default function PuzzlesPage() {
   if (mode === "rush") {
     return (
       <>
-        <div className="container page-content-mobile" style={{ paddingTop: "32px", paddingBottom: "48px" }}>
+        <div className="container page-content-mobile" style={{ paddingTop: "75px", paddingBottom: "48px" }}>
           <PuzzleRush username={activeUsername!} onExit={() => setMode("normal")} />
         </div>
       </>
@@ -377,7 +377,7 @@ export default function PuzzlesPage() {
         />
       )}
 
-      <div className="container page-content-mobile puzzle-viewport" style={{ paddingTop: "32px", paddingBottom: "48px" }}>
+      <div className="container page-content-mobile puzzle-viewport" style={{ paddingTop: "75px", paddingBottom: "48px" }}>
 
         {/* ── Page header — fixed size, never changes with puzzle state ── */}
         {(() => {

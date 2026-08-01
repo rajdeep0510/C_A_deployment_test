@@ -60,16 +60,18 @@ export default function GameRow({ game, username = "", opening, eco, plyCount }:
     : (game.white_rating ?? game.whiteRating);
 
   const openingLabel = opening || eco || null;
+  const dateStr = game.end_time ? formatDate(game.end_time) : "";
 
   const metaParts: string[] = [];
   if (opponentRating != null) metaParts.push(String(opponentRating));
   const cls = timeClassLabel(game);
   if (cls) metaParts.push(cls);
   if (plyCount) metaParts.push(`${Math.ceil(plyCount / 2)} moves`);
+  if (openingLabel) metaParts.push(openingLabel);
+  if (dateStr) metaParts.push(dateStr);
 
   const chipLetter = outcome === "Win" ? "W" : outcome === "Loss" ? "L" : "D";
   const chipMod = outcome.toLowerCase();
-  const dateStr = game.end_time ? formatDate(game.end_time) : "";
 
   return (
     <Link
@@ -97,19 +99,7 @@ export default function GameRow({ game, username = "", opening, eco, plyCount }:
             ))}
           </div>
         )}
-      </div>
 
-      <div className="game-row__opening-col">
-        {openingLabel && (
-          <span className="game-row__opening" title={openingLabel}>
-            {openingLabel}
-          </span>
-        )}
-      </div>
-
-      <div className="game-row__date-col">
-        <div className="game-row__date-label">Date</div>
-        <div className="game-row__date-value">{dateStr || "—"}</div>
       </div>
 
       <ArrowUpRight size={16} className="game-row__arrow" aria-hidden="true" />

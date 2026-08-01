@@ -27,8 +27,6 @@ const BOTTOM_NAV_ITEMS = [
   { name: "Settings",  path: null,         icon: <Settings size={20} />,        matchPrefixes: [] },
 ];
 
-const SCROLL_THRESHOLD = 100;
-const COLLAPSED_WIDTH = 460;
 const PLAYER_ROUTE_PREFIXES = [
   "/dashboard",
   "/analysis",
@@ -39,7 +37,7 @@ const PLAYER_ROUTE_PREFIXES = [
   "/report",
   "/training-plan",
 ];
-const getExpandedWidth = () => Math.min(1180, window.innerWidth - 20);
+
 const prefersReduced = () =>
   typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -53,20 +51,16 @@ export default function Header() {
   const notifRef = useRef<HTMLDivElement>(null);
 
   // Animation refs
-  const pillRef = useRef<HTMLElement>(null);
+  const barRef = useRef<HTMLElement>(null);
   const brandTextRef = useRef<HTMLSpanElement>(null);
-  const navRef = useRef<HTMLElement>(null);
-  const linkRefs = useRef<(HTMLAnchorElement | null)[]>([]);
   const labelRefs = useRef<(HTMLSpanElement | null)[]>([]);
+  const linkRefs = useRef<(HTMLAnchorElement | null)[]>([]);
   const activeIndicatorRef = useRef<HTMLDivElement>(null);
   const bottomInnerRef = useRef<HTMLDivElement>(null);
   const bottomTabRefs = useRef<(HTMLElement | null)[]>([]);
   const bottomIndicatorRef = useRef<HTMLDivElement>(null);
 
-  const collapseTlRef = useRef<gsap.core.Timeline | null>(null);
   const isCollapsedRef = useRef(false);
-  const activeIndexRef = useRef(-1);
-  const expandedBoundsRef = useRef<Array<{ x: number; w: number; h: number }>>([]);
 
   const activeIndex = NAV_ITEMS.findIndex((item) =>
     item.matchPrefixes.some((p) => pathname.startsWith(p))
@@ -77,7 +71,87 @@ export default function Header() {
         item.path ? item.matchPrefixes.some((p) => pathname.startsWith(p)) : false
       );
 
-  activeIndexRef.current = activeIndex;
+  // Entrance animation — float down from top
+  useLayoutEffect(() => {
+    if (!activeUsername || !barRef.current) return;
+    if (prefersReduced()) return;
+    gsap.fromTo(
+      barRef.current,
+      { y: -24, opacity: 0 },
+      { y: 0, opacity: 1, duration: 0.55, ease: "power3.out" }
+    );
+  }, [activeUsername]);
+
+  // Collapse handler for scrolling (hides text, shows only icons)
+  const applyCollapseState = (collapse: boolean) => {
+    if (!barRef.current) return;
+    const reduced = prefersReduced();
+    const duration = reduced ? 0 : 0.4;
+    const ease = "power3.out";
+
+    const labels = labelRefs.current.filter(Boolean) as HTMLSpanElement[];
+    const targetWidth = collapse
+      ? Math.min(440, window.innerWidth - 32)
+      : Math.min(1140, window.innerWidth - 32);
+
+    if (collapse) {
+      barRef.current.classList.add("scrolled");
+    } else {
+      barRef.current.classList.remove("scrolled");
+    }
+
+    gsap.to(barRef.current, { width: targetWidth, duration, ease });
+
+    if (brandTextRef.current) {
+      gsap.to(brandTextRef.current, {
+        maxWidth: collapse ? 0 : 200,
+        opacity: collapse ? 0 : 1,
+        marginLeft: collapse ? -6 : 0,
+        duration,
+        ease,
+      });
+    }
+
+    if (labels.length > 0) {
+      gsap.to(labels, {
+        maxWidth: collapse ? 0 : 200,
+        opacity: collapse ? 0 : 1,
+        marginLeft: collapse ? -4 : 0,
+        duration,
+        ease,
+        onUpdate: () => {
+          // Snap active indicator during collapse animation
+          const target = linkRefs.current[activeIndex];
+          if (target && activeIndicatorRef.current) {
+            gsap.set(activeIndicatorRef.current, {
+              x: target.offsetLeft,
+              width: target.offsetWidth,
+            });
+          }
+        },
+      });
+    }
+  };
+
+  // Scroll event listener
+  useEffect(() => {
+    if (!activeUsername) return;
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const shouldCollapse = window.scrollY > 40;
+        if (shouldCollapse !== isCollapsedRef.current) {
+          isCollapsedRef.current = shouldCollapse;
+          applyCollapseState(shouldCollapse);
+        }
+        ticking = false;
+      });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [activeUsername, activeIndex]);
 
   useEffect(() => {
     if (!activeUsername) return;
@@ -102,186 +176,26 @@ export default function Header() {
     return () => document.removeEventListener("mousedown", handler);
   }, [showNotif]);
 
-  // Cache expanded link geometry (stable across viewport resizes since nav is content-sized)
-  const cacheExpandedBounds = () => {
-    expandedBoundsRef.current = linkRefs.current.map((link) =>
-      link ? { x: link.offsetLeft, w: link.offsetWidth, h: link.offsetHeight } : { x: 0, w: 0, h: 0 }
-    );
-  };
-
-  // Compute indicator target for a given index and state
-  const indicatorTargetFor = (idx: number, collapsed: boolean) => {
-    if (idx < 0) return null;
-    if (collapsed) {
-      // Each collapsed link = padding(13*2) + icon(14) = 40; nav gap = 2
-      const COLLAPSED_LINK_W = 40;
-      const NAV_GAP = 2;
-      const cached = expandedBoundsRef.current[idx];
-      return {
-        x: idx * (COLLAPSED_LINK_W + NAV_GAP),
-        width: COLLAPSED_LINK_W,
-        height: cached?.h ?? 24,
-      };
-    }
-    const cached = expandedBoundsRef.current[idx];
-    if (cached && cached.w > 0) return { x: cached.x, width: cached.w, height: cached.h };
-    // Fallback: measure now (first paint)
-    const link = linkRefs.current[idx];
-    if (!link) return null;
-    return { x: link.offsetLeft, width: link.offsetWidth, height: link.offsetHeight };
-  };
-
-  // Position indicator instantly (no animation)
-  const snapDesktopIndicator = () => {
-    if (!activeIndicatorRef.current) return;
-    const target = indicatorTargetFor(activeIndexRef.current, isCollapsedRef.current);
-    if (!target) {
-      gsap.set(activeIndicatorRef.current, { opacity: 0 });
-      return;
-    }
-    gsap.set(activeIndicatorRef.current, {
-      opacity: 1,
-      x: target.x,
-      width: target.width,
-      height: target.height,
-      force3D: true,
-    });
-  };
-
-  // Build a fresh collapse/expand animation
-  const applyCollapseState = (collapse: boolean, animated = true) => {
-    if (!pillRef.current || !brandTextRef.current) return;
-    const reduced = prefersReduced();
-    const duration = animated && !reduced ? 0.45 : 0;
-    const ease = "power3.out";
-
-    collapseTlRef.current?.kill();
-
-    // Cache expanded bounds before leaving expanded state
-    if (collapse && expandedBoundsRef.current.every((b) => b.w === 0)) {
-      cacheExpandedBounds();
-    }
-
-    const labels = labelRefs.current.filter(Boolean) as HTMLSpanElement[];
-    const targetWidth = collapse ? COLLAPSED_WIDTH : getExpandedWidth();
-
-    const tl = gsap.timeline({ defaults: { duration, ease } });
-
-    tl.to(pillRef.current, { width: targetWidth }, 0)
-      .to(
-        brandTextRef.current,
-        {
-          maxWidth: collapse ? 0 : 200,
-          opacity: collapse ? 0 : 1,
-          marginLeft: collapse ? -10 : 0,
-        },
-        0
-      )
-      .to(
-        labels,
-        {
-          maxWidth: collapse ? 0 : 200,
-          opacity: collapse ? 0 : 1,
-          marginLeft: collapse ? -6 : 0,
-        },
-        0
-      );
-
-    // Indicator tweens inside the same timeline — no per-frame DOM reads
-    const target = indicatorTargetFor(activeIndexRef.current, collapse);
-    if (target && activeIndicatorRef.current) {
-      tl.to(
-        activeIndicatorRef.current,
-        {
-          x: target.x,
-          width: target.width,
-          height: target.height,
-          force3D: true,
-        },
-        0
-      );
-    }
-
-    collapseTlRef.current = tl;
-  };
-
-  // Init: cache bounds while expanded, set initial collapse state, snap indicator
-  useLayoutEffect(() => {
-    if (!activeUsername || !pillRef.current) return;
-    // Cache bounds before any state change (DOM is currently in expanded CSS default)
-    cacheExpandedBounds();
-    const initialCollapsed = window.scrollY > SCROLL_THRESHOLD;
-    isCollapsedRef.current = initialCollapsed;
-    applyCollapseState(initialCollapsed, false);
-    snapDesktopIndicator();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeUsername]);
-
-  // Slide the active pill on route change
+  // Slide desktop active pill indicator
   useLayoutEffect(() => {
     if (!activeUsername || !activeIndicatorRef.current) return;
     if (activeIndex < 0) {
       gsap.to(activeIndicatorRef.current, { opacity: 0, duration: 0.2 });
       return;
     }
-    const target = indicatorTargetFor(activeIndex, isCollapsedRef.current);
+    const target = linkRefs.current[activeIndex];
     if (!target) return;
     const reduced = prefersReduced();
     gsap.to(activeIndicatorRef.current, {
       opacity: 1,
-      x: target.x,
-      width: target.width,
-      height: target.height,
-      duration: reduced ? 0 : 0.42,
+      x: target.offsetLeft,
+      width: target.offsetWidth,
+      duration: reduced ? 0 : 0.4,
       ease: "power3.out",
-      force3D: true,
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeIndex, activeUsername]);
 
-  // Scroll-driven collapse
-  useEffect(() => {
-    if (!activeUsername) return;
-    let ticking = false;
-    const onScroll = () => {
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(() => {
-        const shouldCollapse = window.scrollY > SCROLL_THRESHOLD;
-        if (shouldCollapse !== isCollapsedRef.current) {
-          isCollapsedRef.current = shouldCollapse;
-          applyCollapseState(shouldCollapse, true);
-        }
-        ticking = false;
-      });
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeUsername]);
-
-  // Reflow on viewport resize
-  useEffect(() => {
-    if (!activeUsername) return;
-    let raf = 0;
-    const onResize = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        if (!isCollapsedRef.current && pillRef.current) {
-          gsap.set(pillRef.current, { width: getExpandedWidth() });
-        }
-        snapDesktopIndicator();
-      });
-    };
-    window.addEventListener("resize", onResize);
-    return () => {
-      window.removeEventListener("resize", onResize);
-      cancelAnimationFrame(raf);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeUsername]);
-
-  // Bottom-nav active pill
+  // Slide mobile bottom nav indicator
   useLayoutEffect(() => {
     if (!activeUsername || !bottomIndicatorRef.current || !bottomInnerRef.current) return;
     if (activeBottomIndex < 0) {
@@ -295,25 +209,10 @@ export default function Header() {
       opacity: 1,
       x: target.offsetLeft + 8,
       width: target.offsetWidth - 16,
-      duration: reduced ? 0 : 0.42,
+      duration: reduced ? 0 : 0.4,
       ease: "power3.out",
     });
   }, [activeBottomIndex, activeUsername]);
-
-  // Entrance animation — fromTo with explicit end state so Strict-Mode double-invoke can't strand it mid-fade
-  useLayoutEffect(() => {
-    if (!activeUsername || !pillRef.current) return;
-    if (prefersReduced()) return;
-    const tween = gsap.fromTo(
-      pillRef.current,
-      { y: -8, opacity: 0 },
-      { y: 0, opacity: 1, duration: 0.5, ease: "power2.out" }
-    );
-    return () => {
-      tween.kill();
-      if (pillRef.current) gsap.set(pillRef.current, { clearProps: "y,opacity" });
-    };
-  }, [activeUsername]);
 
   const undismissed = coachNotes.filter((n) => !dismissedIds.has(n.id));
 
@@ -331,9 +230,8 @@ export default function Header() {
 
   return (
     <>
-      <header className="header-bar" ref={pillRef}>
+      <header className="header-bar" ref={barRef}>
         <div className="header-inner">
-
           {/* Brand */}
           <Link href="/dashboard" className="header-brand" aria-label="Chess Advisor home">
             <div className="brand-mark" aria-hidden="true">
@@ -343,7 +241,7 @@ export default function Header() {
           </Link>
 
           {/* Desktop center nav */}
-          <nav className="header-nav" aria-label="Main navigation" ref={navRef}>
+          <nav className="header-nav" aria-label="Main navigation">
             <div
               className="nav-pill"
               ref={activeIndicatorRef}

@@ -26,7 +26,8 @@ function GamesPageInner() {
 
   useEffect(() => {
     if (playerLoading) return;
-    if (!activeUsername || !isApproved) { router.push("/login"); return; }
+    if (!activeUsername) { router.push("/login"); return; }
+    if (!isApproved) { router.push("/pending"); return; }
     if (!tc) { router.push("/dashboard"); return; }
 
     setLoading(true);
@@ -45,7 +46,7 @@ function GamesPageInner() {
     <>
       <main
         className="container animate-fade-in page-content-mobile"
-        style={{ paddingTop: "40px", paddingBottom: "60px" }}
+        style={{ paddingTop: "75px", paddingBottom: "60px" }}
       >
         {/* Page header */}
         <div style={{

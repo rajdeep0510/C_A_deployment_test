@@ -1,17 +1,18 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import CoachHeader from "@/components/CoachHeader";
 import Loader from "@/components/Loader";
-import { getStats } from "@/services/api";
+import { getPlayerReport } from "@/services/api";
 import {
   Users,
   Clock,
   CheckCircle,
   XCircle,
   ChevronRight,
+  ChevronLeft,
   ChevronUp,
   ChevronDown,
   BarChart2,
@@ -22,6 +23,7 @@ import {
   Gamepad2,
   Swords,
   GraduationCap,
+  Search,
 } from "lucide-react";
 import { fetchGames } from "@/services/api";
 
@@ -36,6 +38,7 @@ type Player = {
 type PlayerStats = {
   accuracy?: number;
   momentum?: string;
+  overall_win_rate?: number | string;
   win_rate?: any;
   mistake_frequency?: any;
   time_analysis?: any;
@@ -148,7 +151,40 @@ function MomentumChip({ momentum }: { momentum?: string }) {
   );
 }
 
-function winRatePct(wr: any): number | undefined {
+// Map the /api/report/[username] response into the flat PlayerStats shape
+// the roster table reads. Real accuracy, blunders, momentum, and a coarse
+// time-pressure label — all from analyzed batch data, not the stub stats endpoint.
+function mapReportToStats(report: any): PlayerStats | null {
+  if (!report || report.error) return null;
+  const summary = report.report?.period_summary;
+  const rawAcc = summary?.overall_avg_accuracy;
+  const accNum = typeof rawAcc === "string" ? parseFloat(rawAcc) : rawAcc;
+  const accuracy = Number.isFinite(accNum) ? accNum : undefined;
+
+  const ta = report.time_analysis;
+  const tpPct = ta?.time_pressure_pct;
+  let timePressureLabel: string | undefined;
+  if (typeof tpPct === "number") {
+    if (tpPct >= 40) timePressureLabel = "High";
+    else if (tpPct >= 20) timePressureLabel = "Moderate";
+    else timePressureLabel = "Low";
+  }
+
+  return {
+    accuracy,
+    momentum: summary?.current_momentum,
+    overall_win_rate: report.overall_win_rate,
+    win_rate: report.win_rate,
+    mistake_frequency: report.mistake_frequency,
+    time_analysis: timePressureLabel ? { ...ta, time_pressure_risk: timePressureLabel } : ta,
+  } as PlayerStats;
+}
+
+function winRatePct(wr: any, topLevelOverall?: any): number | undefined {
+  if (topLevelOverall != null) {
+    const n = parseFloat(topLevelOverall);
+    if (!Number.isNaN(n)) return n;
+  }
   if (!wr) return undefined;
   const pct = wr.overall_win_rate ?? wr.win_rate ?? wr.win_percentage;
   if (pct != null) return parseFloat(pct);
@@ -175,6 +211,15 @@ export default function CoachDashboardPage() {
 
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [codeCopied, setCodeCopied] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Clear search on tab switch
+  useEffect(() => {
+    setSearchQuery("");
+  }, [tab]);
+
+  // Horizontal tab bar ref for auto-scrolling active tabs
+  const tabsRef = useRef<HTMLDivElement>(null);
 
   // Roster sort state
   const [sortKey, setSortKey] = useState<SortKey>("full_name");
@@ -209,12 +254,14 @@ export default function CoachDashboardPage() {
       if (approvedList.length > 0) {
         setStatsLoading(true);
         const results = await Promise.allSettled(
-          approvedList.map((p) => getStats(p.chess_username)),
+          approvedList.map((p) => getPlayerReport(p.chess_username)),
         );
         const statsMap: Record<string, PlayerStats> = {};
         results.forEach((r, i) => {
-          if (r.status === "fulfilled")
-            statsMap[approvedList[i].chess_username] = r.value;
+          if (r.status === "fulfilled") {
+            const mapped = mapReportToStats(r.value);
+            if (mapped) statsMap[approvedList[i].chess_username] = mapped;
+          }
         });
         setPlayerStats(statsMap);
         setStatsLoading(false);
@@ -249,10 +296,12 @@ export default function CoachDashboardPage() {
           a.full_name.localeCompare(b.full_name),
         ),
       );
-      getStats(player.chess_username)
-        .then((s) =>
-          setPlayerStats((prev) => ({ ...prev, [player.chess_username]: s })),
-        )
+      getPlayerReport(player.chess_username)
+        .then((r) => {
+          const mapped = mapReportToStats(r);
+          if (mapped)
+            setPlayerStats((prev) => ({ ...prev, [player.chess_username]: mapped }));
+        })
         .catch(() => {});
     }
     setActionLoading(null);
@@ -296,8 +345,8 @@ export default function CoachDashboardPage() {
         bv = sb?.momentum ?? "";
         break;
       case "win_rate":
-        av = winRatePct(sa?.win_rate) ?? -1;
-        bv = winRatePct(sb?.win_rate) ?? -1;
+        av = winRatePct(sa?.win_rate, sa?.overall_win_rate) ?? -1;
+        bv = winRatePct(sb?.win_rate, sb?.overall_win_rate) ?? -1;
         break;
       case "blunders":
         av = sa?.mistake_frequency?.blunders_per_game ?? 99;
@@ -312,6 +361,19 @@ export default function CoachDashboardPage() {
       return sortDesc ? bv.localeCompare(av) : av.localeCompare(bv);
     return sortDesc ? bv - av : av - bv;
   });
+
+  const matchesSearch = (player: Player) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase().trim();
+    return (
+      (player.full_name && player.full_name.toLowerCase().includes(q)) ||
+      (player.chess_username && player.chess_username.toLowerCase().includes(q))
+    );
+  };
+
+  const filteredApprovedPlayers = approvedPlayers.filter(matchesSearch);
+  const filteredRoster = sortedRoster.filter(matchesSearch);
+  const filteredPendingPlayers = pendingPlayers.filter(matchesSearch);
 
   const handleLoadGames = async () => {
     if (!selectedPlayer) return;
@@ -348,10 +410,23 @@ export default function CoachDashboardPage() {
       <div style={{ height: "4px", background: "linear-gradient(90deg, #6366f1, #818cf8, #6366f1)" }} />
       <main
         className="container animate-fade-in page-content-mobile"
-        style={{ paddingTop: "40px", paddingBottom: "60px" }}
+        style={{
+          paddingTop: "75px",
+          paddingBottom: "60px",
+          maxWidth: "100%",
+          boxSizing: "border-box",
+        }}
       >
         {/* Page header */}
-        <div className="flex-between" style={{ marginBottom: "32px" }}>
+        <div
+          className="flex-between"
+          style={{
+            marginBottom: "32px",
+            flexWrap: "wrap",
+            gap: "16px",
+            maxWidth: "100%",
+          }}
+        >
           <div>
             <h1 style={{ fontSize: "32px", marginBottom: "4px" }}>
               Coach Dashboard
@@ -379,7 +454,7 @@ export default function CoachDashboardPage() {
               )}
             </div>
           </div>
-          <div style={{ display: "flex", gap: "12px" }}>
+          <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
             <div
               style={{
                 display: "flex",
@@ -427,8 +502,10 @@ export default function CoachDashboardPage() {
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
+            flexWrap: "wrap",
             gap: "12px",
             marginBottom: "28px",
+            maxWidth: "100%",
           }}
         >
           <div>
@@ -470,26 +547,27 @@ export default function CoachDashboardPage() {
 
         {/* Tabs */}
         <div
-          style={{
-            display: "flex",
-            gap: "4px",
-            background: "var(--surface-1)",
-            padding: "4px",
-            borderRadius: "12px",
-            marginBottom: "28px",
-            border: "1px solid var(--border-subtle)",
-            width: "fit-content",
-          }}
+          ref={tabsRef}
+          className="horizontal-tabs-scroll"
+          style={{ marginBottom: "16px" }}
         >
           {TABS.map((t) => (
             <button
               key={t.key}
-              onClick={() => setTab(t.key)}
+              type="button"
+              onClick={(e) => {
+                setTab(t.key);
+                e.currentTarget.scrollIntoView({
+                  behavior: "smooth",
+                  block: "nearest",
+                  inline: "center",
+                });
+              }}
               style={{
-                display: "flex",
+                display: "inline-flex",
                 alignItems: "center",
                 gap: "6px",
-                padding: "8px 20px",
+                padding: "8px 18px",
                 borderRadius: "9px",
                 fontSize: "14px",
                 fontWeight: "600",
@@ -498,11 +576,55 @@ export default function CoachDashboardPage() {
                 transition: "all 0.2s ease",
                 border: "none",
                 cursor: "pointer",
+                flexShrink: 0,
+                whiteSpace: "nowrap",
               }}
             >
               {t.icon} {t.label}
             </button>
           ))}
+          {/* End spacer so rightmost tab never clips */}
+          <div style={{ paddingRight: "28px", flexShrink: 0 }} />
+        </div>
+
+        {/* Search Bar under Tabs */}
+        <div style={{ position: "relative", marginBottom: "28px", width: "100%" }}>
+          <Search
+            size={15}
+            style={{
+              position: "absolute",
+              left: "14px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              color: "var(--text-secondary)",
+              pointerEvents: "none",
+            }}
+          />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={
+              tab === "players"
+                ? "Search players by name or username…"
+                : tab === "roster"
+                ? "Search roster by name or username…"
+                : tab === "games"
+                ? "Search games…"
+                : "Search pending requests…"
+            }
+            style={{
+              width: "100%",
+              boxSizing: "border-box",
+              padding: "10px 14px 10px 38px",
+              borderRadius: "10px",
+              fontSize: "14px",
+              background: "var(--surface-1)",
+              border: "1px solid var(--border-subtle)",
+              color: "var(--text-primary)",
+              outline: "none",
+            }}
+          />
         </div>
 
         {loading ? (
@@ -528,6 +650,20 @@ export default function CoachDashboardPage() {
                     Approve players from &quot;Pending Requests&quot; to see them here.
                   </p>
                 </div>
+              ) : filteredApprovedPlayers.length === 0 ? (
+                <div
+                  className="glass"
+                  style={{
+                    padding: "48px",
+                    textAlign: "center",
+                    color: "var(--text-secondary)",
+                  }}
+                >
+                  <h3 style={{ marginBottom: "8px" }}>No results for &quot;{searchQuery}&quot;</h3>
+                  <p style={{ fontSize: "14px" }}>
+                    Try searching for a different player name or username.
+                  </p>
+                </div>
               ) : (
                 <div
                   style={{
@@ -537,13 +673,13 @@ export default function CoachDashboardPage() {
                     gap: "20px",
                   }}
                 >
-                  {approvedPlayers.map((player) => {
+                  {filteredApprovedPlayers.map((player) => {
                     const s = playerStats[player.chess_username];
                     const acc =
                       s?.accuracy != null
                         ? parseFloat(String(s.accuracy))
                         : undefined;
-                    const wr = winRatePct(s?.win_rate);
+                    const wr = winRatePct(s?.win_rate, s?.overall_win_rate);
                     return (
                       <Link
                         key={player.id}
@@ -696,6 +832,20 @@ export default function CoachDashboardPage() {
                     Approve players to see their metrics here.
                   </p>
                 </div>
+              ) : filteredRoster.length === 0 ? (
+                <div
+                  className="glass"
+                  style={{
+                    padding: "48px",
+                    textAlign: "center",
+                    color: "var(--text-secondary)",
+                  }}
+                >
+                  <h3 style={{ marginBottom: "8px" }}>No results for &quot;{searchQuery}&quot;</h3>
+                  <p style={{ fontSize: "14px" }}>
+                    Try searching for a different player name or username.
+                  </p>
+                </div>
               ) : (
                 <div
                   className="glass-card"
@@ -722,10 +872,11 @@ export default function CoachDashboardPage() {
                       Click a column header to sort · Click a row to view player
                     </span>
                   </div>
-                  <div style={{ overflowX: "auto" }}>
+                  <div style={{ overflowX: "auto", maxWidth: "100%", minWidth: 0 }}>
                     <table
                       style={{
                         width: "100%",
+                        minWidth: "640px",
                         borderCollapse: "collapse",
                         fontSize: "14px",
                       }}
@@ -741,13 +892,13 @@ export default function CoachDashboardPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {sortedRoster.map((player, i) => {
+                        {filteredRoster.map((player, i) => {
                           const s = playerStats[player.chess_username];
                           const acc =
                             s?.accuracy != null
                               ? parseFloat(String(s.accuracy))
                               : undefined;
-                          const wr = winRatePct(s?.win_rate);
+                          const wr = winRatePct(s?.win_rate, s?.overall_win_rate);
                           const blunders =
                             s?.mistake_frequency?.blunders_per_game;
                           const timePressure =
@@ -1366,6 +1517,20 @@ export default function CoachDashboardPage() {
                     All player requests have been reviewed.
                   </p>
                 </div>
+              ) : filteredPendingPlayers.length === 0 ? (
+                <div
+                  className="glass"
+                  style={{
+                    padding: "48px",
+                    textAlign: "center",
+                    color: "var(--text-secondary)",
+                  }}
+                >
+                  <h3 style={{ marginBottom: "8px" }}>No results for &quot;{searchQuery}&quot;</h3>
+                  <p style={{ fontSize: "14px" }}>
+                    Try searching for a different player name or username.
+                  </p>
+                </div>
               ) : (
                 <div
                   style={{
@@ -1374,7 +1539,7 @@ export default function CoachDashboardPage() {
                     gap: "12px",
                   }}
                 >
-                  {pendingPlayers.map((player) => (
+                  {filteredPendingPlayers.map((player) => (
                     <div
                       key={player.id}
                       className="glass-card"
