@@ -15,7 +15,10 @@ function getOrigin(request: Request) {
 }
 
 function redirectToLogin(request: Request, reason: string) {
-  return NextResponse.redirect(`${getOrigin(request)}/login?google_error=${encodeURIComponent(reason)}`);
+  const res = NextResponse.redirect(`${getOrigin(request)}/login?google_error=${encodeURIComponent(reason)}`);
+  // Clear the one-shot state cookie on every failure path too (not just success).
+  res.cookies.set(STATE_COOKIE, "", { maxAge: 0, path: "/", httpOnly: true });
+  return res;
 }
 
 export async function GET(request: Request) {
@@ -25,14 +28,14 @@ export async function GET(request: Request) {
   const error = url.searchParams.get("error");
 
   if (error) return redirectToLogin(request, error);
-  if (!code || !state) return NextResponse.json({ error: "Missing code or state" }, { status: 400 });
+  if (!code || !state) return redirectToLogin(request, "missing_code");
 
   const cookieHeader = request.headers.get("cookie") ?? "";
   const cookieMatch = cookieHeader.match(new RegExp(`(?:^|;\\s*)${STATE_COOKIE}=([^;]+)`));
   const cookieState = cookieMatch ? decodeURIComponent(cookieMatch[1]) : null;
 
   if (!cookieState || cookieState !== state) {
-    return NextResponse.json({ error: "Invalid state" }, { status: 400 });
+    return redirectToLogin(request, "invalid_state");
   }
 
   let profile;
@@ -50,12 +53,24 @@ export async function GET(request: Request) {
 
   if (!user) {
     const byEmail = await prisma.app_users.findUnique({ where: { email_lower: emailLower } });
+
     if (byEmail) {
+      // Existing account. Only link Google when the email is already verified.
+      // Never silently set `email_verified = true` here — that would bypass the
+      // EMAIL_NOT_VERIFIED gate for accounts registered with a password.
+      if (!byEmail.email_verified) {
+        return redirectToLogin(request, "email_not_verified");
+      }
       user = await prisma.app_users.update({
         where: { id: byEmail.id },
-        data: { google_sub: profile.sub, email_verified: true },
+        data: { google_sub: profile.sub },
       });
     } else {
+      // New account created via Google. Only trust the email when Google
+      // itself verified it.
+      if (!profile.emailVerified) {
+        return redirectToLogin(request, "email_not_verified");
+      }
       user = await prisma.app_users.create({
         data: {
           email: profile.email,

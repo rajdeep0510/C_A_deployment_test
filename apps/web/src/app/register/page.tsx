@@ -210,6 +210,8 @@ function RegisterContent() {
   // ── Player state ──
   const [pFullName, setPFullName] = useState("");
   const [pEmail, setPEmail] = useState("");
+  const [pPassword, setPPassword] = useState("");
+  const [pConfirm, setPConfirm] = useState("");
   const [pUsername, setPUsername] = useState("");
   const [pLichessUsername, setPLichessUsername] = useState("");
   const [pActivePlatform, setPActivePlatform] = useState<"chess.com" | "lichess">("chess.com");
@@ -300,6 +302,8 @@ function RegisterContent() {
     e.preventDefault();
     setPError("");
     if (!pCoachId) { setPError("Please enter a valid invite code."); return; }
+    if (pPassword.length < 8) { setPError("Password must be at least 8 characters."); return; }
+    if (pPassword !== pConfirm) { setPError("Passwords do not match."); return; }
     const chessUsername = pUsername.trim().toLowerCase();
     const lichessUsername = pLichessUsername.trim().toLowerCase();
     if (!chessUsername && !lichessUsername) {
@@ -315,6 +319,7 @@ function RegisterContent() {
       body: JSON.stringify({
         type: "player",
         email: pEmail,
+        password: pPassword,
         fullName: pFullName.trim(),
         chessUsername: chessUsername || undefined,
         lichessUsername: lichessUsername || undefined,
@@ -500,6 +505,9 @@ function RegisterContent() {
             </div>
 
             <InputField label="Email" type="email" placeholder="you@example.com" value={pEmail} onChange={setPEmail} onFocus={focus("p-email")} onBlur={blur} icon={<Mail size={18} />} focused={isFocused("p-email")} activeColor={meta.color} disabled={pLoading} required autoComplete="email" />
+
+            <PasswordField label="Password" value={pPassword} onChange={setPPassword} onFocus={focus("p-pass")} onBlur={blur} focused={isFocused("p-pass")} activeColor={meta.color} disabled={pLoading} autoComplete="new-password" />
+            <PasswordField label="Confirm Password" value={pConfirm} onChange={setPConfirm} onFocus={focus("p-conf")} onBlur={blur} focused={isFocused("p-conf")} activeColor={meta.color} disabled={pLoading} autoComplete="new-password" />
 
             {/* Invite code */}
             <div>

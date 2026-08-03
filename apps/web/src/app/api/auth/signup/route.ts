@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { registerStaffUser, registerPlayerUser } from "@/lib/auth";
 import { sendVerificationEmail } from "@/lib/email";
+import { isRateLimited, getClientIp } from "@/lib/rate-limit";
+
+// Best-effort in-memory registration throttling.
+const SIGNUP_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const SIGNUP_MAX_PER_IP = 5; // registrations per IP
+const SIGNUP_MAX_PER_EMAIL = 3; // registrations per email
 
 export async function POST(request: Request) {
   let body: any;
@@ -16,8 +22,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
+  // Every account type (players, coaches, academy owners) requires a password.
   if (!password || password.length < 8) {
     return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
+  }
+
+  const ipAddress = getClientIp(request);
+  const emailLower = email.toLowerCase().trim();
+
+  if (isRateLimited(`signup:ip:${ipAddress ?? "unknown"}`, SIGNUP_MAX_PER_IP, SIGNUP_WINDOW_MS)) {
+    return NextResponse.json(
+      { error: "Too many registration attempts. Please try again later." },
+      { status: 429 }
+    );
+  }
+  if (isRateLimited(`signup:email:${emailLower}`, SIGNUP_MAX_PER_EMAIL, SIGNUP_WINDOW_MS)) {
+    return NextResponse.json(
+      { error: "Too many registration attempts for this email. Please try again later." },
+      { status: 429 }
+    );
   }
 
   try {
@@ -50,11 +73,14 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ error: "Invalid type" }, { status: 400 });
   } catch (err: any) {
-    if (err.message === "EMAIL_TAKEN") {
-      return NextResponse.json({ error: "This email is already registered. Please log in instead." }, { status: 409 });
-    }
-    if (err.message === "USERNAME_TAKEN") {
-      return NextResponse.json({ error: "This username is already registered." }, { status: 409 });
+    if (err.message === "EMAIL_TAKEN" || err.message === "USERNAME_TAKEN") {
+      // Anti-enumeration: return the same generic success response as a fresh
+      // registration so an attacker cannot tell whether the email/username
+      // already exists. (Matches the forgot-password / resend-verification pattern.)
+      return NextResponse.json(
+        { message: type === "player" ? "Registration submitted." : "Check your email to verify your account" },
+        { status: 201 }
+      );
     }
     console.error("[signup]", err);
     return NextResponse.json({ error: "Registration failed. Please try again." }, { status: 500 });

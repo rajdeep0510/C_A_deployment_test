@@ -69,6 +69,13 @@ export async function getStats(username) {
   return res.json();
 }
 
+export async function getPlayerReport(username: string) {
+  const res = await apiFetch(`${BASE_URL}/api/report/${username}`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error("Failed to fetch player report");
+  return res.json();
+}
+
 export async function analyzeGame(username: string, filename: string, force = false, multiPv?: number, onProgress?: (pct: number) => void): Promise<any> {
   const { engineConfig } = await import("@/lib/engine-config");
   if (!engineConfig.enabled) {

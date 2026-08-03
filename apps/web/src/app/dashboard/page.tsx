@@ -119,8 +119,12 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (playerLoading) return;
-    if (!activeUsername || !isApproved) {
+    if (!activeUsername) {
       router.push("/login");
+      return;
+    }
+    if (!isApproved) {
+      router.push("/pending");
       return;
     }
 
@@ -143,11 +147,11 @@ export default function Dashboard() {
       try {
         setStats(JSON.parse(cachedStats));
         setLoading(false);
-      } catch {}
+      } catch { }
     }
     const cachedRealStats = localStorage.getItem(realStatsKey);
     if (cachedRealStats) {
-      try { setRealStats(JSON.parse(cachedRealStats)); } catch {}
+      try { setRealStats(JSON.parse(cachedRealStats)); } catch { }
     }
 
     // Re-fetch in background and update cache
@@ -190,7 +194,7 @@ export default function Dashboard() {
         }
         setBatchStatus(statusMap);
       })
-      .catch(() => {});
+      .catch(() => { });
 
   }, [activeUsername, chessUsername, lichessUsername, activePlatform, isApproved, playerLoading, router]);
 
@@ -262,11 +266,11 @@ export default function Dashboard() {
     io.observe(el);
     return () => io.disconnect();
   }, [summaryTotals]);
-  const animGames   = useCountUp(summaryTotals?.total   ?? 0, summaryInView, 1400,  0);
-  const animWinRate = useCountUp(summaryTotals?.winRate  ?? 0, summaryInView, 1200, 120);
-  const animWins    = useCountUp(summaryTotals?.wins     ?? 0, summaryInView, 1000, 280);
-  const animLosses  = useCountUp(summaryTotals?.losses   ?? 0, summaryInView, 1000, 350);
-  const animDraws   = useCountUp(summaryTotals?.draws    ?? 0, summaryInView, 1000, 420);
+  const animGames = useCountUp(summaryTotals?.total ?? 0, summaryInView, 1400, 0);
+  const animWinRate = useCountUp(summaryTotals?.winRate ?? 0, summaryInView, 1200, 120);
+  const animWins = useCountUp(summaryTotals?.wins ?? 0, summaryInView, 1000, 280);
+  const animLosses = useCountUp(summaryTotals?.losses ?? 0, summaryInView, 1000, 350);
+  const animDraws = useCountUp(summaryTotals?.draws ?? 0, summaryInView, 1000, 420);
 
   if (!activeUsername) return null;
 
@@ -274,7 +278,7 @@ export default function Dashboard() {
     <>
       <main
         className="container animate-fade-in page-content-mobile"
-        style={{ paddingTop: "16px", paddingBottom: "60px" }}
+        style={{ paddingTop: "75px", paddingBottom: "60px" }}
         aria-label="Dashboard"
       >
         <div
@@ -322,91 +326,84 @@ export default function Dashboard() {
           <div
             style={{ display: "flex", flexDirection: "column", gap: "32px" }}
           >
-            {/* ── Bento hero row ── */}
-            {(summaryTotals != null || games.length > 0) && (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))", gap: "20px", alignItems: "stretch" }}>
+            {/* ── Unified performance card ── */}
+            {(summaryTotals != null || games.length > 0) && (() => {
+              const colorStats = { white: { wins: 0, losses: 0, draws: 0 }, black: { wins: 0, losses: 0, draws: 0 } };
+              const chessLower = chessUsername?.toLowerCase();
+              const lichessLower = lichessUsername?.toLowerCase();
+              const WHITE_LOSS = new Set(["checkmated", "resigned", "timeout", "abandoned", "loss"]);
+              (games as any[]).forEach((g) => {
+                const userLower = g.platform === "lichess" ? lichessLower : chessLower;
+                const isWhite = (g.white || "").toLowerCase() === userLower;
+                const side = colorStats[isWhite ? "white" : "black"];
+                const r = (g.result || "").toLowerCase().trim();
+                if (r === "1-0" || r === "white") { isWhite ? side.wins++ : side.losses++; }
+                else if (r === "0-1" || r === "black") { isWhite ? side.losses++ : side.wins++; }
+                else if (r === "win") { isWhite ? side.wins++ : side.losses++; }
+                else if (WHITE_LOSS.has(r)) { isWhite ? side.losses++ : side.wins++; }
+                else { side.draws++; }
+              });
+              const loadedTotal = games.length;
+              const hasColorSplit = loadedTotal > 0;
 
-                {/* LEFT: Overall — tall vertical card */}
-                {summaryTotals != null && (
-                  <div ref={summaryRef} className="glass-card" style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-                    {/* Win rate — hero metric, shown first */}
-                    <div>
-                      <div style={{ fontSize: "clamp(2.2rem, 8vw, 3rem)", fontWeight: 800, lineHeight: 1, color: "var(--success)" }}>{animWinRate}%</div>
-                      <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.8rem", fontWeight: 500, letterSpacing: "0.02em", color: "var(--text-secondary)", marginTop: "4px", textTransform: "uppercase" }}>overall win rate</div>
-                    </div>
-                    {/* Games played — secondary metric */}
-                    <div>
-                      <div style={{ fontSize: "clamp(1.5rem, 5vw, 2rem)", fontWeight: 700, lineHeight: 1 }}>{animGames.toLocaleString()}</div>
-                      <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: "4px" }}>games played</div>
-                    </div>
-                    {/* W/L/D breakdown */}
-                    <div style={{ marginTop: "auto", paddingTop: "16px", borderTop: "1px solid var(--glass-border)" }}>
-                      {/* Stacked bar */}
-                      {summaryTotals.total > 0 && (
-                        <div
-                          role="img"
-                          aria-label={`Win/Draw/Loss split`}
-                          style={{ height: "5px", borderRadius: "99px", overflow: "hidden", display: "flex", marginBottom: "14px", background: "var(--border-subtle)" }}
-                        >
-                          <div style={{ width: `${(summaryTotals.wins / summaryTotals.total) * 100}%`, background: "var(--success)" }} />
-                          <div style={{ width: `${(summaryTotals.draws / summaryTotals.total) * 100}%`, background: "var(--warning)" }} />
-                          <div style={{ width: `${(summaryTotals.losses / summaryTotals.total) * 100}%`, background: "var(--danger)" }} />
+              return (
+                <div ref={summaryRef} className="glass-card" style={{ padding: 0, display: "flex", flexDirection: "column" }}>
+                  {/* Row 1: Overall win rate + games played + W/L/D */}
+                  {summaryTotals != null && (
+                    <div style={{ padding: "24px", display: "flex", gap: "32px", alignItems: "flex-start", flexWrap: "wrap" }}>
+                      {/* Hero: win rate */}
+                      <div style={{ minWidth: "140px" }}>
+                        <div style={{ fontSize: "clamp(2rem, 4vw, 2.6rem)", fontWeight: 800, lineHeight: 1, color: "var(--success)" }}>{animWinRate}%</div>
+                        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", fontWeight: 500, letterSpacing: "0.06em", color: "var(--text-secondary)", marginTop: "6px", textTransform: "uppercase" }}>overall win rate</div>
+                      </div>
+                      {/* Games + W/L/D + split bar */}
+                      <div style={{ flex: 1, minWidth: "220px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                        <div style={{ display: "flex", gap: "24px", alignItems: "baseline", flexWrap: "wrap" }}>
+                          <div>
+                            <span style={{ fontSize: "1.15rem", fontWeight: 700 }}>{animGames.toLocaleString()}</span>
+                            <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", color: "var(--text-secondary)", marginLeft: "6px" }}>games</span>
+                          </div>
+                          <div style={{ display: "flex", gap: "16px", fontFamily: "'Inter', sans-serif", fontSize: "0.85rem" }}>
+                            <span><span style={{ color: "var(--success)", fontWeight: 700 }}>{animWins.toLocaleString()}</span> <span style={{ color: "var(--text-secondary)" }}>W</span></span>
+                            <span><span style={{ color: "var(--danger)", fontWeight: 700 }}>{animLosses.toLocaleString()}</span> <span style={{ color: "var(--text-secondary)" }}>L</span></span>
+                            <span><span style={{ color: "var(--warning)", fontWeight: 700 }}>{animDraws.toLocaleString()}</span> <span style={{ color: "var(--text-secondary)" }}>D</span></span>
+                          </div>
                         </div>
-                      )}
-                      <div style={{ display: "flex", gap: "24px" }}>
-                        <div>
-                          <div style={{ fontSize: "clamp(1rem, 4vw, 1.2rem)", fontWeight: 700, color: "var(--success)" }}>{animWins.toLocaleString()}</div>
-                          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "2px" }}>Wins</div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: "clamp(1rem, 4vw, 1.2rem)", fontWeight: 700, color: "var(--danger)" }}>{animLosses.toLocaleString()}</div>
-                          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "2px" }}>Losses</div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: "clamp(1rem, 4vw, 1.2rem)", fontWeight: 700, color: "var(--warning)" }}>{animDraws.toLocaleString()}</div>
-                          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "2px" }}>Draws</div>
-                        </div>
+                        {summaryTotals.total > 0 && (
+                          <div
+                            role="img"
+                            aria-label={`Win/Draw/Loss split`}
+                            style={{ height: "5px", borderRadius: "99px", overflow: "hidden", display: "flex", background: "var(--border-subtle)" }}
+                          >
+                            <div style={{ width: `${(summaryTotals.wins / summaryTotals.total) * 100}%`, background: "var(--success)" }} />
+                            <div style={{ width: `${(summaryTotals.draws / summaryTotals.total) * 100}%`, background: "var(--warning)" }} />
+                            <div style={{ width: `${(summaryTotals.losses / summaryTotals.total) * 100}%`, background: "var(--danger)" }} />
+                          </div>
+                        )}
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* RIGHT: Bento — White / Black / games count / Accuracy in 4 quadrants */}
-                {games.length > 0 && (() => {
-                  const colorStats = { white: { wins: 0, losses: 0, draws: 0 }, black: { wins: 0, losses: 0, draws: 0 } };
-                  const chessLower = chessUsername?.toLowerCase();
-                  const lichessLower = lichessUsername?.toLowerCase();
-                  const WHITE_LOSS = new Set(["checkmated", "resigned", "timeout", "abandoned", "loss"]);
-                  (games as any[]).forEach((g) => {
-                    const userLower = g.platform === "lichess" ? lichessLower : chessLower;
-                    const isWhite = (g.white || "").toLowerCase() === userLower;
-                    const side = colorStats[isWhite ? "white" : "black"];
-                    const r = (g.result || "").toLowerCase().trim();
-                    if (r === "1-0" || r === "white") { isWhite ? side.wins++ : side.losses++; }
-                    else if (r === "0-1" || r === "black") { isWhite ? side.losses++ : side.wins++; }
-                    else if (r === "win") { isWhite ? side.wins++ : side.losses++; }
-                    else if (WHITE_LOSS.has(r)) { isWhite ? side.losses++ : side.wins++; }
-                    else { side.draws++; }
-                  });
-                  const total = games.length;
-                  return (
-                    <div className="glass-card bento-color-grid" style={{ padding: 0 }}>
+                  {/* Row 2: As White / As Black split */}
+                  {hasColorSplit && (
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", borderTop: "1px solid var(--glass-border)" }}>
                       {(["white", "black"] as const).map((color, i) => {
                         const { wins, losses, draws } = colorStats[color];
                         const sideTotal = wins + losses + draws;
                         const pct = sideTotal > 0 ? Math.round((wins / sideTotal) * 100) : 0;
                         return (
                           <div key={color} style={{
-                            padding: "24px",
+                            padding: "18px 24px",
                             borderRight: i === 0 ? "1px solid var(--glass-border)" : "none",
-                            borderBottom: "1px solid var(--glass-border)",
                             display: "flex",
                             flexDirection: "column",
                             gap: "10px",
                           }}>
-                            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", fontWeight: 500, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>As {color}</div>
-                            <div style={{ fontSize: "clamp(1.5rem, 5vw, 2.2rem)", fontWeight: 800, color: winRateColor(pct), lineHeight: 1 }} aria-label={`${pct}% win rate as ${color}`}>{pct}%</div>
-                            <div style={{ display: "flex", gap: "10px", fontFamily: "'Inter', sans-serif", fontSize: "12px", alignItems: "center" }}>
+                            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "12px" }}>
+                              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.72rem", fontWeight: 500, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>As {color}</div>
+                              <div style={{ fontSize: "1.5rem", fontWeight: 800, color: winRateColor(pct), lineHeight: 1 }} aria-label={`${pct}% win rate as ${color}`}>{pct}%</div>
+                            </div>
+                            <div style={{ display: "flex", gap: "12px", fontFamily: "'Inter', sans-serif", fontSize: "12px", alignItems: "center" }}>
                               <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                                 <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "var(--success)", flexShrink: 0, display: "inline-block" }} />
                                 <span style={{ color: "var(--success)" }} aria-label={`${wins} wins`}>{wins}</span>
@@ -423,7 +420,7 @@ export default function Dashboard() {
                             {sideTotal > 0 && (
                               <div
                                 role="img"
-                                aria-label={`Win/Draw/Loss: ${Math.round((wins/sideTotal)*100)}% / ${Math.round((draws/sideTotal)*100)}% / ${Math.round((losses/sideTotal)*100)}%`}
+                                aria-label={`Win/Draw/Loss: ${Math.round((wins / sideTotal) * 100)}% / ${Math.round((draws / sideTotal) * 100)}% / ${Math.round((losses / sideTotal) * 100)}%`}
                                 style={{ height: "5px", borderRadius: "99px", background: "var(--border-subtle)", overflow: "hidden", display: "flex" }}
                               >
                                 <div style={{ width: `${(wins / sideTotal) * 100}%`, background: "var(--success)" }} />
@@ -434,50 +431,51 @@ export default function Dashboard() {
                           </div>
                         );
                       })}
-                      <div style={{ padding: "14px 24px", borderRight: "1px solid var(--glass-border)", display: "flex", alignItems: "center" }}>
-                        <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: "var(--text-secondary)" }}>{total} game{total !== 1 ? "s" : ""} loaded</span>
-                      </div>
-                      <div style={{ padding: "14px 24px", display: "flex", flexDirection: "column", justifyContent: "center", gap: "3px" }}>
-                        {stats?.accuracy != null ? (
-                          <>
-                            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", fontWeight: 500, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Avg Accuracy</div>
-                            <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--accent-color)" }}>{parseFloat(stats.accuracy).toFixed(1)}%</div>
-                          </>
-                        ) : (
-                          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: "var(--text-secondary)" }}>No analysis yet</span>
-                        )}
-                      </div>
                     </div>
-                  );
-                })()}
+                  )}
 
-              </div>
-            )}
+                  {/* Row 3: footer strip */}
+                  {hasColorSplit && (
+                    <div style={{ padding: "12px 24px", borderTop: "1px solid var(--glass-border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+                      <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: "var(--text-secondary)" }}>{loadedTotal} game{loadedTotal !== 1 ? "s" : ""} loaded</span>
+                      {stats?.accuracy != null ? (
+                        <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: "var(--text-secondary)", display: "inline-flex", alignItems: "baseline", gap: "6px" }}>
+                          <span style={{ textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 500 }}>Avg accuracy</span>
+                          <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--accent-color)" }}>{parseFloat(stats.accuracy).toFixed(1)}%</span>
+                        </span>
+                      ) : (
+                        <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: "var(--text-secondary)" }}>No analysis yet</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* ── Stats by Time Control ── */}
             {realStats && (() => {
               const formats = (activePlatform === "lichess"
                 ? [
-                    { key: "lichess_rapid",     label: "Rapid",     Icon: Clock },
-                    { key: "lichess_blitz",     label: "Blitz",     Icon: Zap },
-                    { key: "lichess_bullet",    label: "Bullet",    Icon: Gauge },
-                    { key: "lichess_classical", label: "Classical", Icon: CalendarDays },
-                  ]
+                  { key: "lichess_rapid", label: "Rapid", Icon: Clock },
+                  { key: "lichess_blitz", label: "Blitz", Icon: Zap },
+                  { key: "lichess_bullet", label: "Bullet", Icon: Gauge },
+                  { key: "lichess_classical", label: "Classical", Icon: CalendarDays },
+                ]
                 : [
-                    { key: "chess_rapid",  label: "Rapid",  Icon: Clock },
-                    { key: "chess_blitz",  label: "Blitz",  Icon: Zap },
-                    { key: "chess_bullet", label: "Bullet", Icon: Gauge },
-                    { key: "chess_daily",  label: "Daily",  Icon: CalendarDays },
-                  ]
+                  { key: "chess_rapid", label: "Rapid", Icon: Clock },
+                  { key: "chess_blitz", label: "Blitz", Icon: Zap },
+                  { key: "chess_bullet", label: "Bullet", Icon: Gauge },
+                  { key: "chess_daily", label: "Daily", Icon: CalendarDays },
+                ]
               ).filter(({ key }) => realStats[key]?.record);
 
               if (formats.length === 0) return null;
 
               let totalWins = 0, totalLosses = 0, totalDraws = 0;
               formats.forEach(({ key }) => {
-                totalWins   += realStats[key].record.win;
+                totalWins += realStats[key].record.win;
                 totalLosses += realStats[key].record.loss;
-                totalDraws  += realStats[key].record.draw;
+                totalDraws += realStats[key].record.draw;
               });
               const totalGames = totalWins + totalLosses + totalDraws;
               const overallWinRate = totalGames > 0 ? Math.round((totalWins / totalGames) * 100) : 0;
@@ -559,7 +557,7 @@ export default function Dashboard() {
                           {/* Progress bar */}
                           <div
                             role="img"
-                            aria-label={`Win/Draw/Loss: ${games > 0 ? Math.round((record.win/games)*100) : 0}% / ${games > 0 ? Math.round((record.draw/games)*100) : 0}% / ${games > 0 ? Math.round((record.loss/games)*100) : 0}%`}
+                            aria-label={`Win/Draw/Loss: ${games > 0 ? Math.round((record.win / games) * 100) : 0}% / ${games > 0 ? Math.round((record.draw / games) * 100) : 0}% / ${games > 0 ? Math.round((record.loss / games) * 100) : 0}%`}
                             style={{ marginBottom: "14px", height: "5px", borderRadius: "99px", background: "var(--border-subtle)", overflow: "hidden", display: "flex" }}
                           >
                             <div style={{ width: `${games > 0 ? (record.win / games) * 100 : 0}%`, background: "var(--success)" }} />
@@ -766,7 +764,7 @@ export default function Dashboard() {
                   (a, b) => (b?.end_time ?? 0) - (a?.end_time ?? 0)
                 );
                 return filtered.length > 0 ? (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  <div className="game-cards-grid">
                     {filtered.map((g, i) => (
                       <GameRow
                         key={g.filename ?? i}

@@ -1,11 +1,12 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef, useLayoutEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Users, LogOut, Shield, GraduationCap, Settings, X } from "lucide-react";
+import gsap from "gsap";
+import {
+  Users, GraduationCap, Shield, LogOut, Settings,
+} from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTheme } from "@/contexts/ThemeContext";
-import ThemeToggle from "./ThemeToggle";
 import SettingsPanel from "./SettingsPanel";
 import "./Header.css";
 
@@ -15,185 +16,204 @@ const ROLE_META = {
   coach:          { label: "Coach",   logo: "♛", color: "#6366f1", lightColor: "#4338ca" },
 } as const;
 
+const prefersReduced = () =>
+  typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
 export default function CoachHeader() {
   const pathname = usePathname();
   const { coachProfile, signOut } = useAuth();
-  const { theme } = useTheme();
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Animation refs
+  const linkRefs = useRef<(HTMLAnchorElement | null)[]>([]);
+  const activeIndicatorRef = useRef<HTMLDivElement>(null);
+  const bottomInnerRef = useRef<HTMLDivElement>(null);
+  const bottomTabRefs = useRef<(HTMLElement | null)[]>([]);
+  const bottomIndicatorRef = useRef<HTMLDivElement>(null);
 
   if (!coachProfile) return null;
 
   const meta = ROLE_META[coachProfile.role] ?? ROLE_META.coach;
-  const displayColor = theme === "light" ? meta.lightColor : meta.color;
-  const closeDrawer = () => setDrawerOpen(false);
+
+  const navItems = [
+    { name: "My Players", path: "/coach/dashboard", matchPrefixes: ["/coach/dashboard", "/coach/players"], icon: <Users size={14} /> },
+    ...(coachProfile.role === "academy_owner" ? [{ name: "My Academy", path: "/academy/dashboard", matchPrefixes: ["/academy"], icon: <GraduationCap size={14} /> }] : []),
+    ...(coachProfile.role === "admin" ? [{ name: "Admin", path: "/admin/dashboard", matchPrefixes: ["/admin"], icon: <Shield size={14} /> }] : []),
+  ];
+
+  const bottomNavItems = [
+    { name: "Players", path: "/coach/dashboard", matchPrefixes: ["/coach/dashboard", "/coach/players"], icon: <Users size={20} /> },
+    ...(coachProfile.role === "academy_owner" ? [{ name: "Academy", path: "/academy/dashboard", matchPrefixes: ["/academy"], icon: <GraduationCap size={20} /> }] : []),
+    ...(coachProfile.role === "admin" ? [{ name: "Admin", path: "/admin/dashboard", matchPrefixes: ["/admin"], icon: <Shield size={20} /> }] : []),
+    { name: "Settings", path: null, matchPrefixes: [], icon: <Settings size={20} /> },
+  ];
+
+  const activeIndex = navItems.findIndex((item) =>
+    item.matchPrefixes.some((p) => pathname.startsWith(p))
+  );
+  const activeBottomIndex = settingsOpen
+    ? bottomNavItems.findIndex((item) => item.path === null)
+    : bottomNavItems.findIndex((item) =>
+        item.path ? item.matchPrefixes.some((p) => pathname.startsWith(p)) : false
+      );
+
+  useLayoutEffect(() => {
+    if (!coachProfile || !activeIndicatorRef.current) return;
+    if (activeIndex < 0) {
+      gsap.to(activeIndicatorRef.current, { opacity: 0, duration: 0.2 });
+      return;
+    }
+    const target = linkRefs.current[activeIndex];
+    if (!target) return;
+    const reduced = prefersReduced();
+    gsap.to(activeIndicatorRef.current, {
+      opacity: 1,
+      x: target.offsetLeft,
+      width: target.offsetWidth,
+      height: target.offsetHeight,
+      duration: reduced ? 0 : 0.35,
+      ease: "power3.out",
+    });
+  }, [activeIndex, coachProfile]);
+
+  useLayoutEffect(() => {
+    if (!coachProfile || !bottomIndicatorRef.current || !bottomInnerRef.current) return;
+    if (activeBottomIndex < 0) {
+      gsap.to(bottomIndicatorRef.current, { opacity: 0, duration: 0.2 });
+      return;
+    }
+    const target = bottomTabRefs.current[activeBottomIndex];
+    if (!target) return;
+    const reduced = prefersReduced();
+    gsap.to(bottomIndicatorRef.current, {
+      opacity: 1,
+      x: target.offsetLeft + 8,
+      width: target.offsetWidth - 16,
+      duration: reduced ? 0 : 0.35,
+      ease: "power3.out",
+    });
+  }, [activeBottomIndex, coachProfile]);
 
   return (
     <>
-      <header className="header-glass" style={{ borderBottom: `2px solid ${meta.color}22` }}>
-        <div className="container flex-between header-inner">
-          <div className="header-brand">
-            <span className="brand-logo" style={{ color: displayColor }}>
-              {meta.logo}
-            </span>
+      <header className="header-bar">
+        <div className="header-inner">
+          {/* Brand */}
+          <Link href="/coach/dashboard" className="header-brand" aria-label="Chess Advisor coach portal">
+            <div className="brand-mark" aria-hidden="true">
+              <span className="brand-knight" style={{ color: meta.color }}>{meta.logo}</span>
+            </div>
             <span className="brand-text">
               Chess Advisor{" "}
               <span
                 style={{
-                  fontSize: "12px",
-                  color: displayColor,
+                  fontSize: "11px",
+                  color: meta.color,
                   fontWeight: "700",
                   background: `${meta.color}18`,
-                  padding: "2px 8px",
-                  borderRadius: "6px",
+                  padding: "1px 6px",
+                  borderRadius: "4px",
+                  marginLeft: "4px",
                 }}
               >
                 {meta.label}
               </span>
             </span>
-          </div>
+          </Link>
 
-          {/* Desktop nav */}
-          <nav className="header-nav">
-            <Link
-              href="/coach/dashboard"
-              className={`nav-link ${pathname.startsWith("/coach/dashboard") || pathname.startsWith("/coach/players") ? "active" : ""}`}
-            >
-              <Users size={18} />
-              My Players
-            </Link>
-            {coachProfile.role === "academy_owner" && (
-              <Link
-                href="/academy/dashboard"
-                className={`nav-link ${pathname.startsWith("/academy") ? "active" : ""}`}
-              >
-                <GraduationCap size={18} />
-                My Academy
-              </Link>
-            )}
-            {coachProfile.role === "admin" && (
-              <Link
-                href="/admin/dashboard"
-                className={`nav-link ${pathname.startsWith("/admin") ? "active" : ""}`}
-              >
-                <Shield size={18} />
-                Admin
-              </Link>
-            )}
+          {/* Center desktop navigation */}
+          <nav className="header-nav" aria-label="Coach navigation">
+            <div
+              className="nav-pill"
+              ref={activeIndicatorRef}
+              aria-hidden="true"
+              style={{ opacity: 0 }}
+            />
+            {navItems.map((item, i) => {
+              const isActive = i === activeIndex;
+              return (
+                <Link
+                  key={item.path}
+                  href={item.path}
+                  className={`nav-link${isActive ? " active" : ""}`}
+                  ref={(el) => { linkRefs.current[i] = el; }}
+                >
+                  {item.icon}
+                  <span className="nav-link-label">{item.name}</span>
+                </Link>
+              );
+            })}
           </nav>
 
-          {/* Desktop user area */}
-          <div className="header-user">
-            <ThemeToggle />
-            <span className="user-name">{coachProfile.full_name}</span>
+          {/* Right actions */}
+          <div className="header-actions">
             <button
-              className="btn-logout"
-              title="Settings"
+              className={`header-action-btn${settingsOpen ? " active" : ""}`}
               onClick={() => setSettingsOpen(true)}
+              aria-label="Open settings"
+              title="Settings"
             >
-              <Settings size={16} />
+              <Settings size={15} />
             </button>
-            <button className="btn-logout" title="Log Out" onClick={signOut}>
-              <LogOut size={16} />
+            <button
+              className="header-action-btn"
+              onClick={signOut}
+              aria-label="Log Out"
+              title="Log Out"
+            >
+              <LogOut size={15} />
             </button>
           </div>
-
-          {/* Mobile hamburger */}
-          <button
-            className={`hamburger-btn ${drawerOpen ? "open" : ""}`}
-            onClick={() => setDrawerOpen((v) => !v)}
-            aria-label="Open menu"
-          >
-            <span />
-            <span />
-            <span />
-          </button>
         </div>
-
-        <SettingsPanel
-          isOpen={settingsOpen}
-          onClose={() => setSettingsOpen(false)}
-          userType="coach"
-          username={coachProfile.full_name}
-          email={coachProfile.email}
-          role={coachProfile.role}
-        />
       </header>
 
-      {/* Mobile drawer overlay */}
-      <div
-        className={`mobile-drawer-overlay ${drawerOpen ? "open" : ""}`}
-        onClick={closeDrawer}
+      <SettingsPanel
+        isOpen={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        userType="coach"
+        username={coachProfile.full_name}
+        email={coachProfile.email}
+        role={coachProfile.role}
+        onLogout={signOut}
       />
 
-      {/* Mobile drawer */}
-      <div className={`mobile-drawer ${drawerOpen ? "open" : ""}`}>
-        <div className="mobile-drawer-header">
-          <div className="mobile-drawer-brand">
-            <span style={{ fontSize: "20px", color: displayColor }}>{meta.logo}</span>
-            Chess Advisor
-          </div>
-          <button className="mobile-drawer-close" onClick={closeDrawer}>
-            <X size={18} />
-          </button>
+      {/* Mobile bottom navigation bar */}
+      <nav className="bottom-nav" aria-label="Coach mobile navigation">
+        <div className="bottom-nav-inner" ref={bottomInnerRef}>
+          <div
+            className="bottom-pill"
+            ref={bottomIndicatorRef}
+            aria-hidden="true"
+            style={{ opacity: 0 }}
+          />
+          {bottomNavItems.map((item, i) => {
+            const isActive = i === activeBottomIndex;
+            return item.path ? (
+              <Link
+                key={item.name}
+                href={item.path}
+                className={`bottom-nav-tab${isActive ? " active" : ""}`}
+                ref={(el) => { bottomTabRefs.current[i] = el; }}
+              >
+                <span className="bottom-tab-icon-wrap">{item.icon}</span>
+                <span>{item.name}</span>
+              </Link>
+            ) : (
+              <button
+                key={item.name}
+                type="button"
+                className={`bottom-nav-tab${isActive ? " active" : ""}`}
+                onClick={() => setSettingsOpen(true)}
+                aria-label="Settings"
+                ref={(el) => { bottomTabRefs.current[i] = el; }}
+              >
+                {item.icon}
+                <span>{item.name}</span>
+              </button>
+            );
+          })}
         </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 14px", borderRadius: "8px", background: "var(--surface-1)", marginBottom: "8px" }}>
-          <span style={{ fontSize: "13px", color: "var(--text-secondary)" }}>{meta.label}</span>
-          <span style={{ fontSize: "13px", fontWeight: "700", color: "var(--text-primary)" }}>{coachProfile.full_name}</span>
-        </div>
-
-        <Link
-          href="/coach/dashboard"
-          className={`nav-link ${pathname.startsWith("/coach/dashboard") ? "active" : ""}`}
-          onClick={closeDrawer}
-        >
-          <Users size={18} /> My Players
-        </Link>
-
-        {coachProfile.role === "academy_owner" && (
-          <Link
-            href="/academy/dashboard"
-            className={`nav-link ${pathname.startsWith("/academy") ? "active" : ""}`}
-            onClick={closeDrawer}
-          >
-            <GraduationCap size={18} /> My Academy
-          </Link>
-        )}
-
-        {coachProfile.role === "admin" && (
-          <Link
-            href="/admin/dashboard"
-            className={`nav-link ${pathname.startsWith("/admin") ? "active" : ""}`}
-            onClick={closeDrawer}
-          >
-            <Shield size={18} /> Admin
-          </Link>
-        )}
-
-        <div className="mobile-drawer-divider" />
-
-        <div className="mobile-drawer-footer">
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <ThemeToggle />
-            <span style={{ fontSize: "13px", color: "var(--text-secondary)" }}>Toggle theme</span>
-          </div>
-          <button
-            className="mobile-drawer-logout"
-            onClick={() => { setSettingsOpen(true); closeDrawer(); }}
-          >
-            <Settings size={16} />
-            Settings
-          </button>
-          <button
-            className="mobile-drawer-logout"
-            onClick={() => { signOut(); closeDrawer(); }}
-          >
-            <LogOut size={16} />
-            Log Out
-          </button>
-        </div>
-      </div>
+      </nav>
     </>
   );
 }
