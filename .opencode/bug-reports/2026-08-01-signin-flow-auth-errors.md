@@ -5,7 +5,7 @@
 * Report Date: 2026-08-01
 * Bug Title: Sign-in flow — multiple authentication defects (timing & error-code enumeration, Google verification bypass, set-password dead-end, dead UI branches)
 * Severity: High
-* Status: Open
+* Status: Fixed (2026-08-01)
 * Confidence: High (for top-ranked candidates; medium/low for edge-case items, noted per candidate)
 
 ---
@@ -333,3 +333,67 @@ Reproduction is code-level (no live server needed for most items):
 * Evidence documented (empirically verified timing values; code refs with line numbers).
 * Impact assessed; implementation guidance provided.
 * No existing unrelated report overwritten (`2026-06-23-analysis-filename-undefined.md` untouched).
+
+---
+
+## Resolution Note (2026-08-01)
+
+**Status changed: Open → Fixed**
+
+Implemented per the fix plan (Option B for Candidate 2 — state-specific 403s for
+migrated/placeholder accounts kept, all other failure paths made uniform).
+
+### Changes by candidate
+
+* **C1 (timing enumeration)** — `apps/web/src/app/api/auth/login/route.ts`:
+  * Replaced the invalid `DUMMY_HASH` (48 chars after prefix → bcrypt exited in
+    ~0 ms) with a real `bcrypt.hashSync("timing-equalizer-dummy", 12)` hash
+    computed once at module load (233 ms compare, verified).
+  * `hashToVerify` now uses `DUMMY_HASH` whenever `!user || !user.password_hash
+    || isMigrated || hasPlaceholder`, so `null` is never passed to bcrypt.
+* **C2 (status-code enumeration)** — same route: non-existent users and wrong
+  passwords return the identical `401 { error: "Invalid ID or password" }`;
+  `EMAIL_NOT_VERIFIED` only fires after a correct password; migrated/placeholder
+  states stay 403 (intentional, per Option B) but are reached only after the
+  constant-time bcrypt compare. Added clarifying comments.
+* **C4 (rate limiting)** — already present in the working tree / commit
+  `d8d013d9` (`isRateLimited` keyed by IP + ID; generic 429). Verified with tests.
+* **C3 (Google verification bypass)** — `apps/web/src/app/api/auth/google/callback/route.ts`:
+  * Existing account with `email_verified: false` → redirects to login with
+    `google_error=email_not_verified`, never flips `email_verified` to `true`.
+  * New accounts are only created when Google's `email_verified` claim is true.
+  * Verified accounts still get `google_sub` linked.
+* **C10 (state cookie)** — `redirectToLogin()` now clears the one-shot
+  `google_oauth_state` cookie on all error redirects (previously only on success).
+* **C6 (set-password dead-end)** — `apps/web/src/app/api/auth/set-password/route.ts`:
+  resolves the player by `email` and `app_user.email_lower` in addition to
+  `chess_username` / `lichess_username`, so players who logged in with their email
+  can complete password setup. Validation message updated to "Username or email is required".
+* **C5 (dead UI branch)** — `apps/web/src/app/login/page.tsx`: removed the
+  unreachable `PENDING_APPROVAL` state, handler branch, and alert JSX.
+  (`/pending` requires a session, so the session-for-pending behavior is retained.)
+* **C7 (isStaff label)** — login hint copy is now neutral ("Enter your email or
+  your Chess.com / Lichess username") so player email logins are not mislabeled
+  as staff login.
+* **C8 (stale error)** — password field `onChange` now calls `clearAlerts()`.
+* **C9 (resend swallows failures)** — `handleResend` now has try/catch and a
+  `res.ok` check before showing "Verification email sent".
+* **Banner copy** — "Account ready!" banner now mentions that the user will be
+  prompted to set a password on first sign-in (matches the `*pending-setup`
+  placeholder-hash registration flow).
+
+### Tests
+
+* `apps/web/src/__tests__/login-route.test.ts` (new) — generic 401 parity,
+  never passes null to bcrypt, valid 60-char `$2b$12$` dummy hash, migrated /
+  placeholder / unverified / player-success paths, per-ID and per-IP rate limits.
+* `apps/web/src/__tests__/google-callback.test.ts` (new) — Google bypass closed
+  for unverified accounts, verified-account linking without re-verification,
+  unverified-new-account rejection, state-cookie cleanup on error redirects.
+
+### Validation
+
+* Tests: 6 suites / 53 tests pass.
+* `tsc --noEmit`: clean.
+* `eslint`: 0 errors (only pre-existing `any` warnings).
+* `next build`: succeeds.

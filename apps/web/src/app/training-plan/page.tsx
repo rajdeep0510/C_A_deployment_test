@@ -6,7 +6,7 @@ import { Chess } from "chess.js";
 import Loader from "@/components/Loader";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { getTrainingPlan } from "@/services/api";
-import { Clock } from "lucide-react";
+import { Clock, ChevronDown } from "lucide-react";
 
 import { Chessboard } from "react-chessboard";
 
@@ -169,6 +169,7 @@ function BlunderEntry({
   expanded: boolean;
   onToggle: () => void;
 }) {
+  const [hovered, setHovered] = useState(false);
   const qs    = QUALITY_STYLE[entry.quality] ?? QUALITY_STYLE.Mistake;
   const nm    = NATURE_META[entry.error_nature] ?? { icon: "❓", color: "#94a3b8" };
   const delta = (entry.eval_after - entry.eval_before).toFixed(1);
@@ -188,12 +189,25 @@ function BlunderEntry({
 
   return (
     <div
+      onClick={onToggle}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onToggle();
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      aria-expanded={expanded}
       style={{
         borderRadius: "10px",
-        border: `1px solid ${qs.color}33`,
-        background: "var(--surface-1)",
+        border: `1px solid ${hovered ? qs.color + "66" : qs.color + "33"}`,
+        background: hovered ? "var(--surface-2)" : "var(--surface-1)",
         overflow: "hidden",
-        transition: "border-color 0.15s",
+        cursor: "pointer",
+        transition: "background-color 0.15s, border-color 0.15s",
       }}
     >
       {/* Card header — always visible */}
@@ -272,29 +286,26 @@ function BlunderEntry({
           </div>
         </div>
 
-        {/* Toggle button */}
-        <button
-          onClick={onToggle}
+        {/* Expand/collapse indicator */}
+        <span
+          aria-hidden="true"
           style={{
-            background: expanded ? "var(--accent-color)" : "var(--surface-2)",
-            border: "none",
-            borderRadius: "6px",
-            padding: "6px 12px",
-            fontSize: "12px",
-            fontWeight: "600",
-            cursor: "pointer",
-            color: expanded ? "#fff" : "var(--text-secondary)",
-            whiteSpace: "nowrap",
+            marginTop: "3px",
+            color: expanded ? "var(--accent-color)" : "var(--text-secondary)",
+            display: "inline-flex",
             flexShrink: 0,
+            transition: "transform 0.15s",
+            transform: expanded ? "rotate(180deg)" : "none",
           }}
         >
-          {expanded ? "Hide ▲" : "Board ▼"}
-        </button>
+          <ChevronDown size={16} />
+        </span>
       </div>
 
       {/* Board — lazy rendered when expanded */}
       {expanded && (
         <div
+          onClick={(e) => e.stopPropagation()}
           style={{
             padding: "0 16px 16px",
             display: "flex",

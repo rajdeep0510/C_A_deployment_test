@@ -30,6 +30,7 @@ describe("signup anti-enumeration", () => {
         fullName: "Test Player",
         coachId: "coach_1",
         chessUsername: "newplayer",
+        password: "password123",
       })
     );
     expect(res.status).toBe(201);
@@ -47,6 +48,7 @@ describe("signup anti-enumeration", () => {
         fullName: "Test Player",
         coachId: "coach_1",
         chessUsername: "takenuser",
+        password: "password123",
       })
     );
     expect(res.status).toBe(201);
@@ -83,7 +85,7 @@ describe("signup anti-enumeration", () => {
     expect(res.status).toBe(400);
   });
 
-  it("allows player registrations without a password (they set it later)", async () => {
+  it("rejects player registrations without a password", async () => {
     const res = await POST(
       makeRequest({
         type: "player",
@@ -93,8 +95,22 @@ describe("signup anti-enumeration", () => {
         chessUsername: "nopwplayer",
       })
     );
+    expect(res.status).toBe(400);
+  });
+
+  it("allows player registrations with a valid password", async () => {
+    const res = await POST(
+      makeRequest({
+        type: "player",
+        email: `withpw-${Date.now()}@example.com`,
+        fullName: "Test Player",
+        coachId: "coach_1",
+        chessUsername: "withpwplayer",
+        password: "password123",
+      })
+    );
     // registerPlayerUser is mocked to reject with EMAIL_TAKEN, so the generic
-    // 201 path is exercised; importantly it must NOT be a 400 for missing password.
+    // 201 path is exercised for a valid request (password present).
     expect(res.status).toBe(201);
   });
 });

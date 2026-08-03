@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { verifyPassword, createSession, setSessionCookie, resolvePostLoginRedirect } from "@/lib/auth";
 import { isRateLimited, getClientIp } from "@/lib/rate-limit";
 
-const DUMMY_HASH = "$2b$12$invalid.hash.for.timing.attack.prevention.only.x";
+// A real bcrypt hash computed once at module load. It is used whenever there is
+// no user, no stored hash, or a non-verifiable hash so that bcrypt always runs
+// at full cost. This keeps response timing uniform across all login outcomes
+// and prevents account enumeration via response timing.
+const DUMMY_HASH = bcrypt.hashSync("timing-equalizer-dummy", 12);
 
 // Brute-force / credential-stuffing guards (best-effort, in-memory).
 const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
@@ -45,8 +50,6 @@ export async function POST(request: Request) {
   }
 
   try {
-    const idLower = id.toLowerCase().trim();
-
     // 1. Search for user via player username, player email, or app_user email_lower
     let user = await prisma.app_users.findFirst({
       where: {
@@ -80,9 +83,19 @@ export async function POST(request: Request) {
     // Always run bcrypt for constant timing prevention
     const isMigrated = user?.password_hash === "[MIGRATED]";
     const hasPlaceholder = !!user?.password_hash?.startsWith("*");
-    const hashToVerify = user && !isMigrated && !hasPlaceholder ? user.password_hash : DUMMY_HASH;
+    // Use DUMMY_HASH (never null) when there is no user, no stored hash, or a
+    // non-verifiable hash, so `verifyPassword` always runs at full cost.
+    const hashToVerify =
+      user && user.password_hash && !isMigrated && !hasPlaceholder
+        ? user.password_hash
+        : DUMMY_HASH;
     const passwordOk = await verifyPassword(password, hashToVerify).catch(() => false);
 
+    // Uniform failure responses: non-existent users and wrong passwords return
+    // the same 401 body. The migrated/placeholder states are kept as explicit
+    // 403s (transitional states that need user action) but they are only
+    // reached AFTER the constant-time bcrypt compare above, so response timing
+    // never reveals whether an account exists.
     if (!user) {
       return NextResponse.json({ error: "Invalid ID or password" }, { status: 401 });
     }

@@ -393,10 +393,10 @@ export async function registerPlayerUser(data: {
   const existingEmail = await prisma.app_users.findUnique({ where: { email_lower: emailLower } });
   if (existingEmail) throw new Error("EMAIL_TAKEN");
 
-  // Players don't set a password during registration — they claim one on first
-  // login via /set-password. Store a placeholder hash (leading `*`) so the
-  // login route returns PASSWORD_SETUP_REQUIRED. If a password IS provided
-  // (e.g. older flows / future changes), store it hashed as before.
+  // Players set a password at registration (signup route requires it). The
+  // placeholder-hash fallback only exists for legacy accounts / older flows:
+  // a leading `*` makes the login route return PASSWORD_SETUP_REQUIRED and the
+  // user can claim a password via /set-password.
   const passwordHash = data.password ? await hashPassword(data.password) : "*pending-setup";
   const user = await prisma.app_users.create({
     data: { email: data.email, password_hash: passwordHash },

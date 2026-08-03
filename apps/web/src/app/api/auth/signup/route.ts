@@ -22,9 +22,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
-  // Players do not set a password at registration (they claim one via
-  // /set-password on first login). Only staff registrations require one.
-  if (type !== "player" && (!password || password.length < 8)) {
+  // Every account type (players, coaches, academy owners) requires a password.
+  if (!password || password.length < 8) {
     return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
   }
 
@@ -53,7 +52,7 @@ export async function POST(request: Request) {
       if (!chessUsername && !lichessUsername) {
         return NextResponse.json({ error: "Enter your Chess.com or Lichess username" }, { status: 400 });
       }
-      const result = await registerPlayerUser({ email, fullName, chessUsername, lichessUsername, activePlatform, coachId });
+      const result = await registerPlayerUser({ email, password, fullName, chessUsername, lichessUsername, activePlatform, coachId });
       if (result.preApproved) {
         return NextResponse.json({ preApproved: true, message: "Your account is ready! You can now log in with your chess username and password." }, { status: 201 });
       }
