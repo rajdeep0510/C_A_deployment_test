@@ -40,10 +40,10 @@ export async function POST(request: Request) {
   if (identifier.includes("@")) {
     user = await prisma.app_users.findUnique({ where: { email_lower: identifier.toLowerCase() } });
   } else {
-    // Player login — look up by chess.com or lichess username
+    // Legacy player fallback — look up the app_user by the player's stored email.
     const idLower = identifier.toLowerCase();
     const player = await prisma.players.findFirst({
-      where: { OR: [{ chess_username: idLower }, { lichess_username: idLower }] },
+      where: { OR: [{ email: idLower }, { app_user: { email_lower: idLower } }] },
       include: { app_user: true },
     });
     user = player?.app_user ?? null;

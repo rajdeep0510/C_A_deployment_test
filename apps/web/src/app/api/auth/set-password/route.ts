@@ -12,7 +12,7 @@ export async function POST(request: Request) {
 
   const { id, newPassword } = body;
   if (!id || typeof id !== "string") {
-    return NextResponse.json({ error: "Username or email is required" }, { status: 400 });
+    return NextResponse.json({ error: "Email is required" }, { status: 400 });
   }
   if (!newPassword || typeof newPassword !== "string" || newPassword.length < 8) {
     return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
@@ -27,13 +27,11 @@ export async function POST(request: Request) {
   const idLower = id.toLowerCase().trim();
 
   try {
-    // Resolve the player by username OR email (a legacy player may log in with
-    // their email and reach this step).
+    // Resolve the player by email only (login is email-based; the id passed
+    // in is the email address typed at the login screen).
     const player = await prisma.players.findFirst({
       where: {
         OR: [
-          { chess_username: idLower },
-          { lichess_username: idLower },
           { email: idLower },
           { app_user: { email_lower: idLower } },
         ],
