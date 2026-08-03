@@ -1,12 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAnalysisAuth, inflightAnalysisJobCount, MAX_INFLIGHT_JOBS_PER_USER } from "@/lib/analysis-security";
 
 export async function POST(request: NextRequest) {
+  const guard = await requireAnalysisAuth(request, "analyze:create");
+  if (guard.response) return guard.response;
+
   try {
     const { username, filename } = await request.json();
 
     if (!username || !filename) {
       return NextResponse.json({ error: "Username and filename are required" }, { status: 400 });
+    }
+
+    // Per-user job quota: reject new jobs when the user already has a lot of
+    // in-flight (pending/processing) analysis work queued.
+    const inflight = await inflightAnalysisJobCount(username);
+    if (inflight >= MAX_INFLIGHT_JOBS_PER_USER) {
+      return NextResponse.json(
+        { error: `Too many in-flight analyses. Wait for existing jobs to finish (limit ${MAX_INFLIGHT_JOBS_PER_USER}).` },
+        { status: 429 }
+      );
     }
 
     const existing = await prisma.analysis_jobs.findFirst({
@@ -27,6 +41,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  const guard = await requireAnalysisAuth(request, "analyze:patch");
+  if (guard.response) return guard.response;
+
   try {
     const { jobId, status, result } = await request.json();
 
@@ -47,6 +64,9 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const guard = await requireAnalysisAuth(request, "analyze:delete");
+  if (guard.response) return guard.response;
+
   try {
     const { username, filename } = await request.json();
     if (!username || !filename) {
@@ -63,6 +83,12 @@ export async function DELETE(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  const guard = await requireAnalysisAuth(request, "analyze:get", {
+    perIp: 60,
+    perUser: 120,
+  });
+  if (guard.response) return guard.response;
+
   const { searchParams } = new URL(request.url);
   const username = searchParams.get("username");
   const jobId = searchParams.get("jobId");

@@ -19,7 +19,6 @@ function LoginForm() {
   const [error, setError] = useState("");
   const [unverified, setUnverified] = useState(false);
   const [needsReset, setNeedsReset] = useState(false);
-  const [pendingApproval, setPendingApproval] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendDone, setResendDone] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -39,7 +38,6 @@ function LoginForm() {
     setError("");
     setUnverified(false);
     setNeedsReset(false);
-    setPendingApproval(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -75,13 +73,6 @@ function LoginForm() {
         return;
       }
 
-      if (res.status === 403 && data.error === "PENDING_APPROVAL") {
-        setPendingApproval(true);
-        setLoading(false);
-        return;
-      }
-
-
       if (!res.ok) {
         setError(data.error ?? "Login failed. Please try again.");
         setLoading(false);
@@ -98,13 +89,19 @@ function LoginForm() {
 
   const handleResend = async () => {
     setResendLoading(true);
-    await fetch("/api/auth/resend-verification", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: id.trim() }),
-    });
-    setResendLoading(false);
-    setResendDone(true);
+    try {
+      const res = await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: id.trim() }),
+      });
+      if (!res.ok) throw new Error("resend failed");
+      setResendDone(true);
+    } catch {
+      setError("Could not resend the verification email. Please try again.");
+    } finally {
+      setResendLoading(false);
+    }
   };
 
   const inputStyle = {
@@ -210,7 +207,7 @@ function LoginForm() {
             }}
           >
             <CheckCircle size={16} />
-            Account ready! Enter your chess username to sign in.
+            Account ready! Sign in with your email or chess username and your password.
           </div>
         )}
 
@@ -271,7 +268,7 @@ function LoginForm() {
               />
             </div>
             <p style={{ fontSize: "11px", color: "#52525b", margin: 0 }}>
-              {isStaff ? "Coach / Academy / Admin login" : "Players: enter your Chess.com or Lichess username"}
+              Enter your email or your Chess.com / Lichess username
             </p>
           </div>
 
@@ -291,7 +288,7 @@ function LoginForm() {
                   type={showPassword ? "text" : "password"}
                   placeholder="Your password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => { setPassword(e.target.value); clearAlerts(); }}
                   disabled={loading}
                   autoComplete="current-password"
                   required
@@ -312,13 +309,6 @@ function LoginForm() {
               {error}
             </div>
           )}
-
-          {pendingApproval && (
-            <div className={styles.alert} style={{ fontSize: "13px", background: "#1f1f1f", padding: "12px 14px", borderRadius: "8px", border: "1px solid #2a2a2a" }}>
-              <span style={{ color: "#f59e0b" }}>Your account is pending approval from your coach. You'll receive an email once approved.</span>
-            </div>
-          )}
-
 
           {unverified && (
             <div className={styles.alert} style={{ fontSize: "13px", background: "#1f1f1f", padding: "12px 14px", borderRadius: "8px", border: "1px solid #2a2a2a", display: "flex", flexDirection: "column", gap: "8px" }}>

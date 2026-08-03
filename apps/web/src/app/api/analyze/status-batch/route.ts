@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAnalysisAuth } from "@/lib/analysis-security";
 
 export async function POST(request: NextRequest) {
+  const guard = await requireAnalysisAuth(request, "analyze:status-batch", {
+    perIp: 60,
+    perUser: 120,
+  });
+  if (guard.response) return guard.response;
+
   try {
     const { username, filenames } = await request.json();
 

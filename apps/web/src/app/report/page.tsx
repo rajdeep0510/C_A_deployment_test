@@ -148,8 +148,12 @@ function ReportPageInner() {
 
   useEffect(() => {
     if (playerLoading) return;
-    if (!activeUsername || !isApproved) {
+    if (!activeUsername) {
       router.push("/login");
+      return;
+    }
+    if (!isApproved) {
+      router.push("/pending");
       return;
     }
     setLoading(true);
@@ -1279,7 +1283,7 @@ function ReportPageInner() {
     <>
       <main
         className="container animate-fade-in"
-        style={{ paddingTop: "40px", paddingBottom: "80px" }}
+        style={{ paddingTop: "75px", paddingBottom: "80px" }}
       >
         {/* ── PAGE HERO ─────────────────────────────────────────────────────── */}
         <div

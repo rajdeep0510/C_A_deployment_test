@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAnalysisAuth, inflightAnalysisJobCount, MAX_INFLIGHT_JOBS_PER_USER } from "@/lib/analysis-security";
 
 const CHESS_COM_HEADERS = { "User-Agent": "ChessAdvisor/1.0" };
 
@@ -57,10 +58,26 @@ export async function GET(
   { params }: { params: Promise<{ username: string }> }
 ) {
   const { username } = await params;
+  const guard = await requireAnalysisAuth(request, "analyze:batch-fetch", {
+    perIp: 10,
+    perUser: 20,
+  });
+  if (guard.response) return guard.response;
+
   const { searchParams } = new URL(request.url);
   const limit = Math.min(parseInt(searchParams.get("limit") || "50", 10), 50);
 
   try {
+    // Per-user job quota: reject fetching/creating more jobs when the user
+    // already has a lot of in-flight (pending/processing) analysis queued.
+    const inflight = await inflightAnalysisJobCount(username);
+    if (inflight >= MAX_INFLIGHT_JOBS_PER_USER) {
+      return NextResponse.json(
+        { error: `Too many in-flight analyses. Wait for existing jobs to finish (limit ${MAX_INFLIGHT_JOBS_PER_USER}).` },
+        { status: 429 }
+      );
+    }
+
     const gameUrls = await fetchGameUrlsForBatch(username, limit);
 
     if (gameUrls.length === 0) {

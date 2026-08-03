@@ -1058,7 +1058,16 @@ export default function CoachGameAnalysisPage({
                         >
                           Phase Accuracy
                         </div>
-                        {Object.entries(analysis.phase_accuracy).map(
+                        {(() => {
+                          const order = ["opening", "middlegame", "endgame"];
+                          return Object.entries(analysis.phase_accuracy).sort(
+                            ([a], [b]) => {
+                              const ai = order.indexOf(a.toLowerCase());
+                              const bi = order.indexOf(b.toLowerCase());
+                              return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+                            },
+                          );
+                        })().map(
                           ([phase, val]) => {
                             const pct = parseFloat(val as string);
                             return (

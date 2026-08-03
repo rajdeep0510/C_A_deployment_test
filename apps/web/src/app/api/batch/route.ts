@@ -1,12 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAnalysisAuth, validateBatchGameUrls, MAX_BATCH_GAME_URLS } from "@/lib/analysis-security";
 
 export async function POST(request: NextRequest) {
+  const guard = await requireAnalysisAuth(request, "batch:create", {
+    perIp: 10,
+    perUser: 20,
+  });
+  if (guard.response) return guard.response;
+
   try {
     const { username, game_urls, time_class } = await request.json();
 
     if (!username || !Array.isArray(game_urls) || game_urls.length === 0) {
       return NextResponse.json({ error: "username and game_urls[] are required" }, { status: 400 });
+    }
+
+    // Server-side cap + relevance check regardless of what the client sends.
+    // This is the cheap existence check: it rejects arbitrary URLs and caps
+    // the size of any single batch.
+    const urls = validateBatchGameUrls(game_urls);
+    if (!urls || urls.length === 0) {
+      return NextResponse.json(
+        { error: `game_urls must contain valid Chess.com or Lichess game URLs (max ${MAX_BATCH_GAME_URLS})` },
+        { status: 400 }
+      );
     }
 
     const tc = time_class ?? null;
@@ -19,7 +37,7 @@ export async function POST(request: NextRequest) {
     if (existing) return NextResponse.json(existing);
 
     const job = await prisma.batch_jobs.create({
-      data: { username, game_urls, status: "pending", time_class: tc },
+      data: { username, game_urls: urls, status: "pending", time_class: tc },
     });
 
     // Wake the worker if it's spun down (Render free tier)
@@ -36,6 +54,12 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  const guard = await requireAnalysisAuth(request, "batch:get", {
+    perIp: 60,
+    perUser: 120,
+  });
+  if (guard.response) return guard.response;
+
   const { searchParams } = new URL(request.url);
   const jobId = searchParams.get("jobId");
   const username = searchParams.get("username");

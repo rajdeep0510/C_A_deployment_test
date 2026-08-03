@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { fetchChessComGames, fetchLichessGames } from "@/lib/chess/integrations";
+import { requireAnalysisAuth } from "@/lib/analysis-security";
 import type { Game } from "@repo/types";
 
 // Both platforms embed an opening tag in the PGN header — chess.com uses
@@ -775,6 +776,13 @@ export async function GET(
   const { searchParams } = new URL(request.url);
   const limit = parseInt(searchParams.get("limit") || "50", 10);
   const platform = searchParams.get("platform") || "chess.com";
+
+  // Reports reveal a user's analyzed PGNs — require a session (R4).
+  const guard = await requireAnalysisAuth(request, "report:get", {
+    perIp: 60,
+    perUser: 120,
+  });
+  if (guard.response) return guard.response;
 
   try {
     const tc = searchParams.get("tc");
