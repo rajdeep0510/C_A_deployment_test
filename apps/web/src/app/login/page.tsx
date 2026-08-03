@@ -2,7 +2,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Crown, Lock, Mail, User, Eye, EyeOff, Loader2, CheckCircle } from "lucide-react";
+import { Crown, Lock, Mail, Eye, EyeOff, Loader2, CheckCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlayer } from "@/contexts/PlayerContext";
 import styles from "./login.module.css";
@@ -24,8 +24,6 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [justVerified, setJustVerified] = useState(false);
   const [justRegistered, setJustRegistered] = useState(false);
-
-  const isStaff = id.includes("@");
 
   useEffect(() => {
     if (searchParams.get("verified") === "1") setJustVerified(true);
@@ -207,7 +205,7 @@ function LoginForm() {
             }}
           >
             <CheckCircle size={16} />
-            Account ready! Sign in with your email or chess username and your password.
+            Account ready! Sign in with your email and password.
           </div>
         )}
 
@@ -249,26 +247,23 @@ function LoginForm() {
           {/* ID field */}
           <div className={styles.fieldRow} style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
             <label style={{ fontSize: "13px", fontWeight: "500", color: "#a1a1aa", letterSpacing: "0.02em" }}>
-              Chess ID or Email
+              Email
             </label>
             <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-              {isStaff
-                ? <Mail size={16} style={{ position: "absolute", left: "14px", color: "#a1a1aa", pointerEvents: "none" }} />
-                : <User size={16} style={{ position: "absolute", left: "14px", color: "#a1a1aa", pointerEvents: "none" }} />
-              }
+              <Mail size={16} style={{ position: "absolute", left: "14px", color: "#a1a1aa", pointerEvents: "none" }} />
               <input
-                type="text"
-                placeholder="username or email@example.com"
+                type="email"
+                placeholder="email@example.com"
                 value={id}
                 onChange={(e) => { setId(e.target.value); clearAlerts(); }}
                 disabled={loading}
-                autoComplete="username"
+                autoComplete="email"
                 required
                 style={{ ...inputStyle, paddingLeft: "42px" }}
               />
             </div>
             <p style={{ fontSize: "11px", color: "#52525b", margin: 0 }}>
-              Enter your email or your Chess.com / Lichess username
+              Enter the email you registered with
             </p>
           </div>
 
