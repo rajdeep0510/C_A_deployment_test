@@ -25,7 +25,7 @@ function SetPasswordForm() {
     setError("");
 
     if (!id) {
-      setError("Missing username. Please return to the login page.");
+      setError("Missing email. Please return to the login page.");
       return;
     }
     if (newPassword.length < 8) {

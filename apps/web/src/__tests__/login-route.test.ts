@@ -145,10 +145,39 @@ describe("login route", () => {
       });
       verifyPasswordMock.mockResolvedValue(true);
 
-      const res = await POST(makeRequest(`player-${uid()}`, "correct-password"));
+      const res = await POST(makeRequest(`player-${uid()}@example.com`, "correct-password"));
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.redirectTo).toBe("/dashboard");
+    });
+  });
+
+  describe("email-only login (username lookup removed)", () => {
+    it("looks up app_users by email only — no chess/lichess username matching", async () => {
+      prismaMock.app_users.findFirst.mockResolvedValue(null);
+      verifyPasswordMock.mockResolvedValue(false);
+
+      const res = await POST(makeRequest(`player-${uid()}@example.com`, "x"));
+      expect(res.status).toBe(401);
+
+      const queryArgs = prismaMock.app_users.findFirst.mock.calls[0][0];
+      expect(JSON.stringify(queryArgs.where)).toContain("email_lower");
+      expect(JSON.stringify(queryArgs.where)).not.toContain("chess_username");
+      expect(JSON.stringify(queryArgs.where)).not.toContain("lichess_username");
+    });
+
+    it("falls back to the players lookup by email only — no username matching", async () => {
+      prismaMock.app_users.findFirst.mockResolvedValue(null);
+      prismaMock.players.findFirst.mockResolvedValue(null);
+      verifyPasswordMock.mockResolvedValue(false);
+
+      const id = `legacy-${uid()}@example.com`;
+      await POST(makeRequest(id, "x"));
+
+      const queryArgs = prismaMock.players.findFirst.mock.calls[0][0];
+      expect(JSON.stringify(queryArgs.where)).toContain("email");
+      expect(JSON.stringify(queryArgs.where)).not.toContain("chess_username");
+      expect(JSON.stringify(queryArgs.where)).not.toContain("lichess_username");
     });
   });
 

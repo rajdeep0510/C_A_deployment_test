@@ -54,7 +54,7 @@ export async function POST(request: Request) {
       }
       const result = await registerPlayerUser({ email, password, fullName, chessUsername, lichessUsername, activePlatform, coachId });
       if (result.preApproved) {
-        return NextResponse.json({ preApproved: true, message: "Your account is ready! You can now log in with your chess username and password." }, { status: 201 });
+        return NextResponse.json({ preApproved: true, message: "Your account is ready! You can now log in with your email and password." }, { status: 201 });
       }
       return NextResponse.json({ message: "Registration submitted. Your coach will review and approve your request." }, { status: 201 });
     }

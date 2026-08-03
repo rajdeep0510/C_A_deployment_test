@@ -12,8 +12,8 @@ const DUMMY_HASH = bcrypt.hashSync("timing-equalizer-dummy", 12);
 
 // Brute-force / credential-stuffing guards (best-effort, in-memory).
 const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
-const LOGIN_MAX_PER_IP = 20; // cap across all usernames/emails
-const LOGIN_MAX_PER_ID = 5; // cap per username/email
+const LOGIN_MAX_PER_IP = 20; // cap across all emails
+const LOGIN_MAX_PER_ID = 5; // cap per email
 
 export async function POST(request: Request) {
   let body: any;
@@ -50,29 +50,23 @@ export async function POST(request: Request) {
   }
 
   try {
-    // 1. Search for user via player username, player email, or app_user email_lower
+    // 1. Search for the user via email only (players and staff both log in
+    //    with the email address they registered with).
     let user = await prisma.app_users.findFirst({
       where: {
         OR: [
           { email_lower: idLower },
-          { player: { chess_username: idLower } },
-          { player: { lichess_username: idLower } },
           { player: { email: idLower } },
         ],
       },
       include: { profile: true, player: true },
     });
 
-    // 2. Fallback: search players directly to find associated app_user
+    // 2. Fallback: search players directly (email only) to find the
+    //    associated app_user for legacy/edge-case records.
     if (!user) {
       const playerRecord = await prisma.players.findFirst({
-        where: {
-          OR: [
-            { chess_username: idLower },
-            { lichess_username: idLower },
-            { email: idLower },
-          ],
-        },
+        where: { email: idLower },
         include: { app_user: { include: { profile: true, player: true } } },
       });
       if (playerRecord?.app_user) {
