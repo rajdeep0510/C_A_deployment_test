@@ -33,6 +33,10 @@ export function middleware(request: NextRequest) {
 
   // 2. Auth Subdomain (auth.chessadvisor.in)
   if (hostname.startsWith("auth.")) {
+    if (pathname === "/") {
+      return NextResponse.redirect(new URL("/login", authUrl));
+    }
+
     const isAuthRoute =
       pathname === "/login" ||
       pathname === "/register" ||
@@ -42,14 +46,6 @@ export function middleware(request: NextRequest) {
       pathname === "/verify-email" ||
       pathname === "/verify-email-sent" ||
       pathname.startsWith("/api/auth");
-
-    if (hasSession && (pathname === "/login" || pathname === "/register" || pathname === "/")) {
-      return NextResponse.redirect(new URL("/dashboard", appUrl));
-    }
-
-    if (!hasSession && pathname === "/") {
-      return NextResponse.redirect(new URL("/login", authUrl));
-    }
 
     if (!isAuthRoute) {
       // Redirect any webapp route accessed on auth subdomain to app subdomain
