@@ -15,9 +15,15 @@ function getOrigin(request: Request) {
 }
 
 function redirectToLogin(request: Request, reason: string) {
+  const cookieDomain = process.env.COOKIE_DOMAIN;
   const res = NextResponse.redirect(`${getOrigin(request)}/login?google_error=${encodeURIComponent(reason)}`);
   // Clear the one-shot state cookie on every failure path too (not just success).
-  res.cookies.set(STATE_COOKIE, "", { maxAge: 0, path: "/", httpOnly: true });
+  res.cookies.set(STATE_COOKIE, "", {
+    maxAge: 0,
+    path: "/",
+    httpOnly: true,
+    ...(cookieDomain ? { domain: cookieDomain } : {}),
+  });
   return res;
 }
 
@@ -96,11 +102,18 @@ export async function GET(request: Request) {
     profile: profileRow ? { role: profileRow.role, status: profileRow.status } : null,
     player: playerRow ? { status: playerRow.status } : null,
   });
-  const destination = `${getOrigin(request)}${path}`;
+  const appOrigin = process.env.NEXT_PUBLIC_APP_URL || getOrigin(request);
+  const destination = `${appOrigin}${path}`;
 
   const res = NextResponse.redirect(destination);
   setSessionCookie(res, rawToken);
   // Clear one-shot state cookie.
-  res.cookies.set(STATE_COOKIE, "", { maxAge: 0, path: "/", httpOnly: true });
+  const cookieDomain = process.env.COOKIE_DOMAIN;
+  res.cookies.set(STATE_COOKIE, "", {
+    maxAge: 0,
+    path: "/",
+    httpOnly: true,
+    ...(cookieDomain ? { domain: cookieDomain } : {}),
+  });
   return res;
 }

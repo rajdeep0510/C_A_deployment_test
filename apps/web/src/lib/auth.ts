@@ -38,18 +38,26 @@ function generateInviteCode() {
 // ── Cookie helpers ────────────────────────────────────────────────────────────
 
 export function setSessionCookie(response: NextResponse, rawToken: string) {
+  const cookieDomain = process.env.COOKIE_DOMAIN;
   response.cookies.set(SESSION_COOKIE, rawToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     maxAge: SESSION_DAYS * 24 * 60 * 60,
     path: "/",
+    ...(cookieDomain ? { domain: cookieDomain } : {}),
   });
   return response;
 }
 
 export function clearSessionCookie(response: NextResponse) {
-  response.cookies.set(SESSION_COOKIE, "", { maxAge: 0, path: "/", httpOnly: true });
+  const cookieDomain = process.env.COOKIE_DOMAIN;
+  response.cookies.set(SESSION_COOKIE, "", {
+    maxAge: 0,
+    path: "/",
+    httpOnly: true,
+    ...(cookieDomain ? { domain: cookieDomain } : {}),
+  });
   return response;
 }
 
