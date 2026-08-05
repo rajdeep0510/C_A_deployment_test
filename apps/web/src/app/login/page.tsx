@@ -78,7 +78,13 @@ function LoginForm() {
       }
 
       await Promise.all([refreshProfile(), refreshSession()]);
-      router.push(data.redirectTo);
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
+      const target = data.redirectTo || "/dashboard";
+      if (appUrl && (window.location.hostname.startsWith("auth.") || target.startsWith("http"))) {
+        window.location.href = target.startsWith("http") ? target : `${appUrl}${target}`;
+      } else {
+        router.push(target);
+      }
     } catch {
       setError("Something went wrong. Please try again.");
       setLoading(false);

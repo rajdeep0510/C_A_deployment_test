@@ -33,10 +33,29 @@ export function middleware(request: NextRequest) {
 
   // 2. Auth Subdomain (auth.chessadvisor.in)
   if (hostname.startsWith("auth.")) {
-    // If already authenticated user visits auth routes like login/signup, redirect to app subdomain
+    const isAuthRoute =
+      pathname === "/login" ||
+      pathname === "/register" ||
+      pathname === "/forgot-password" ||
+      pathname === "/reset-password" ||
+      pathname === "/set-password" ||
+      pathname === "/verify-email" ||
+      pathname === "/verify-email-sent" ||
+      pathname.startsWith("/api/auth");
+
     if (hasSession && (pathname === "/login" || pathname === "/register" || pathname === "/")) {
       return NextResponse.redirect(new URL("/dashboard", appUrl));
     }
+
+    if (!hasSession && pathname === "/") {
+      return NextResponse.redirect(new URL("/login", authUrl));
+    }
+
+    if (!isAuthRoute) {
+      // Redirect any webapp route accessed on auth subdomain to app subdomain
+      return NextResponse.redirect(new URL(pathname + request.nextUrl.search, appUrl));
+    }
+
     return NextResponse.next();
   }
 
