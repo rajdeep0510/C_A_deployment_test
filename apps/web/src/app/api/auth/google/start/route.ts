@@ -9,6 +9,7 @@ export async function GET() {
     const state = crypto.randomBytes(24).toString("base64url");
     const url = getGoogleAuthUrl(state);
 
+    const cookieDomain = process.env.COOKIE_DOMAIN;
     const res = NextResponse.redirect(url);
     res.cookies.set(STATE_COOKIE, state, {
       httpOnly: true,
@@ -16,6 +17,7 @@ export async function GET() {
       sameSite: "lax",
       maxAge: 10 * 60,
       path: "/",
+      ...(cookieDomain ? { domain: cookieDomain } : {}),
     });
     return res;
   } catch (err: any) {
